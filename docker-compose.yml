@@ -1,0 +1,32 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=America/Toronto
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "toms-mac-mini.local:192.168.4.242"
+    volumes:
+      # Config file with API keys
+      - ./config.json:/app/config.json:ro
+      # Script files
+      - ./generate_summary.py:/app/generate_summary.py:ro
+      - ./server.py:/app/server.py:ro
+      # Data files (read/write for updates)
+      - ./todos.json:/app/todos.json
+      - ./calendar.json:/app/calendar.json
+      - ./location.json:/app/location.json
+      - ./daily-links.json:/app/daily-links.json
+      - ./daily-summary.json:/app/daily-summary.json
+      - ./money.txt:/app/money.txt
+      - ./untaggedLinks.txt:/app/untaggedLinks.txt
+      - ./starredLinks.json:/app/starredLinks.json
+      - ./sequelEpisodes.json:/app/sequelEpisodes.json
+      - ./anyboxStats.json:/app/anyboxStats.json
+      # HTML file (mount to avoid rebuild)
+      - ./index.html:/app/index.html:ro
+      # SSH keys for todo refresh (optional)
+      - ~/.ssh:/root/.ssh:ro
+    restart: unless-stopped

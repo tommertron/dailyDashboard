@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Daily Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .three-column-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      min-width: 0;
+    }
+
+    .links-panel {
+      grid-column: span 1;
+    }
+
+    .tv-panel {
+      grid-column: span 1;
+    }
+
+    .links-panel .panel-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .links-panel .link-item {
+      border-bottom: 1px solid #f3f4f6;
+      padding: 0.6rem 0;
+    }
+
+    .links-panel .link-item:last-child {
+      border-bottom: none;
+    }
+
+    @media (max-width: 900px) {
+      .three-column-grid {
+        grid-template-columns: 1fr;
+      }
+      .links-panel, .tv-panel {
+        grid-column: span 1;
+      }
+      .links-panel .panel-body {
+        flex-direction: column;
+        gap: 0;
+      }
+      .links-panel .link-item {
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f3f4f6;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+      }
+
+      .header {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.25rem;
+      }
+
+      .header-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .greeting h1 {
+        font-size: 1.4rem;
+      }
+
+      .ai-summary-inline {
+        font-size: 0.9rem;
+      }
+
+      .date-badge {
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem;
+      }
+
+      /* Shed panel mobile */
+      .home-temp {
+        margin-bottom: 0.75rem;
+      }
+
+      .home-temp-value {
+        font-size: 1.25rem;
+      }
+
+      .home-scenes {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .scene-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+      }
+
+      .scene-btn svg {
+        display: none;
+      }
+
+      /* Pi Status mobile */
+      .battery-display {
+        margin-bottom: 0.75rem;
+      }
+
+      .battery-percent {
+        font-size: 1.1rem;
+      }
+
+      .battery-source {
+        font-size: 0.7rem;
+      }
+
+      .power-events {
+        gap: 0.25rem;
+      }
+
+      .power-event {
+        font-size: 0.75rem;
+      }
+
+      .power-event-time {
+        font-size: 0.7rem;
+      }
+
+      /* Bills mobile */
+      .bill-item {
+        padding: 0.4rem 0;
+      }
+
+      .bill-amount {
+        font-size: 0.85rem;
+      }
+
+      .bill-name {
+        font-size: 0.8rem;
+      }
+
+      .bill-total-amount {
+        font-size: 1rem;
+      }
+    }
+
+    .header {
+      background: white;
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1.5rem;
+      overflow: hidden;
+    }
+
+    .greeting {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .greeting h1 {
+      color: #1a1a2e;
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .ai-summary-inline {
+      color: #6b7280;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .summary-refresh-btn-small {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      border: none;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .summary-refresh-btn-small:hover {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+    }
+
+    .summary-refresh-btn-small:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .summary-refresh-btn-small svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .date-badge {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .section-title {
+      color: #1a1a2e;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 3px;
+      height: 16px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      border-radius: 2px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .panel-header .section-title {
+      margin: 0;
+    }
+
+    .panel-body {
+      padding: 1rem 1.25rem;
+      flex: 1;
+    }
+
+    .app-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #f3f4f6;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .app-link:hover {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+    }
+
+    .app-link svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .links-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .link-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: block;
+      border-left: 4px solid transparent;
+    }
+
+    .link-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.15);
+      border-left-color: #7c3aed;
+    }
+
+    .link-card h3 {
+      color: #1a1a2e;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .link-card .url {
+      color: #9ca3af;
+      font-size: 0.85rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .link-card .comment {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      font-style: italic;
+    }
+
+    .link-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 1rem;
+      flex-shrink: 0;
+    }
+
+    .link-content {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .link-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .empty-state {
+      background: white;
+      border-radius: 16px;
+      padding: 3rem;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .refresh-btn {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 1.5rem;
+    }
+
+    .refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+    }
+
+    .todos-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .things-link {
+      color: #7c3aed;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .things-link:hover {
+      color: #a855f7;
+    }
+
+    .refresh-link {
+      background: none;
+      border: none;
+      color: #7c3aed;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .refresh-link:hover {
+      color: #a855f7;
+    }
+
+    .refresh-link:disabled {
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .todos-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+      gap: 0.5rem;
+    }
+
+    .todo-item:last-child {
+      border-bottom: none;
+    }
+
+    .todo-bullet {
+      width: 6px;
+      height: 6px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .todo-text {
+      color: #1a1a2e;
+      font-size: 0.9rem;
+    }
+
+    .todo-item.completed .todo-text {
+      text-decoration: line-through;
+      color: #9ca3af;
+    }
+
+    .todo-item.completed .todo-bullet {
+      background: #9ca3af;
+    }
+
+    .panel-empty {
+      color: #9ca3af;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .home-temp {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .home-temp-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .home-temp-label {
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .home-status {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .status-value {
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+
+    .status-on {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-off {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .status-heat {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .status-cool {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status-alert {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .status-btn {
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .status-btn:hover {
+      filter: brightness(0.9);
+      transform: scale(1.05);
+    }
+
+    .status-btn:active {
+      transform: scale(0.95);
+    }
+
+    .home-scenes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .scene-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: #374151;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .scene-btn:hover {
+      border-color: #7c3aed;
+      color: #7c3aed;
+      background: #faf5ff;
+    }
+
+    .scene-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .scene-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .toggle-btn {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 0;
+    }
+
+    .toggle-btn::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle-btn.off {
+      background: #d1d5db;
+    }
+
+    .toggle-btn.on {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    }
+
+    .toggle-btn.on::after {
+      left: 22px;
+    }
+
+    .link-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f3f4f6;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .link-item:last-child {
+      border-bottom: none;
+    }
+
+    .link-item:hover {
+      background: #faf5ff;
+      border-radius: 8px;
+    }
+
+    .link-number-small {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: white;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .link-text-compact {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .link-title {
+      color: #1a1a2e;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .link-domain {
+      color: #9ca3af;
+      font-size: 0.75rem;
+    }
+
+    .pi-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .pi-stat-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 0.25rem;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .pi-stat-box.stat-ok {
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    }
+
+    .pi-stat-box.stat-warn {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    }
+
+    .pi-stat-box.stat-alert {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    }
+
+    .pi-stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .pi-stat-box.stat-ok .pi-stat-value {
+      color: #166534;
+    }
+
+    .pi-stat-box.stat-warn .pi-stat-value {
+      color: #a16207;
+    }
+
+    .pi-stat-box.stat-alert .pi-stat-value {
+      color: #dc2626;
+    }
+
+    .pi-stat-label {
+      font-size: 0.65rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .power-events {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .power-event {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .power-event-icon {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .power-event-icon.lost {
+      background: #ef4444;
+    }
+
+    .power-event-icon.restored {
+      background: #22c55e;
+    }
+
+    .power-event-time {
+      color: #9ca3af;
+      font-size: 0.7rem;
+      margin-left: auto;
+    }
+
+    .bill-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .bill-item:last-child {
+      border-bottom: none;
+    }
+
+    .bill-amount {
+      font-weight: 600;
+      color: #dc2626;
+      font-size: 0.9rem;
+    }
+
+    .bill-name {
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .bill-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.75rem;
+      margin-top: 0.5rem;
+      border-top: 2px solid #e5e7eb;
+    }
+
+    .bill-total-label {
+      font-weight: 500;
+      color: #374151;
+      font-size: 0.85rem;
+    }
+
+    .bill-total-amount {
+      font-weight: 700;
+      color: #dc2626;
+      font-size: 1.1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: #f3f4f6;
+      color: #7c3aed;
+    }
+
+    .icon-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+
+    .weather-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .weather-icon {
+      width: 56px;
+      height: 56px;
+    }
+
+    .weather-main {
+      flex: 1;
+    }
+
+    .weather-temp {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .weather-desc {
+      color: #6b7280;
+      font-size: 0.85rem;
+      text-transform: capitalize;
+    }
+
+    .weather-location {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .weather-tomorrow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .weather-tomorrow-icon {
+      width: 32px;
+      height: 32px;
+    }
+
+    .weather-tomorrow-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .weather-tomorrow-label {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .weather-tomorrow-temps {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #6b7280;
+    }
+
+    .calendar-event {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+      gap: 0.75rem;
+    }
+
+    .calendar-event:last-child {
+      border-bottom: none;
+    }
+
+    .event-time {
+      min-width: 60px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #7c3aed;
+    }
+
+    .event-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-title {
+      color: #1a1a2e;
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-calendar {
+      color: #9ca3af;
+      font-size: 0.75rem;
+    }
+
+    .calendar-day-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #7c3aed;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0;
+      margin-top: 0.25rem;
+    }
+
+    .calendar-day-label:first-child {
+      margin-top: 0;
+    }
+
+    .calendar-day-label.tomorrow {
+      color: #6b7280;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .anybox-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .anybox-stats {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .anybox-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 0.75rem 0.5rem;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .anybox-stat .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #7c3aed;
+      text-align: center;
+    }
+
+    .anybox-stat .stat-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: center;
+    }
+
+    .anybox-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .anybox-section-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .starred-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .starred-link:hover {
+      color: #7c3aed;
+    }
+
+    .starred-link .star-icon {
+      color: #fbbf24;
+      flex-shrink: 0;
+    }
+
+    .starred-link .star-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .starred-link .starred-title {
+      color: #1a1a2e;
+      font-size: 0.85rem;
+    }
+
+    .starred-link:hover .starred-title {
+      color: #7c3aed;
+    }
+
+    .anybox-link-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      text-decoration: none;
+      transition: all 0.2s;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .anybox-link-item:last-child {
+      border-bottom: none;
+    }
+
+    .anybox-link-item:hover {
+      background: #faf5ff;
+      border-radius: 8px;
+      padding-left: 0.5rem;
+      margin-left: -0.5rem;
+    }
+
+    .anybox-link-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .anybox-link-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .anybox-link-icon.star-icon {
+      color: #fbbf24;
+    }
+
+    .anybox-link-icon.dice-icon {
+      color: #7c3aed;
+    }
+
+    .anybox-link-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .anybox-link-title {
+      color: #1a1a2e;
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .anybox-link-item:hover .anybox-link-title {
+      color: #7c3aed;
+    }
+
+    .anybox-link-domain {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      margin-top: 0.15rem;
+    }
+
+    .anybox-link-comment {
+      color: #6b7280;
+      font-size: 0.75rem;
+      font-style: italic;
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+
+    .tv-show-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .tv-show-item:last-child {
+      border-bottom: none;
+    }
+
+    .tv-show-poster {
+      width: 40px;
+      height: 60px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #f3f4f6;
+    }
+
+    .tv-show-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tv-show-title {
+      color: #1a1a2e;
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tv-show-episode {
+      color: #7c3aed;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .tv-show-episode-title {
+      color: #6b7280;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tv-show-description {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .tv-show-date {
+      color: #9ca3af;
+      font-size: 0.7rem;
+      margin-top: 0.15rem;
+    }
+
+    .tv-show-source {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .tv-show-source.channels {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .tv-show-source.sequel {
+      background: #fce7f3;
+      color: #be185d;
+    }
+
+    .tv-header-links {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .tv-storage {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: #f9fafb;
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+    }
+
+    .tv-storage-icon {
+      color: #6b7280;
+      flex-shrink: 0;
+    }
+
+    .tv-storage-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .tv-storage-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tv-storage-bar {
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 0.25rem;
+    }
+
+    .tv-storage-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .tv-storage-bar-fill.low {
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+    }
+
+    .tv-storage-bar-fill.medium {
+      background: linear-gradient(90deg, #eab308, #facc15);
+    }
+
+    .tv-storage-bar-fill.high {
+      background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+
+    .tv-storage-text {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    @media (max-width: 900px) {
+      .anybox-body {
+        flex-direction: column;
+      }
+
+      .links-panel .panel-body {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      }
+
+      .header, .panel, .todos-card, .link-card, .empty-state {
+        background: #1e1e2e;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .greeting h1, .section-title, .weather-temp, .home-temp-value,
+      .battery-percent, .event-title, .link-title, .todo-text,
+      .starred-title, .bill-total-label {
+        color: #e4e4e7;
+      }
+
+      .ai-summary-inline, .weather-desc, .home-temp-label, .status-label,
+      .power-event, .bill-name, .event-calendar, .link-domain,
+      .anybox-section-title, .anybox-stat .stat-label, .calendar-day-label.tomorrow,
+      .weather-tomorrow-temps, .panel-empty {
+        color: #a1a1aa;
+      }
+
+      .weather-location, .power-event-time, .battery-source {
+        color: #71717a;
+      }
+
+      .panel-header, .calendar-event, .todo-item, .bill-item,
+      .status-item, .link-item, .starred-link, .weather-tomorrow,
+      .calendar-day-label.tomorrow {
+        border-color: #2e2e3e;
+      }
+
+      .date-badge {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      }
+
+      .summary-refresh-btn-small, .icon-btn, .app-link {
+        background: #2e2e3e;
+        color: #a1a1aa;
+      }
+
+      .summary-refresh-btn-small:hover, .icon-btn:hover, .app-link:hover {
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        color: white;
+      }
+
+      .scene-btn {
+        background: #2e2e3e;
+        border-color: #3e3e4e;
+        color: #e4e4e7;
+      }
+
+      .scene-btn:hover {
+        border-color: #7c3aed;
+        background: #2a2a3a;
+      }
+
+      .toggle-btn.off {
+        background: #3e3e4e;
+      }
+
+      .status-value.status-off {
+        background: #2e2e3e;
+        color: #a1a1aa;
+      }
+
+      .status-value.status-on {
+        background: #166534;
+        color: #4ade80;
+      }
+
+      .status-value.status-heat {
+        background: #78350f;
+        color: #fbbf24;
+      }
+
+      .status-value.status-cool {
+        background: #1e3a5f;
+        color: #60a5fa;
+      }
+
+      .status-value.status-alert {
+        background: #7f1d1d;
+        color: #fca5a5;
+      }
+
+      .anybox-stat {
+        background: linear-gradient(135deg, #2e2e3e 0%, #252535 100%);
+      }
+
+      .link-item:hover, .starred-link:hover {
+        background: #2a2a3a;
+      }
+
+      .starred-link .starred-title {
+        color: #e4e4e7;
+      }
+
+      .starred-link:hover .starred-title {
+        color: #a855f7;
+      }
+
+      .anybox-link-item {
+        border-color: #2e2e3e;
+      }
+
+      .anybox-link-item:hover {
+        background: #2a2a3a;
+      }
+
+      .anybox-link-title {
+        color: #e4e4e7;
+      }
+
+      .anybox-link-item:hover .anybox-link-title {
+        color: #a855f7;
+      }
+
+      .anybox-link-domain {
+        color: #71717a;
+      }
+
+      .anybox-link-comment {
+        color: #a1a1aa;
+      }
+
+      .pi-stat-box {
+        background: linear-gradient(135deg, #2e2e3e 0%, #252535 100%);
+      }
+
+      .pi-stat-box.stat-ok {
+        background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+      }
+
+      .pi-stat-box.stat-warn {
+        background: linear-gradient(135deg, #713f12 0%, #854d0e 100%);
+      }
+
+      .pi-stat-box.stat-alert {
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+      }
+
+      .pi-stat-value {
+        color: #e4e4e7;
+      }
+
+      .pi-stat-box.stat-ok .pi-stat-value {
+        color: #4ade80;
+      }
+
+      .pi-stat-box.stat-warn .pi-stat-value {
+        color: #fbbf24;
+      }
+
+      .pi-stat-box.stat-alert .pi-stat-value {
+        color: #fca5a5;
+      }
+
+      .pi-stat-label {
+        color: #a1a1aa;
+      }
+
+      .power-events {
+        border-top-color: #2e2e3e;
+      }
+
+      .power-event {
+        color: #a1a1aa;
+      }
+
+      .power-event-time {
+        color: #71717a;
+      }
+
+      .bill-total {
+        border-top-color: #3e3e4e;
+      }
+
+      .calendar-day-label {
+        color: #a855f7;
+      }
+
+      .link-card {
+        border-left-color: transparent;
+      }
+
+      .link-card:hover {
+        border-left-color: #7c3aed;
+        box-shadow: 0 8px 30px rgba(124, 58, 237, 0.25);
+      }
+
+      .link-card h3 {
+        color: #e4e4e7;
+      }
+
+      .link-card .url, .link-card .comment {
+        color: #a1a1aa;
+      }
+
+      .tv-show-item {
+        border-color: #2e2e3e;
+      }
+
+      .tv-show-poster {
+        background: #2e2e3e;
+      }
+
+      .tv-show-title {
+        color: #e4e4e7;
+      }
+
+      .tv-show-episode {
+        color: #a855f7;
+      }
+
+      .tv-show-episode-title {
+        color: #a1a1aa;
+      }
+
+      .tv-show-description {
+        color: #71717a;
+      }
+
+      .tv-show-date {
+        color: #71717a;
+      }
+
+      .tv-show-source.channels {
+        background: #1e3a5f;
+        color: #60a5fa;
+      }
+
+      .tv-show-source.sequel {
+        background: #4a1d3d;
+        color: #f472b6;
+      }
+
+      .tv-storage {
+        background: #2e2e3e;
+      }
+
+      .tv-storage-icon {
+        color: #a1a1aa;
+      }
+
+      .tv-storage-bar {
+        background: #3e3e4e;
+      }
+
+      .tv-storage-text {
+        color: #a1a1aa;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="greeting">
+        <h1 id="greeting-text">Good Morning!</h1>
+        <p class="ai-summary-inline" id="ai-summary-text">Loading your daily summary...</p>
+      </div>
+      <div class="header-right">
+        <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+        <div class="date-badge" id="date-badge"></div>
+      </div>
+    </header>
+
+    <div class="three-column-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Weather</h2>
+          <a href="weather://" class="app-link" title="Open Weather">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </a>
+        </div>
+        <div class="panel-body" id="weather-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Schedule</h2>
+          <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </a>
+        </div>
+        <div class="panel-body" id="calendar-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Tasks</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Things" id="todos-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="things:///show?id=today" class="app-link" title="Open Things">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="todos-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Shed</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadShedStatus()" title="Refresh" id="shed-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="http://192.168.4.248:8123/422-at-glance/0" class="app-link" title="Open Home Assistant" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="shed-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Home</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadHomeStatus()" title="Refresh">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="http://192.168.4.248:8123/lovelace/home" class="app-link" title="Open Home Assistant" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="home-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Pi Status</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadPiStatus()" title="Refresh">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="http://100.125.128.51:5001" class="app-link" title="Open Pi Monitor" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="pi-status-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-title">Bills Due</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="x-apple-reminderkit://" class="app-link" title="Open Reminders">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="money-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel tv-panel">
+        <div class="panel-header">
+          <h2 class="section-title">TV Shows and Movies</h2>
+          <div class="header-actions tv-header-links">
+            <button class="icon-btn" onclick="loadTvShows()" title="Refresh">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="sequel://" class="app-link" title="Open Sequel">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+              </svg>
+            </a>
+            <a href="http://100.127.232.39:8089" class="app-link" title="Open Channels" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="tv-shows-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel links-panel">
+        <div class="panel-header">
+          <h2 class="section-title">Anybox</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadLinks()" title="Shuffle Links">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="anybox://" class="app-link" title="Open Anybox">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body anybox-body">
+          <div class="anybox-stats" id="anybox-stats-container">
+            <div class="anybox-stat">
+              <span class="stat-value" id="stat-all">--</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="anybox-stat">
+              <span class="stat-value" id="stat-last7">--</span>
+              <span class="stat-label">Last 7 Days</span>
+            </div>
+            <div class="anybox-stat">
+              <span class="stat-value" id="stat-untagged">--</span>
+              <span class="stat-label">Untagged</span>
+            </div>
+          </div>
+          <div class="anybox-section">
+            <h3 class="anybox-section-title">Starred</h3>
+            <div id="starred-links-container">
+              <div class="panel-empty">Loading...</div>
+            </div>
+          </div>
+          <div class="anybox-section">
+            <h3 class="anybox-section-title">Random Links</h3>
+            <div id="links-container">
+              <div class="panel-empty">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Good Morning!';
+      if (hour < 17) return 'Good Afternoon!';
+      return 'Good Evening!';
+    }
+
+    function formatDate() {
+      return new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function extractDomain(url) {
+      try {
+        return new URL(url).hostname.replace('www.', '');
+      } catch {
+        return url;
+      }
+    }
+
+    function getDiceIcon(num) {
+      const diceIcons = {
+        1: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="12" cy="12" r="2" fill="white"/></svg>',
+        2: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="8" cy="8" r="1.5" fill="white"/><circle cx="16" cy="16" r="1.5" fill="white"/></svg>',
+        3: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="8" cy="8" r="1.5" fill="white"/><circle cx="12" cy="12" r="1.5" fill="white"/><circle cx="16" cy="16" r="1.5" fill="white"/></svg>',
+        4: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="8" cy="8" r="1.5" fill="white"/><circle cx="16" cy="8" r="1.5" fill="white"/><circle cx="8" cy="16" r="1.5" fill="white"/><circle cx="16" cy="16" r="1.5" fill="white"/></svg>',
+        5: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="8" cy="8" r="1.5" fill="white"/><circle cx="16" cy="8" r="1.5" fill="white"/><circle cx="12" cy="12" r="1.5" fill="white"/><circle cx="8" cy="16" r="1.5" fill="white"/><circle cx="16" cy="16" r="1.5" fill="white"/></svg>',
+        6: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="3" ry="3"/><circle cx="8" cy="7" r="1.5" fill="white"/><circle cx="16" cy="7" r="1.5" fill="white"/><circle cx="8" cy="12" r="1.5" fill="white"/><circle cx="16" cy="12" r="1.5" fill="white"/><circle cx="8" cy="17" r="1.5" fill="white"/><circle cx="16" cy="17" r="1.5" fill="white"/></svg>'
+      };
+      return diceIcons[num] || diceIcons[1];
+    }
+
+    function renderLinks(links) {
+      const container = document.getElementById('links-container');
+
+      if (!links || links.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No links available</div>';
+        return;
+      }
+
+      const randomLinks = shuffleArray(links).slice(0, 3);
+
+      container.innerHTML = randomLinks.map((link) => {
+        const diceNum = Math.floor(Math.random() * 6) + 1;
+        return `
+          <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="anybox-link-item">
+            <span class="anybox-link-icon dice-icon">${getDiceIcon(diceNum)}</span>
+            <div class="anybox-link-text">
+              <div class="anybox-link-title">${link.title || 'Untitled'}</div>
+              <div class="anybox-link-domain">${extractDomain(link.url)}</div>
+            </div>
+          </a>
+        `;
+      }).join('');
+    }
+
+    async function loadLinks() {
+      try {
+        const response = await fetch('daily-links.json');
+        let text = await response.text();
+        // Strip trailing EOF if present (artifact from source)
+        text = text.replace(/EOF\s*$/, '');
+        const data = JSON.parse(text);
+        renderLinks(data.links);
+      } catch (error) {
+        console.error('Error loading links:', error);
+        document.getElementById('links-container').innerHTML =
+          '<div class="empty-state">Error loading links. Make sure daily-links.json exists.</div>';
+      }
+    }
+
+    async function loadAnyboxStats() {
+      try {
+        const response = await fetch('anyboxStats.json');
+        const data = await response.json();
+        document.getElementById('stat-all').textContent = data.all || '--';
+        document.getElementById('stat-last7').textContent = data.last7 || '--';
+        document.getElementById('stat-untagged').textContent = data.untagged || '--';
+      } catch (error) {
+        console.error('Error loading anybox stats:', error);
+        document.getElementById('stat-all').textContent = '--';
+        document.getElementById('stat-last7').textContent = '--';
+        document.getElementById('stat-untagged').textContent = '--';
+      }
+    }
+
+    function renderStarredLinks(links) {
+      const container = document.getElementById('starred-links-container');
+
+      if (!links || links.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No starred links</div>';
+        return;
+      }
+
+      container.innerHTML = links.map(link => `
+        <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="anybox-link-item">
+          <span class="anybox-link-icon star-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </span>
+          <div class="anybox-link-text">
+            <div class="anybox-link-title">${link.title || 'Untitled'}</div>
+            ${link.comment ? `<div class="anybox-link-comment">${link.comment}</div>` : `<div class="anybox-link-domain">${extractDomain(link.url)}</div>`}
+          </div>
+        </a>
+      `).join('');
+    }
+
+    async function loadStarredLinks() {
+      try {
+        const response = await fetch('starredLinks.json');
+        let text = await response.text();
+        // Fix malformed JSON with unescaped quotes inside strings
+        // Handle curly quotes first
+        text = text.replace(/[\u201C\u201D\u2018\u2019]/g, "'");
+        // Fix lines with title/comment that have inner quotes
+        // Match the value portion and replace inner quotes
+        text = text.split('\n').map(line => {
+          const match = line.match(/^(\s*"(?:title|comment)":\s*")(.*)(",?\s*)$/);
+          if (match) {
+            const [, prefix, value, suffix] = match;
+            // Replace unescaped quotes in the value with single quotes
+            const fixed = value.replace(/"/g, "'");
+            return prefix + fixed + suffix;
+          }
+          return line;
+        }).join('\n');
+        const data = JSON.parse(text);
+        renderStarredLinks(data.links);
+      } catch (error) {
+        console.error('Error loading starred links:', error);
+        document.getElementById('starred-links-container').innerHTML =
+          '<div class="panel-empty">No starred links</div>';
+      }
+    }
+
+    function renderTodos(todos) {
+      const container = document.getElementById('todos-container');
+
+      if (!todos || todos.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No tasks for today</div>';
+        return;
+      }
+
+      container.innerHTML = todos.map(todo => {
+        const isCompleted = todo.status === 'Completed';
+        return `
+          <div class="todo-item${isCompleted ? ' completed' : ''}">
+            <span class="todo-bullet"></span>
+            <span class="todo-text">${todo.title}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadTodos(bustCache = false) {
+      try {
+        const url = bustCache ? `todos.json?t=${Date.now()}` : 'todos.json';
+        const response = await fetch(url);
+        const data = await response.json();
+        renderTodos(data.todos);
+      } catch (error) {
+        console.error('Error loading todos:', error);
+        document.getElementById('todos-container').innerHTML =
+          '<div class="empty-state">Error loading todos. Make sure todos.json exists.</div>';
+      }
+    }
+
+    async function refreshTodos() {
+      const btn = document.getElementById('todos-refresh-btn');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      try {
+        const response = await fetch('/api/refresh-todos', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          btn.textContent = 'Syncing...';
+          // Wait for file to sync, then reload with cache-bust
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await loadTodos(true);
+        } else {
+          console.error('Refresh failed:', result.error);
+          alert('Failed to refresh todos: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error refreshing todos:', error);
+        alert('Error refreshing todos');
+      } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    function parseEventDate(dateStr) {
+      // Parse "Dec 30, 2025 at 9:00 AM" format
+      const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(.+)$/);
+      if (!match) return { time: dateStr, isToday: true, isTomorrow: false };
+
+      const [, month, day, year, time] = match;
+      const eventDate = new Date(`${month} ${day}, ${year}`);
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Compare just the date portions
+      const isToday = eventDate.toDateString() === today.toDateString();
+      const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
+
+      return { time, isToday, isTomorrow };
+    }
+
+    function renderCalendar(events) {
+      const container = document.getElementById('calendar-container');
+
+      if (!events || events.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No upcoming events</div>';
+        return;
+      }
+
+      // Group events by today/tomorrow
+      const todayEvents = events.filter(e => parseEventDate(e.start).isToday);
+      const tomorrowEvents = events.filter(e => parseEventDate(e.start).isTomorrow);
+
+      let html = '';
+
+      if (todayEvents.length > 0) {
+        html += '<div class="calendar-day-label">Today</div>';
+        html += todayEvents.map(event => {
+          const { time } = parseEventDate(event.start);
+          return `
+            <div class="calendar-event">
+              <div class="event-time">${event.allday === 'Yes' ? 'All day' : time}</div>
+              <div class="event-details">
+                <div class="event-title">${event.title}</div>
+                <div class="event-calendar">${event.calendar}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      if (tomorrowEvents.length > 0) {
+        html += '<div class="calendar-day-label tomorrow">Tomorrow</div>';
+        html += tomorrowEvents.map(event => {
+          const { time } = parseEventDate(event.start);
+          return `
+            <div class="calendar-event">
+              <div class="event-time">${event.allday === 'Yes' ? 'All day' : time}</div>
+              <div class="event-details">
+                <div class="event-title">${event.title}</div>
+                <div class="event-calendar">${event.calendar}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      container.innerHTML = html || '<div class="panel-empty">No upcoming events</div>';
+    }
+
+    async function loadCalendar() {
+      try {
+        const response = await fetch('calendar.json');
+        const data = await response.json();
+
+        // Parse the newline-separated JSON objects in the events string
+        const events = data.events
+          .split('\n')
+          .filter(line => line.trim())
+          .map(line => JSON.parse(line))
+          .filter(event => event.title !== 'Focus Time');
+
+        renderCalendar(events);
+      } catch (error) {
+        console.error('Error loading calendar:', error);
+        document.getElementById('calendar-container').innerHTML =
+          '<div class="empty-state">Error loading calendar. Make sure calendar.json exists.</div>';
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('config.json');
+        return await response.json();
+      } catch (error) {
+        console.error('Error loading config:', error);
+        return null;
+      }
+    }
+
+    async function loadLocation() {
+      try {
+        const response = await fetch('location.json');
+        return await response.json();
+      } catch (error) {
+        console.error('Error loading location:', error);
+        return null;
+      }
+    }
+
+    async function fetchWeather(lat, lon, apiKey) {
+      try {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`
+        );
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+        return null;
+      }
+    }
+
+    async function fetchForecast(lat, lon, apiKey) {
+      try {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`
+        );
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching forecast:', error);
+        return null;
+      }
+    }
+
+    function getTomorrowForecast(forecastData) {
+      if (!forecastData || !forecastData.list) return null;
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDate = tomorrow.toDateString();
+
+      // Find forecasts for tomorrow around midday (12:00-15:00)
+      const tomorrowForecasts = forecastData.list.filter(item => {
+        const itemDate = new Date(item.dt * 1000);
+        return itemDate.toDateString() === tomorrowDate;
+      });
+
+      if (tomorrowForecasts.length === 0) return null;
+
+      // Get the midday forecast or the middle one
+      const middayForecast = tomorrowForecasts.find(f => {
+        const hour = new Date(f.dt * 1000).getHours();
+        return hour >= 12 && hour <= 15;
+      }) || tomorrowForecasts[Math.floor(tomorrowForecasts.length / 2)];
+
+      // Calculate high/low from all tomorrow's forecasts
+      const temps = tomorrowForecasts.map(f => f.main.temp);
+      const high = Math.round(Math.max(...temps));
+      const low = Math.round(Math.min(...temps));
+
+      return {
+        high,
+        low,
+        description: middayForecast.weather[0].description,
+        icon: middayForecast.weather[0].icon
+      };
+    }
+
+    function renderWeather(location, weather, forecast) {
+      const container = document.getElementById('weather-container');
+
+      if (!location) {
+        container.innerHTML = '<div class="panel-empty">Unable to load location</div>';
+        return;
+      }
+
+      if (!weather || weather.cod === 401 || !weather.weather) {
+        container.innerHTML = '<div class="panel-empty">Unable to load weather</div>';
+        return;
+      }
+
+      const locationDisplay = [location.city, location.state].filter(Boolean).join(', ');
+      const tomorrowForecast = getTomorrowForecast(forecast);
+
+      container.innerHTML = `
+        <div class="weather-content">
+          <img class="weather-icon" src="https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png" alt="${weather.weather[0].description}">
+          <div class="weather-main">
+            <div class="weather-temp">${Math.round(weather.main.temp)}°C</div>
+            <div class="weather-desc">${weather.weather[0].description}</div>
+            <div class="weather-location">${locationDisplay}</div>
+          </div>
+        </div>
+        ${tomorrowForecast ? `
+          <div class="weather-tomorrow">
+            <img class="weather-tomorrow-icon" src="https://openweathermap.org/img/wn/${tomorrowForecast.icon}.png" alt="${tomorrowForecast.description}">
+            <div class="weather-tomorrow-info">
+              <span class="weather-tomorrow-label">Tomorrow</span>
+              <span class="weather-tomorrow-temps">${tomorrowForecast.high}° / ${tomorrowForecast.low}°</span>
+            </div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    async function loadWeather() {
+      const config = await loadConfig();
+      const location = await loadLocation();
+
+      if (!config || !config.openWeatherApiKey) {
+        document.getElementById('weather-container').innerHTML =
+          '<div class="empty-state">Missing API key in config.json</div>';
+        return;
+      }
+
+      if (!location) {
+        document.getElementById('weather-container').innerHTML =
+          '<div class="empty-state">Unable to load location data</div>';
+        return;
+      }
+
+      const [weather, forecast] = await Promise.all([
+        fetchWeather(location.lat, location.long, config.openWeatherApiKey),
+        fetchForecast(location.lat, location.long, config.openWeatherApiKey)
+      ]);
+      renderWeather(location, weather, forecast);
+    }
+
+    async function loadAiSummary() {
+      try {
+        const response = await fetch('daily-summary.json?t=' + Date.now());
+        if (!response.ok) {
+          document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+          return;
+        }
+
+        const data = await response.json();
+        document.getElementById('ai-summary-text').textContent = data.summary;
+      } catch (error) {
+        document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+      }
+    }
+
+    async function refreshSummary() {
+      const btn = document.getElementById('summary-refresh-btn');
+      const textEl = document.getElementById('ai-summary-text');
+
+      btn.disabled = true;
+      textEl.textContent = 'Generating your summary...';
+
+      try {
+        const response = await fetch('/api/refresh-summary', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          textEl.textContent = result.summary;
+        } else {
+          textEl.textContent = 'Failed to generate summary. Try again.';
+        }
+      } catch (error) {
+        textEl.textContent = 'Error generating summary. Try again.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderShedStatus(data) {
+      const container = document.getElementById('shed-container');
+
+      if (!data.success) {
+        container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+        return;
+      }
+
+      const states = data.states;
+      const temp = states['sensor.temperature_sensor_2'];
+      const motionOverride = states['input_boolean.shed_motion_override'];
+      const thermostat = states['climate.shed_thermostat'];
+
+      const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
+      const motionOverrideOn = motionOverride?.state === 'on';
+      const thermostatState = thermostat?.state || 'unknown';
+      const thermostatTemp = thermostat?.attributes?.current_temperature;
+      const thermostatTarget = thermostat?.attributes?.temperature;
+
+      let thermostatDisplay = thermostatState;
+      if (thermostatState === 'heat') {
+        thermostatDisplay = thermostatTarget ? `Heating to ${thermostatTarget}°` : 'Heating';
+      } else if (thermostatState === 'off') {
+        thermostatDisplay = 'Off';
+      }
+
+      container.innerHTML = `
+        <div class="home-temp">
+          <span class="home-temp-value">${tempValue}°C</span>
+          <span class="home-temp-label">Shed Temperature</span>
+        </div>
+
+        <div class="home-status">
+          <div class="status-item">
+            <span class="status-label">Thermostat</span>
+            <span class="status-value ${thermostatState === 'heat' ? 'status-heat' : 'status-off'}">${thermostatDisplay}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Motion Override</span>
+            <button class="toggle-btn ${motionOverrideOn ? 'on' : 'off'}" onclick="toggleMotionOverride()" title="Toggle motion override"></button>
+          </div>
+        </div>
+
+        <div class="home-scenes">
+          <button class="scene-btn" onclick="activateScene('heat_shed_in_morning')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            Heat Shed (Morning)
+          </button>
+          <button class="scene-btn" onclick="activateScene('shed_unoccupied')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            Shed Unoccupied
+          </button>
+        </div>
+      `;
+    }
+
+    async function loadShedStatus() {
+      try {
+        const response = await fetch('/api/home-assistant/shed');
+        const data = await response.json();
+        renderShedStatus(data);
+      } catch (error) {
+        console.error('Error loading shed status:', error);
+        document.getElementById('shed-container').innerHTML =
+          '<div class="panel-empty">Error loading shed status</div>';
+      }
+    }
+
+    function renderHomeStatus(data) {
+      const container = document.getElementById('home-container');
+
+      if (!data.success) {
+        container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+        return;
+      }
+
+      const states = data.states;
+      const ecobee = states['climate.my_ecobee'];
+      const lock = states['lock.back_door_lock'];
+      const shedDoor = states['binary_sensor.contact_sensor_2'];
+      const garageDoor = states['binary_sensor.contact_sensor'];
+
+      // Ecobee info
+      const currentTemp = ecobee?.attributes?.current_temperature;
+      const targetTemp = ecobee?.attributes?.temperature;
+      const hvacState = ecobee?.state || 'unknown';
+      const hvacAction = ecobee?.attributes?.hvac_action || 'idle';
+      const humidity = ecobee?.attributes?.current_humidity;
+
+      // Format HVAC display
+      let hvacDisplay = hvacState;
+      if (hvacState === 'heat') {
+        hvacDisplay = hvacAction === 'heating' ? `Heating to ${targetTemp}°` : `Heat (${targetTemp}°)`;
+      } else if (hvacState === 'cool') {
+        hvacDisplay = hvacAction === 'cooling' ? `Cooling to ${targetTemp}°` : `Cool (${targetTemp}°)`;
+      } else if (hvacState === 'heat_cool') {
+        hvacDisplay = 'Auto';
+      } else if (hvacState === 'off') {
+        hvacDisplay = 'Off';
+      }
+
+      // Lock info
+      const lockState = lock?.state || 'unknown';
+      const isLocked = lockState === 'locked';
+
+      // Shed door info
+      const shedDoorState = shedDoor?.state || 'unknown';
+      const isShedDoorOpen = shedDoorState === 'on';
+
+      // Garage door info
+      const garageDoorState = garageDoor?.state || 'unavailable';
+      const isGarageDoorOpen = garageDoorState === 'on';
+      const isGarageUnavailable = garageDoorState === 'unavailable';
+
+      container.innerHTML = `
+        <div class="home-temp">
+          <span class="home-temp-value">${currentTemp ? currentTemp.toFixed(1) : '--'}°C</span>
+          <span class="home-temp-label">Inside${humidity ? ` • ${humidity}% humidity` : ''}</span>
+        </div>
+
+        <div class="home-status">
+          <div class="status-item">
+            <span class="status-label">Ecobee</span>
+            <span class="status-value ${hvacAction === 'heating' ? 'status-heat' : hvacAction === 'cooling' ? 'status-cool' : 'status-off'}">${hvacDisplay}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Back Door</span>
+            <button class="status-value status-btn ${isLocked ? 'status-on' : 'status-alert'}" onclick="toggleBackDoorLock()" title="Click to ${isLocked ? 'unlock' : 'lock'}">${isLocked ? 'Locked' : 'Unlocked'}</button>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Shed Door</span>
+            <span class="status-value ${isShedDoorOpen ? 'status-alert' : 'status-on'}">${isShedDoorOpen ? 'Open' : 'Closed'}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Garage Door</span>
+            <span class="status-value ${isGarageUnavailable ? 'status-off' : isGarageDoorOpen ? 'status-alert' : 'status-on'}">${isGarageUnavailable ? 'Unavailable' : isGarageDoorOpen ? 'Open' : 'Closed'}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    async function toggleBackDoorLock() {
+      try {
+        const response = await fetch('/api/home-assistant/lock/back_door', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadHomeStatus(), 500);
+        } else {
+          alert('Failed to toggle lock: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling lock:', error);
+        alert('Error toggling lock');
+      }
+    }
+
+    async function loadHomeStatus() {
+      try {
+        const response = await fetch('/api/home-assistant/home');
+        const data = await response.json();
+        renderHomeStatus(data);
+      } catch (error) {
+        console.error('Error loading home status:', error);
+        document.getElementById('home-container').innerHTML =
+          '<div class="panel-empty">Error loading home status</div>';
+      }
+    }
+
+    async function activateScene(sceneName) {
+      const btns = document.querySelectorAll('.scene-btn');
+      btns.forEach(btn => btn.disabled = true);
+
+      try {
+        const response = await fetch(`/api/home-assistant/scene/${sceneName}`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          // Reload status after a short delay to show updated state
+          setTimeout(() => loadShedStatus(), 1000);
+        } else {
+          alert('Failed to activate scene: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error activating scene:', error);
+        alert('Error activating scene');
+      } finally {
+        btns.forEach(btn => btn.disabled = false);
+      }
+    }
+
+    async function toggleMotionOverride() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/shed_motion_override', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          // Reload status to show updated state
+          setTimeout(() => loadShedStatus(), 500);
+        } else {
+          alert('Failed to toggle: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling:', error);
+        alert('Error toggling motion override');
+      }
+    }
+
+    function formatPowerEventTime(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function renderPiStatus(data) {
+      const container = document.getElementById('pi-status-container');
+
+      if (!data.success) {
+        container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+        return;
+      }
+
+      const ups = data.ups;
+      const system = data.system;
+      const outages = data.outages || [];
+      const batteryPercent = ups.battery_percent || 0;
+      const onBattery = !ups.on_ac_power;
+
+      const cpuPercent = system?.cpu_percent || 0;
+      const memPercent = system?.memory?.percent || 0;
+      const healthcheck = data.healthcheck;
+      const hcStatus = healthcheck?.status || 'unknown';
+
+      // Determine status colors
+      let batteryClass = 'stat-ok';
+      if (batteryPercent < 30) batteryClass = 'stat-warn';
+      if (onBattery) batteryClass = 'stat-alert';
+
+      let cpuClass = 'stat-ok';
+      if (cpuPercent > 80) cpuClass = 'stat-alert';
+      else if (cpuPercent > 50) cpuClass = 'stat-warn';
+
+      let ramClass = 'stat-ok';
+      if (memPercent > 80) ramClass = 'stat-alert';
+      else if (memPercent > 60) ramClass = 'stat-warn';
+
+      let hcClass = hcStatus === 'up' ? 'stat-ok' : hcStatus === 'grace' ? 'stat-warn' : 'stat-alert';
+
+      const recentEvents = outages.slice(0, 2);
+
+      container.innerHTML = `
+        <div class="pi-stats-grid">
+          <div class="pi-stat-box ${batteryClass}">
+            <span class="pi-stat-value">${batteryPercent.toFixed(0)}%</span>
+            <span class="pi-stat-label">${onBattery ? 'Battery' : 'UPS'}</span>
+          </div>
+          <div class="pi-stat-box ${cpuClass}">
+            <span class="pi-stat-value">${cpuPercent.toFixed(0)}%</span>
+            <span class="pi-stat-label">CPU</span>
+          </div>
+          <div class="pi-stat-box ${ramClass}">
+            <span class="pi-stat-value">${memPercent.toFixed(0)}%</span>
+            <span class="pi-stat-label">RAM</span>
+          </div>
+          <div class="pi-stat-box ${hcClass}">
+            <span class="pi-stat-value">♥</span>
+            <span class="pi-stat-label">${hcStatus}</span>
+          </div>
+        </div>
+        ${recentEvents.length > 0 ? `
+          <div class="power-events">
+            ${recentEvents.map(event => `
+              <div class="power-event">
+                <span class="power-event-icon ${event.event === 'power_lost' ? 'lost' : 'restored'}"></span>
+                <span>${event.event === 'power_lost' ? 'Power lost' : 'Power restored'}</span>
+                <span class="power-event-time">${formatPowerEventTime(event.timestamp)}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      `;
+    }
+
+    async function loadPiStatus() {
+      try {
+        const response = await fetch('/api/pi/status');
+        const data = await response.json();
+        renderPiStatus(data);
+      } catch (error) {
+        console.error('Error loading Pi status:', error);
+        document.getElementById('pi-status-container').innerHTML =
+          '<div class="panel-empty">Error loading Pi status</div>';
+      }
+    }
+
+    function renderMoney(data) {
+      const container = document.getElementById('money-container');
+
+      if (!data.success) {
+        container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+        return;
+      }
+
+      const bills = data.bills || [];
+      if (bills.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No bills due</div>';
+        return;
+      }
+
+      // Parse bills and calculate total
+      let total = 0;
+      const parsedBills = bills.map(bill => {
+        const match = bill.match(/^\$?([\d,]+(?:\.\d{2})?)\s*[-–]\s*(.+)$/);
+        if (match) {
+          const amount = parseFloat(match[1].replace(',', ''));
+          total += amount;
+          return { amount, name: match[2].trim() };
+        }
+        // Try alternate format without dash
+        const match2 = bill.match(/^\$?([\d,]+(?:\.\d{2})?)\s+(.+)$/);
+        if (match2) {
+          const amount = parseFloat(match2[1].replace(',', ''));
+          total += amount;
+          return { amount, name: match2[2].trim() };
+        }
+        return { amount: 0, name: bill };
+      });
+
+      container.innerHTML = `
+        ${parsedBills.map(bill => `
+          <div class="bill-item">
+            <span class="bill-name">${bill.name}</span>
+            <span class="bill-amount">$${bill.amount.toLocaleString()}</span>
+          </div>
+        `).join('')}
+        <div class="bill-total">
+          <span class="bill-total-label">Total Due</span>
+          <span class="bill-total-amount">$${total.toLocaleString()}</span>
+        </div>
+      `;
+    }
+
+    async function loadMoney() {
+      try {
+        const response = await fetch('/api/money');
+        const data = await response.json();
+        renderMoney(data);
+      } catch (error) {
+        console.error('Error loading money:', error);
+        document.getElementById('money-container').innerHTML =
+          '<div class="panel-empty">Error loading bills</div>';
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function renderStorage(disk) {
+      if (!disk) return '';
+
+      const usedPercent = (disk.used / disk.total) * 100;
+      let levelClass = 'low';
+      if (usedPercent > 80) levelClass = 'high';
+      else if (usedPercent > 60) levelClass = 'medium';
+
+      return `
+        <div class="tv-storage">
+          <span class="tv-storage-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+          </span>
+          <div class="tv-storage-info">
+            <div class="tv-storage-bar">
+              <div class="tv-storage-bar-fill ${levelClass}" style="width: ${usedPercent.toFixed(1)}%"></div>
+            </div>
+            <div class="tv-storage-text">${formatBytes(disk.free)} free of ${formatBytes(disk.total)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTvShows(shows, disk) {
+      const container = document.getElementById('tv-shows-container');
+
+      let html = renderStorage(disk);
+
+      if (!shows || shows.length === 0) {
+        container.innerHTML = html + '<div class="panel-empty">No shows to watch</div>';
+        return;
+      }
+
+      html += shows.map(show => {
+        let episodeCode = '';
+        if (show.season && show.episodeNumber) {
+          episodeCode = `S${show.season}E${show.episodeNumber}`;
+        }
+
+        return `
+          <div class="tv-show-item">
+            ${show.poster ? `<img class="tv-show-poster" src="${show.poster}" alt="${show.title}" onerror="this.style.display='none'">` : ''}
+            <div class="tv-show-info">
+              <div class="tv-show-title">${show.title}</div>
+              ${episodeCode ? `<span class="tv-show-episode">${episodeCode}</span>` : ''}
+              ${show.episodeTitle ? `<span class="tv-show-episode-title">${episodeCode ? ' - ' : ''}${show.episodeTitle}</span>` : ''}
+              ${show.releaseDate ? `<div class="tv-show-date">${show.releaseDate}</div>` : ''}
+              ${show.description ? `<div class="tv-show-description">${show.description}</div>` : ''}
+            </div>
+            <span class="tv-show-source ${show.source}">${show.source === 'channels' ? 'DVR' : 'Sequel'}</span>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    async function loadTvShows() {
+      try {
+        const response = await fetch('/api/tv/shows');
+        const data = await response.json();
+        if (data.success) {
+          renderTvShows(data.shows, data.disk);
+        } else {
+          document.getElementById('tv-shows-container').innerHTML =
+            `<div class="panel-empty">Error: ${data.error}</div>`;
+        }
+      } catch (error) {
+        console.error('Error loading TV shows:', error);
+        document.getElementById('tv-shows-container').innerHTML =
+          '<div class="panel-empty">Error loading TV shows</div>';
+      }
+    }
+
+    async function refreshMoney() {
+      const btn = document.getElementById('money-refresh-btn');
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      try {
+        const response = await fetch('/api/refresh-money', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await loadMoney();
+        } else {
+          console.error('Refresh failed:', result.error);
+          alert('Failed to refresh bills: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error refreshing money:', error);
+        alert('Error refreshing bills');
+      } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    // Initialize
+    async function init() {
+      document.getElementById('date-badge').textContent = formatDate();
+
+      const config = await loadConfig();
+      const name = config?.name || '';
+      const greeting = getGreeting();
+      document.getElementById('greeting-text').textContent = name ? `${greeting.replace('!', '')}, ${name}!` : greeting;
+
+      loadAiSummary();
+      loadWeather();
+      loadCalendar();
+      loadTodos();
+      loadLinks();
+      loadAnyboxStats();
+      loadStarredLinks();
+      loadShedStatus();
+      loadHomeStatus();
+      loadPiStatus();
+      loadMoney();
+      loadTvShows();
+    }
+    init();
+  </script>
+</body>
+</html>
