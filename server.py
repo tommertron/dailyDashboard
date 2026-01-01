@@ -42,6 +42,8 @@ PI_MONITOR_URL = "http://100.125.128.51:5001"
 CHANNELS_DVR_URL = "http://100.127.232.39:8089"
 TMDB_API_URL = "https://api.themoviedb.org/3"
 HEALTHCHECKS_BADGE_URL = "https://healthchecks.io/b/2/76534796-6135-419b-ab51-fa35e8581f10.json"
+BACKUP_HEALTHCHECKS_URL = "https://healthchecks.io/b/2/fc90bb64-b594-4db2-98f3-f48020b1d2f1.json"
+BACKUP_STATUS_FILE = "/mnt/ssd/backupJobs/backup_status.json"
 
 # Cache for TMDB series IDs to avoid repeated lookups
 _tmdb_series_cache = {}
@@ -286,6 +288,23 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             # Handle nested outages structure
             outages = outages_data.get('outages', []) if isinstance(outages_data, dict) else outages_data
 
+            # Fetch backup healthchecks status
+            backup_healthcheck = None
+            try:
+                backup_hc_req = urllib.request.Request(BACKUP_HEALTHCHECKS_URL)
+                with urllib.request.urlopen(backup_hc_req, timeout=5) as response:
+                    backup_healthcheck = json.loads(response.read().decode('utf-8'))
+            except Exception as e:
+                print(f"Error fetching backup healthcheck: {e}")
+
+            # Read backup status file
+            backup_status = None
+            try:
+                with open(BACKUP_STATUS_FILE, 'r') as f:
+                    backup_status = json.load(f)
+            except Exception as e:
+                print(f"Error reading backup status: {e}")
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -294,7 +313,9 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'ups': ups_status,
                 'system': system_stats,
                 'healthcheck': healthcheck,
-                'outages': outages
+                'outages': outages,
+                'backup_healthcheck': backup_healthcheck,
+                'backup_status': backup_status
             }).encode())
         except Exception as e:
             self.send_response(500)
@@ -309,6 +330,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'sensor.temperature_sensor_2',
                 'input_boolean.shed_motion_override',
                 'climate.shed_thermostat',
+                'light.smart_rgb_bulb_2208114772038152050448e1e9a17678',
+                'light.govee_h617a_501b',
             ]
             states = {}
             for entity in entities:
