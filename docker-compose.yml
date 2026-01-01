@@ -25,8 +25,14 @@ services:
       - ./starredLinks.json:/app/starredLinks.json
       - ./sequelEpisodes.json:/app/sequelEpisodes.json
       - ./anyboxStats.json:/app/anyboxStats.json
-      # HTML file (mount to avoid rebuild)
+      - ./readlater.json:/app/readlater.json
+      # Backup status from backupJobs
+      - /mnt/ssd/backupJobs/backup_status.json:/mnt/ssd/backupJobs/backup_status.json:ro
+      # HTML files (mount to avoid rebuild)
       - ./index.html:/app/index.html:ro
+      - ./lcars.html:/app/lcars.html:ro
+      # Themes directory
+      - ./themes:/app/themes:ro
       # SSH keys for todo refresh (optional)
       - ~/.ssh:/root/.ssh:ro
     restart: unless-stopped

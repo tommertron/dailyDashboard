@@ -20,14 +20,9 @@ def load_json_file(filename):
         return None
 
 
-def fetch_shed_state(ha_url, ha_key):
-    """Fetch shed state from Home Assistant."""
-    entities = [
-        'sensor.temperature_sensor_2',
-        'climate.shed_thermostat',
-    ]
+def fetch_ha_states(ha_url, ha_key, entities):
+    """Fetch states from Home Assistant for given entities."""
     states = {}
-
     for entity in entities:
         try:
             url = f'{ha_url}/api/states/{entity}'
@@ -43,11 +38,64 @@ def fetch_shed_state(ha_url, ha_key):
                 }
         except Exception as e:
             print(f"Error fetching {entity}: {e}")
-
     return states
 
 
+def fetch_shed_state(ha_url, ha_key):
+    """Fetch shed state from Home Assistant."""
+    entities = [
+        'sensor.temperature_sensor_2',
+        'climate.shed_thermostat',
+        'input_boolean.shed_motion_override',
+        'light.smart_rgb_bulb_2208114772038152050448e1e9a17678',
+        'light.govee_h617a_501b',
+    ]
+    return fetch_ha_states(ha_url, ha_key, entities)
+
+
+def fetch_home_state(ha_url, ha_key):
+    """Fetch home state from Home Assistant (doors, locks, thermostat)."""
+    entities = [
+        'climate.my_ecobee',
+        'lock.back_door_lock',
+        'binary_sensor.contact_sensor_2',  # Shed door
+        'binary_sensor.contact_sensor',     # Garage door
+    ]
+    return fetch_ha_states(ha_url, ha_key, entities)
+
+
 PI_MONITOR_URL = "http://100.125.128.51:5001"
+BACKUP_STATUS_FILE = "/mnt/ssd/backupJobs/backup_status.json"
+BACKUP_HEALTHCHECKS_URL = "https://healthchecks.io/b/2/fc90bb64-b594-4db2-98f3-f48020b1d2f1.json"
+
+
+def fetch_backup_status():
+    """Fetch backup status from local file and healthchecks."""
+    result = {}
+
+    # Read local backup status
+    try:
+        with open(BACKUP_STATUS_FILE, 'r') as f:
+            backup_data = json.load(f)
+            result['last_backup'] = {
+                'status': backup_data.get('status'),
+                'timestamp': backup_data.get('timestamp'),
+                'failed_jobs': backup_data.get('failed_jobs', [])
+            }
+    except Exception as e:
+        print(f"Error reading backup status: {e}")
+
+    # Fetch healthchecks status
+    try:
+        req = Request(BACKUP_HEALTHCHECKS_URL)
+        with urlopen(req, timeout=5) as response:
+            hc_data = json.loads(response.read().decode('utf-8'))
+            result['healthcheck'] = hc_data.get('status')
+    except Exception as e:
+        print(f"Error fetching backup healthcheck: {e}")
+
+    return result if result else None
+
 
 def fetch_pi_ups_status():
     """Fetch Pi UPS status and recent outages."""
@@ -155,6 +203,18 @@ def gather_daily_data():
                 'release_date': ep.get('releaseDate')
             }
             for ep in episodes[:5]
+        ]
+
+    # Load read later items from GoodLinks
+    readlater_data = load_json_file('readlater.json')
+    if readlater_data:
+        links = readlater_data.get('links', [])[:5]
+        data['read_later'] = [
+            {
+                'title': l.get('title'),
+                'summary': l.get('summary', '')
+            }
+            for l in links
         ]
 
     return data
@@ -279,14 +339,40 @@ PI UPS STATUS:
 - If battery_percent is below 50%, mention the low battery level
 - Otherwise, no need to mention the Pi/UPS status - it's just background info
 
-IMPORTANT: Do NOT start with any greeting like "Good morning" or "Good afternoon" - the dashboard already shows a greeting. Just dive straight into the summary.
+HOME STATUS (IMPORTANT - check for warnings):
+- Check the "home" object for door and lock states
+- ⚠️ PRIORITY WARNING: If back_door_lock is "unlocked", ALWAYS mention this prominently - it's a security concern!
+- ⚠️ PRIORITY WARNING: If shed_door is "open" or garage_door is "open", mention it - especially if it's evening or overnight
+- If everything is locked and closed, no need to mention home status
+- Only mention the ecobee if hvac_action is notable (heating/cooling actively running)
 
-Write in second person ("You have...", "Your day..."). Be warm and conversational. Keep it concise - 2-3 sentences max."""
+BACKUP STATUS:
+- Check the "backup" object for backup health
+- If healthcheck is not "up" or last_backup has failed_jobs, mention it as a concern
+- If backups are healthy, no need to mention them
+
+READ LATER (from GoodLinks):
+- Check read_later for interesting saved articles
+- If is_evening is TRUE and there are read_later items, you might casually suggest one as relaxing evening reading
+- Don't always mention read later - only if it fits naturally and there's something interesting with a good summary
+
+⚠️ WARNING STATE PRIORITY:
+The following should ALWAYS be mentioned prominently if they occur:
+1. Unlocked back door (security risk)
+2. Open doors (shed/garage) especially at night
+3. Pi running on battery (power issue)
+4. Failed backups
+5. Low UPS battery
+These are "yellow alert" situations that need attention!
+
+IMPORTANT: Do NOT start with any greeting like "Good morning" or "Good afternoon" - the dashboard already shows a greeting. Just dive straight into the briefing.
+
+Write in second person ("You have...", "Your day...") as Captain Picard delivering a daily briefing. Be eloquent, measured, and dignified yet warm. You may end with "Make it so" or "Engage" when appropriate. Keep it concise - 2-3 sentences max."""
 
     request_body = json.dumps({
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant that summarizes daily schedules in a friendly, concise way."},
+            {"role": "system", "content": "You are Captain Jean-Luc Picard of the USS Enterprise. Deliver the daily briefing with your characteristic eloquence, authority, and wisdom. Use Picard's distinctive speech patterns - measured, thoughtful, and occasionally philosophical. You may include subtle references like 'Make it so', 'Engage', or 'Tea, Earl Grey, Hot' when appropriate, but don't overdo it. Maintain your dignified composure while being warm and encouraging."},
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 300,
@@ -374,10 +460,36 @@ def main():
         if shed_states:
             temp_state = shed_states.get('sensor.temperature_sensor_2', {})
             thermostat_state = shed_states.get('climate.shed_thermostat', {})
+            motion_override = shed_states.get('input_boolean.shed_motion_override', {})
+            desk_lamp = shed_states.get('light.smart_rgb_bulb_2208114772038152050448e1e9a17678', {})
+            shelf_light = shed_states.get('light.govee_h617a_501b', {})
             daily_data['shed'] = {
                 'temperature': temp_state.get('state'),
                 'thermostat_status': thermostat_state.get('state'),
-                'thermostat_target': thermostat_state.get('attributes', {}).get('temperature')
+                'thermostat_target': thermostat_state.get('attributes', {}).get('temperature'),
+                'motion_override': motion_override.get('state'),
+                'desk_lamp': desk_lamp.get('state'),
+                'shelf_light': shelf_light.get('state')
+            }
+
+        # Fetch home state
+        home_states = fetch_home_state(
+            config['homeAssistantUrl'],
+            config['homeAssistantApiKey']
+        )
+        if home_states:
+            ecobee = home_states.get('climate.my_ecobee', {})
+            lock = home_states.get('lock.back_door_lock', {})
+            shed_door = home_states.get('binary_sensor.contact_sensor_2', {})
+            garage_door = home_states.get('binary_sensor.contact_sensor', {})
+            daily_data['home'] = {
+                'temperature': ecobee.get('attributes', {}).get('current_temperature'),
+                'humidity': ecobee.get('attributes', {}).get('current_humidity'),
+                'hvac_state': ecobee.get('state'),
+                'hvac_action': ecobee.get('attributes', {}).get('hvac_action'),
+                'back_door_lock': lock.get('state'),
+                'shed_door': 'open' if shed_door.get('state') == 'on' else 'closed',
+                'garage_door': 'open' if garage_door.get('state') == 'on' else 'closed'
             }
 
     # Fetch Pi UPS status
@@ -385,13 +497,19 @@ def main():
     if pi_ups:
         daily_data['pi_ups'] = pi_ups
 
+    # Fetch backup status
+    backup_status = fetch_backup_status()
+    if backup_status:
+        daily_data['backup'] = backup_status
+
     print(f"Gathered data: {len(daily_data.get('todos', []))} todos, "
           f"{len(daily_data.get('calendar_events', []))} events, "
           f"weather: {'yes' if 'weather' in daily_data else 'no'}, "
           f"shed: {'yes' if 'shed' in daily_data else 'no'}, "
+          f"home: {'yes' if 'home' in daily_data else 'no'}, "
           f"pi_ups: {'yes' if 'pi_ups' in daily_data else 'no'}, "
-          f"anybox_stats: {'yes' if 'anybox_stats' in daily_data else 'no'}, "
-          f"tv_shows: {len(daily_data.get('upcoming_tv_shows', []))}")
+          f"backup: {'yes' if 'backup' in daily_data else 'no'}, "
+          f"read_later: {len(daily_data.get('read_later', []))}")
 
     summary = call_openai(config['openaiApiKey'], daily_data)
 
