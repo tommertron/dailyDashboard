@@ -1,0 +1,555 @@
+/* LCARS Theme - Daily Dashboard */
+/* Inspired by Star Trek LCARS interface */
+
+@font-face {
+  font-family: 'Antonio';
+  font-weight: 400;
+  src: url('Antonio-Regular.woff2') format('woff2'),
+       url('Antonio-Regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Antonio';
+  font-weight: 700;
+  src: url('Antonio-Bold.woff2') format('woff2'),
+       url('Antonio-Bold.woff') format('woff');
+}
+
+:root {
+  /* LCARS Color palette */
+  --lcars-violet: #c9f;
+  --lcars-violet-light: #dbf;
+  --lcars-blue: #89f;
+  --lcars-orange: #f90;
+  --lcars-butterscotch: #fc6;
+  --lcars-gold: #fa0;
+  --lcars-red: #c66;
+  --lcars-gray: #668;
+  --lcars-green: #9c9;
+
+  /* Theme variable overrides */
+  --primary: var(--lcars-violet);
+  --primary-light: var(--lcars-violet-light);
+  --primary-gradient: var(--lcars-violet);
+
+  /* Background - black like a starship console */
+  --bg-page: #000;
+  --bg-panel: #111;
+  --bg-secondary: #1a1a1a;
+  --bg-hover: #222;
+
+  /* Text colors */
+  --text-primary: var(--lcars-violet);
+  --text-secondary: var(--lcars-orange);
+  --text-muted: var(--lcars-butterscotch);
+  --text-on-primary: #000;
+
+  /* Border colors */
+  --border-light: #333;
+  --border-medium: #444;
+
+  /* Status colors - LCARS style */
+  --status-success-bg: var(--lcars-green);
+  --status-success-text: #000;
+  --status-warning-bg: var(--lcars-gold);
+  --status-warning-text: #000;
+  --status-danger-bg: var(--lcars-red);
+  --status-danger-text: #000;
+  --status-info-bg: var(--lcars-blue);
+  --status-info-text: #000;
+  --status-neutral-bg: var(--lcars-gray);
+  --status-neutral-text: #000;
+
+  /* Typography */
+  --font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+
+  /* Shadows - none for LCARS */
+  --shadow-panel: none;
+  --shadow-hover: none;
+
+  /* Border radius - LCARS uses rounded pill shapes */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+/* Base */
+body {
+  background: #000;
+}
+
+/* Header - clean LCARS style */
+.header {
+  background: var(--bg-panel);
+  border: 2px solid var(--lcars-blue);
+  border-left: 8px solid var(--lcars-blue);
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+}
+
+.greeting h1 {
+  color: var(--lcars-violet);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-summary-inline {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+}
+
+/* Date badge */
+.date-badge {
+  background: var(--lcars-butterscotch);
+  color: #000;
+  font-family: var(--font-family);
+  font-weight: bold;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+/* Section titles */
+.section-title {
+  color: var(--lcars-violet);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section-title::before {
+  background: var(--lcars-orange);
+  border-radius: 4px;
+  width: 6px;
+}
+
+/* Panels */
+.panel {
+  background: var(--bg-panel);
+  border: 2px solid var(--lcars-violet);
+  border-left: 8px solid var(--lcars-violet);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+/* Alternate panel colors */
+.panel:nth-child(3n+1) {
+  border-left-color: var(--lcars-blue);
+}
+
+.panel:nth-child(3n+2) {
+  border-left-color: var(--lcars-orange);
+}
+
+.panel:nth-child(3n+3) {
+  border-left-color: var(--lcars-violet);
+}
+
+.panel-header {
+  border-bottom: 1px solid #333;
+}
+
+.panel-empty {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+}
+
+/* Buttons */
+.summary-refresh-btn-small,
+.app-link,
+.icon-btn {
+  background: var(--lcars-violet);
+  color: #000;
+  border-radius: 50px;
+}
+
+.summary-refresh-btn-small:hover,
+.app-link:hover,
+.icon-btn:hover {
+  background: var(--lcars-violet-light);
+  color: #000;
+}
+
+.scene-btn {
+  background: var(--lcars-butterscotch);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--font-family);
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.scene-btn:hover {
+  background: var(--lcars-gold);
+  color: #000;
+  border-color: transparent;
+}
+
+/* Toggle */
+.toggle-btn.off {
+  background: var(--lcars-gray);
+}
+
+.toggle-btn.on {
+  background: var(--lcars-blue);
+}
+
+/* Status values */
+.status-value {
+  font-family: var(--font-family);
+  font-weight: bold;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+.status-on {
+  background: var(--lcars-green);
+  color: #000;
+}
+
+.status-off {
+  background: var(--lcars-gray);
+  color: #000;
+}
+
+.status-heat {
+  background: var(--lcars-gold);
+  color: #000;
+}
+
+.status-cool {
+  background: var(--lcars-blue);
+  color: #000;
+}
+
+.status-alert {
+  background: var(--lcars-red);
+  color: #000;
+}
+
+/* Text styling */
+.status-label,
+.bill-name,
+.home-temp-label,
+.link-domain,
+.anybox-link-domain,
+.event-calendar,
+.weather-desc,
+.weather-location,
+.tv-show-episode-title,
+.tv-show-date,
+.pi-stat-label,
+.anybox-stat .stat-label,
+.anybox-section-title,
+.tv-storage-text,
+.weather-tomorrow-label {
+  color: var(--lcars-butterscotch);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.home-temp-value,
+.weather-temp,
+.event-title,
+.link-title,
+.anybox-link-title,
+.tv-show-title,
+.pi-stat-value,
+.anybox-stat .stat-value,
+.bill-total-label,
+.todo-text,
+.starred-link .starred-title {
+  color: var(--lcars-violet);
+  font-family: var(--font-family);
+}
+
+.event-time {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+  font-weight: bold;
+}
+
+.weather-tomorrow-temps {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+}
+
+/* Calendar day labels */
+.calendar-day-label {
+  background: var(--lcars-blue);
+  color: #000;
+  font-family: var(--font-family);
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 50px;
+  display: inline-block;
+  border: none;
+}
+
+.calendar-day-label.tomorrow {
+  background: var(--lcars-orange);
+  color: #000;
+  border-top: none;
+}
+
+/* Pi stats */
+.pi-stat-box {
+  background: var(--lcars-gray);
+  border-radius: var(--radius-md);
+}
+
+.pi-stat-box.stat-ok {
+  background: var(--lcars-green);
+}
+
+.pi-stat-box.stat-warn {
+  background: var(--lcars-gold);
+}
+
+.pi-stat-box.stat-alert {
+  background: var(--lcars-red);
+}
+
+.pi-stat-box .pi-stat-value,
+.pi-stat-box.stat-ok .pi-stat-value,
+.pi-stat-box.stat-warn .pi-stat-value,
+.pi-stat-box.stat-alert .pi-stat-value {
+  color: #000;
+}
+
+.pi-stat-box .pi-stat-label {
+  color: #000;
+}
+
+/* Anybox stats */
+.anybox-stat {
+  background: var(--lcars-butterscotch);
+  border-radius: 50px;
+}
+
+.anybox-stat .stat-value {
+  color: #000;
+}
+
+.anybox-stat .stat-label {
+  color: #000;
+}
+
+/* Bills */
+.bill-amount,
+.bill-total-amount {
+  color: var(--lcars-red);
+  font-family: var(--font-family);
+  font-weight: bold;
+}
+
+.bill-total {
+  border-top-color: var(--lcars-violet);
+}
+
+/* Link hover */
+.link-item:hover,
+.anybox-link-item:hover,
+.starred-link:hover {
+  background: var(--bg-hover);
+}
+
+.anybox-link-item:hover .anybox-link-title,
+.starred-link:hover .starred-title {
+  color: var(--lcars-violet-light);
+}
+
+/* Link badges */
+.link-number,
+.link-number-small {
+  background: var(--lcars-orange);
+  color: #000;
+  font-family: var(--font-family);
+  font-weight: bold;
+  border-radius: 50px;
+}
+
+/* Todo bullets */
+.todo-bullet {
+  background: var(--lcars-orange);
+  width: 12px;
+  height: 6px;
+  border-radius: 50px;
+}
+
+.todo-item.completed .todo-bullet {
+  background: var(--lcars-gray);
+}
+
+.todo-item.completed .todo-text {
+  color: var(--lcars-gray);
+}
+
+/* TV show badges */
+.tv-show-source {
+  font-family: var(--font-family);
+  font-weight: bold;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+.tv-show-source.channels {
+  background: var(--lcars-blue);
+  color: #000;
+}
+
+.tv-show-source.sequel {
+  background: var(--lcars-violet);
+  color: #000;
+}
+
+.tv-show-episode {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+}
+
+/* TV storage */
+.tv-storage {
+  background: var(--bg-secondary);
+  border: 1px solid var(--lcars-violet);
+  border-radius: var(--radius-md);
+}
+
+.tv-storage-bar {
+  background: var(--lcars-gray);
+  border-radius: 50px;
+}
+
+.tv-storage-bar-fill {
+  border-radius: 50px;
+}
+
+.tv-storage-bar-fill.low {
+  background: var(--lcars-green);
+}
+
+.tv-storage-bar-fill.medium {
+  background: var(--lcars-gold);
+}
+
+.tv-storage-bar-fill.high {
+  background: var(--lcars-red);
+}
+
+/* TV poster */
+.tv-show-poster {
+  border: 2px solid var(--lcars-violet);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+/* Power events */
+.power-events {
+  border-top-color: #333;
+}
+
+.power-event {
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+}
+
+.power-event-icon.lost {
+  background: var(--lcars-red);
+}
+
+.power-event-icon.restored {
+  background: var(--lcars-green);
+}
+
+/* Borders */
+.calendar-event,
+.todo-item,
+.bill-item,
+.status-item,
+.link-item,
+.anybox-link-item,
+.tv-show-item,
+.weather-tomorrow {
+  border-color: #333;
+}
+
+/* Star icon */
+.starred-link .star-icon,
+.anybox-link-icon.star-icon {
+  color: var(--lcars-gold);
+}
+
+/* Dice icon */
+.anybox-link-icon.dice-icon {
+  color: var(--lcars-violet);
+}
+
+/* Theme button */
+.theme-btn {
+  background: var(--lcars-butterscotch);
+  color: #000;
+  border-radius: 50px;
+}
+
+.theme-btn:hover {
+  background: var(--lcars-gold);
+  color: #000;
+}
+
+.theme-btn.active {
+  background: var(--lcars-violet);
+  color: #000;
+}
+
+/* Empty state */
+.empty-state {
+  background: var(--bg-panel);
+  border: 2px solid var(--lcars-violet);
+  color: var(--lcars-orange);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+}
+
+/* Refresh button */
+.refresh-btn {
+  background: var(--lcars-butterscotch);
+  color: #000;
+  font-family: var(--font-family);
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 50px;
+}
+
+.refresh-btn:hover {
+  background: var(--lcars-gold);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Links */
+.refresh-link,
+.things-link {
+  color: var(--lcars-violet);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+}
+
+.refresh-link:hover,
+.things-link:hover {
+  color: var(--lcars-violet-light);
+}
+
+/* Card hover - no transform for LCARS */
+.link-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-left-color: var(--lcars-orange);
+}
+
+/* Grid */
+.three-column-grid {
+  gap: 1rem;
+}
