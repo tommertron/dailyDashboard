@@ -209,6 +209,22 @@
         </div>
       </div>
 
+      <div class="panel wisdom-panel">
+        <div class="panel-header">
+          <h2 class="section-title">Wisdom</h2>
+          <div class="header-actions">
+            <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="wisdom-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
       <div class="panel tv-panel">
         <div class="panel-header">
           <h2 class="section-title">TV Shows and Movies</h2>
@@ -799,13 +815,13 @@
 
       const states = data.states;
       const temp = states['sensor.temperature_sensor_2'];
-      const motionOverride = states['input_boolean.shed_motion_override'];
+      const workingFromHome = states['input_boolean.working_from_home'];
       const thermostat = states['climate.shed_thermostat'];
       const deskLamp = states['light.smart_rgb_bulb_2208114772038152050448e1e9a17678'];
       const shelfLight = states['light.govee_h617a_501b'];
 
       const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
-      const motionOverrideOn = motionOverride?.state === 'on';
+      const wfhOn = workingFromHome?.state === 'on';
       const thermostatState = thermostat?.state || 'unknown';
       const deskLampOn = deskLamp?.state === 'on';
       const shelfLightOn = shelfLight?.state === 'on';
@@ -825,15 +841,15 @@
             <span class="pi-stat-value">${thermostatState === 'heat' ? '🔥' : '❄️'}</span>
             <span class="pi-stat-label">${thermostatDisplay}</span>
           </div>
-          <div class="pi-stat-box ${motionOverrideOn ? 'stat-warn' : 'stat-ok'}" onclick="toggleMotionOverride()" style="cursor:pointer" title="Toggle motion override">
-            <span class="pi-stat-value">${motionOverrideOn ? '🚫' : '●'}</span>
-            <span class="pi-stat-label">Motion</span>
+          <div class="pi-stat-box ${wfhOn ? 'stat-ok' : 'stat-neutral'}" onclick="toggleWorkingFromHome()" style="cursor:pointer" title="Toggle working from home">
+            <span class="pi-stat-value">${wfhOn ? '💼' : '○'}</span>
+            <span class="pi-stat-label">WFH</span>
           </div>
-          <div class="pi-stat-box ${deskLampOn ? 'stat-warn' : 'stat-ok'}">
+          <div class="pi-stat-box ${deskLampOn ? 'stat-warn' : 'stat-ok'}" onclick="toggleShedDeskLamp()" style="cursor:pointer" title="Toggle desk lamp">
             <span class="pi-stat-value">${deskLampOn ? '💡' : '○'}</span>
             <span class="pi-stat-label">Desk</span>
           </div>
-          <div class="pi-stat-box ${shelfLightOn ? 'stat-warn' : 'stat-ok'}">
+          <div class="pi-stat-box ${shelfLightOn ? 'stat-warn' : 'stat-ok'}" onclick="toggleShedShelfLight()" style="cursor:pointer" title="Toggle shelf light">
             <span class="pi-stat-value">${shelfLightOn ? '💡' : '○'}</span>
             <span class="pi-stat-label">Shelf</span>
           </div>
@@ -996,9 +1012,9 @@
       }
     }
 
-    async function toggleMotionOverride() {
+    async function toggleWorkingFromHome() {
       try {
-        const response = await fetch('/api/home-assistant/toggle/shed_motion_override', { method: 'POST' });
+        const response = await fetch('/api/home-assistant/toggle/working_from_home', { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {
@@ -1009,7 +1025,39 @@
         }
       } catch (error) {
         console.error('Error toggling:', error);
-        alert('Error toggling motion override');
+        alert('Error toggling working from home');
+      }
+    }
+
+    async function toggleShedDeskLamp() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/shed_desk_lamp', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadShedStatus(), 500);
+        } else {
+          alert('Failed to toggle: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling:', error);
+        alert('Error toggling desk lamp');
+      }
+    }
+
+    async function toggleShedShelfLight() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/shed_shelf_light', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadShedStatus(), 500);
+        } else {
+          alert('Failed to toggle: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling:', error);
+        alert('Error toggling shelf light');
       }
     }
 
@@ -1238,8 +1286,7 @@
             ${show.poster ? `<img class="tv-show-poster" src="${show.poster}" alt="${show.title}" onerror="this.style.display='none'">` : ''}
             <div class="tv-show-info">
               <div class="tv-show-title">${show.title}</div>
-              ${episodeCode ? `<span class="tv-show-episode">${episodeCode}</span>` : ''}
-              ${show.episodeTitle ? `<span class="tv-show-episode-title">${episodeCode ? ' - ' : ''}${show.episodeTitle}</span>` : ''}
+              ${(episodeCode || show.episodeTitle) ? `<div class="tv-show-meta">${episodeCode ? `<span class="tv-show-episode">${episodeCode}</span>` : ''}${show.episodeTitle ? `<span class="tv-show-episode-title">${episodeCode ? ' - ' : ''}${show.episodeTitle}</span>` : ''}</div>` : ''}
               ${show.releaseDate ? `<div class="tv-show-date">${show.releaseDate}</div>` : ''}
               ${show.description ? `<div class="tv-show-description">${show.description}</div>` : ''}
             </div>
@@ -1306,6 +1353,34 @@
       }
     }
 
+    function renderWisdom(data) {
+      const container = document.getElementById('wisdom-container');
+
+      if (!data || !data.wisdom) {
+        container.innerHTML = '<div class="panel-empty">No wisdom available</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="wisdom-content">
+          <blockquote class="wisdom-quote">${data.wisdom}</blockquote>
+          <cite class="wisdom-source">— ${data.source}</cite>
+        </div>
+      `;
+    }
+
+    async function loadWisdom() {
+      try {
+        const response = await fetch('wisdom.json');
+        const data = await response.json();
+        renderWisdom(data);
+      } catch (error) {
+        console.error('Error loading wisdom:', error);
+        document.getElementById('wisdom-container').innerHTML =
+          '<div class="panel-empty">No wisdom today</div>';
+      }
+    }
+
     async function refreshMoney() {
       const btn = document.getElementById('money-refresh-btn');
       btn.disabled = true;
@@ -1352,6 +1427,7 @@
       loadPiStatus();
       loadMoney();
       loadReadLater();
+      loadWisdom();
       loadTvShows();
     }
     init();

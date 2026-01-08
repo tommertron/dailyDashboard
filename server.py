@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +90,9 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.send_header('Pragma', 'no-cache')
             self.send_header('Expires', '0')
+        elif self.path.endswith('.css'):
+            # Allow CSS to be cached for 5 minutes - it rarely changes
+            self.send_header('Cache-Control', 'public, max-age=300')
         super().end_headers()
 
     def do_GET(self):
@@ -257,65 +261,70 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def get_pi_status(self):
         """Get Pi UPS status, system stats, and recent power outages."""
         try:
-            # Fetch UPS status
-            ups_req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/status")
-            with urllib.request.urlopen(ups_req, timeout=10) as response:
-                ups_status = json.loads(response.read().decode('utf-8'))
+            results = {}
 
-            # Fetch system stats (CPU, memory)
-            system_stats = None
-            try:
-                system_req = urllib.request.Request(f"{PI_MONITOR_URL}/api/system")
-                with urllib.request.urlopen(system_req, timeout=10) as response:
-                    system_stats = json.loads(response.read().decode('utf-8'))
-            except Exception as e:
-                print(f"Error fetching system stats: {e}")
+            def fetch_ups():
+                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/status")
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return json.loads(response.read().decode('utf-8'))
 
-            # Fetch healthchecks status
-            healthcheck = None
-            try:
-                hc_req = urllib.request.Request(HEALTHCHECKS_BADGE_URL)
-                with urllib.request.urlopen(hc_req, timeout=5) as response:
-                    healthcheck = json.loads(response.read().decode('utf-8'))
-            except Exception as e:
-                print(f"Error fetching healthcheck: {e}")
+            def fetch_system():
+                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/system")
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return json.loads(response.read().decode('utf-8'))
 
-            # Fetch power outages
-            outages_req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/outages")
-            with urllib.request.urlopen(outages_req, timeout=10) as response:
-                outages_data = json.loads(response.read().decode('utf-8'))
+            def fetch_healthcheck():
+                req = urllib.request.Request(HEALTHCHECKS_BADGE_URL)
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    return json.loads(response.read().decode('utf-8'))
+
+            def fetch_outages():
+                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/outages")
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return json.loads(response.read().decode('utf-8'))
+
+            def fetch_backup_healthcheck():
+                req = urllib.request.Request(BACKUP_HEALTHCHECKS_URL)
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    return json.loads(response.read().decode('utf-8'))
+
+            def read_backup_status():
+                with open(BACKUP_STATUS_FILE, 'r') as f:
+                    return json.load(f)
+
+            # Run all fetches in parallel
+            with ThreadPoolExecutor(max_workers=6) as executor:
+                futures = {
+                    executor.submit(fetch_ups): 'ups',
+                    executor.submit(fetch_system): 'system',
+                    executor.submit(fetch_healthcheck): 'healthcheck',
+                    executor.submit(fetch_outages): 'outages',
+                    executor.submit(fetch_backup_healthcheck): 'backup_healthcheck',
+                    executor.submit(read_backup_status): 'backup_status',
+                }
+                for future in as_completed(futures):
+                    key = futures[future]
+                    try:
+                        results[key] = future.result()
+                    except Exception as e:
+                        print(f"Error fetching {key}: {e}")
+                        results[key] = None
 
             # Handle nested outages structure
-            outages = outages_data.get('outages', []) if isinstance(outages_data, dict) else outages_data
-
-            # Fetch backup healthchecks status
-            backup_healthcheck = None
-            try:
-                backup_hc_req = urllib.request.Request(BACKUP_HEALTHCHECKS_URL)
-                with urllib.request.urlopen(backup_hc_req, timeout=5) as response:
-                    backup_healthcheck = json.loads(response.read().decode('utf-8'))
-            except Exception as e:
-                print(f"Error fetching backup healthcheck: {e}")
-
-            # Read backup status file
-            backup_status = None
-            try:
-                with open(BACKUP_STATUS_FILE, 'r') as f:
-                    backup_status = json.load(f)
-            except Exception as e:
-                print(f"Error reading backup status: {e}")
+            outages_data = results.get('outages')
+            outages = outages_data.get('outages', []) if isinstance(outages_data, dict) else (outages_data or [])
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({
                 'success': True,
-                'ups': ups_status,
-                'system': system_stats,
-                'healthcheck': healthcheck,
+                'ups': results.get('ups'),
+                'system': results.get('system'),
+                'healthcheck': results.get('healthcheck'),
                 'outages': outages,
-                'backup_healthcheck': backup_healthcheck,
-                'backup_status': backup_status
+                'backup_healthcheck': results.get('backup_healthcheck'),
+                'backup_status': results.get('backup_status')
             }).encode())
         except Exception as e:
             self.send_response(500)
@@ -328,15 +337,22 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         try:
             entities = [
                 'sensor.temperature_sensor_2',
-                'input_boolean.shed_motion_override',
+                'input_boolean.working_from_home',
                 'climate.shed_thermostat',
                 'light.smart_rgb_bulb_2208114772038152050448e1e9a17678',
                 'light.govee_h617a_501b',
             ]
             states = {}
-            for entity in entities:
-                state = ha_request('GET', f'states/{entity}')
-                states[entity] = state
+
+            # Fetch all entities in parallel
+            def fetch_entity(entity):
+                return entity, ha_request('GET', f'states/{entity}')
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {executor.submit(fetch_entity, e): e for e in entities}
+                for future in as_completed(futures):
+                    entity, state = future.result()
+                    states[entity] = state
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -359,13 +375,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             entities = [
                 'climate.my_ecobee',
                 'lock.back_door_lock',
-                'binary_sensor.contact_sensor_2',  # Shed door sensor
+                'binary_sensor.shed_door_sensor',  # Shed door sensor
                 'binary_sensor.contact_sensor',    # Garage door sensor
             ]
             states = {}
-            for entity in entities:
-                state = ha_request('GET', f'states/{entity}')
-                states[entity] = state
+
+            # Fetch all entities in parallel
+            def fetch_entity(entity):
+                return entity, ha_request('GET', f'states/{entity}')
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {executor.submit(fetch_entity, e): e for e in entities}
+                for future in as_completed(futures):
+                    entity, state = future.result()
+                    states[entity] = state
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -391,10 +414,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.activate_scene('scene.heat_shed_in_morning')
         elif self.path == '/api/home-assistant/scene/shed_unoccupied':
             self.activate_scene('scene.shed_unoccupied')
-        elif self.path == '/api/home-assistant/toggle/shed_motion_override':
-            self.toggle_input_boolean('input_boolean.shed_motion_override')
+        elif self.path == '/api/home-assistant/toggle/working_from_home':
+            self.toggle_input_boolean('input_boolean.working_from_home')
         elif self.path == '/api/home-assistant/lock/back_door':
             self.toggle_lock('lock.back_door_lock')
+        elif self.path == '/api/home-assistant/toggle/shed_desk_lamp':
+            self.toggle_light('light.smart_rgb_bulb_2208114772038152050448e1e9a17678')
+        elif self.path == '/api/home-assistant/toggle/shed_shelf_light':
+            self.toggle_light('light.govee_h617a_501b')
         elif self.path == '/api/refresh-money':
             self.refresh_money()
         else:
@@ -448,6 +475,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         """Toggle an input_boolean."""
         try:
             ha_request('POST', 'services/input_boolean/toggle', {'entity_id': entity_id})
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'message': f'{entity_id} toggled'}).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def toggle_light(self, entity_id):
+        """Toggle a light on/off."""
+        try:
+            ha_request('POST', 'services/light/toggle', {'entity_id': entity_id})
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
