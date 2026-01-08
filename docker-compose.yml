@@ -26,6 +26,7 @@ services:
       - ./sequelEpisodes.json:/app/sequelEpisodes.json
       - ./anyboxStats.json:/app/anyboxStats.json
       - ./readlater.json:/app/readlater.json
+      - ./wisdom.json:/app/wisdom.json
       # Backup status from backupJobs
       - /mnt/ssd/backupJobs/backup_status.json:/mnt/ssd/backupJobs/backup_status.json:ro
       # HTML files (mount to avoid rebuild)

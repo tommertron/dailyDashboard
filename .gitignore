@@ -13,3 +13,10 @@ todos.json
 money.txt
 summary.log
 untaggedLinks.txt
+readlater.json
+wisdom.json
+wisdom.log
+
+# External repos and reference material
+wisdom/
+LCARS-24.2/

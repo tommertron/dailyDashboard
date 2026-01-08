@@ -46,7 +46,7 @@ def fetch_shed_state(ha_url, ha_key):
     entities = [
         'sensor.temperature_sensor_2',
         'climate.shed_thermostat',
-        'input_boolean.shed_motion_override',
+        'input_boolean.working_from_home',
         'light.smart_rgb_bulb_2208114772038152050448e1e9a17678',
         'light.govee_h617a_501b',
     ]
@@ -217,6 +217,11 @@ def gather_daily_data():
             for l in links
         ]
 
+    # Load current wisdom from Merlin Mann's Wisdom Project
+    wisdom_data = load_json_file('wisdom.json')
+    if wisdom_data:
+        data['current_wisdom'] = wisdom_data.get('wisdom')
+
     return data
 
 
@@ -333,6 +338,24 @@ SHED HEATING (check is_workday_hours and is_evening booleans in the data):
   → BUT if is_evening is TRUE and shed.thermostat_status is "heat", suggest turning it off to save energy
 - Skip shed entirely if calendar shows I'm at the office
 
+WORKING FROM HOME TOGGLE (shed.working_from_home - IMPORTANT EVENING CHECK):
+- The "Working From Home" (WFH) toggle controls whether the shed will automatically pre-heat in the morning
+- If WFH is "on", the shed heater will turn on automatically to warm up before work
+- If WFH is "off", the shed stays cold (appropriate for office days)
+
+⚠️ EVENING REMINDER (if is_evening is TRUE, this is important!):
+1. Look at tomorrow's calendar events to determine work location:
+   - Look for events with "office" in the title/calendar name, or work meetings at external locations
+   - If you see office-related events tomorrow → I'll be at the office → WFH should be OFF
+   - If tomorrow looks like a home day (no office events, or events mentioning "home"/"remote") → WFH should be ON
+2. Compare tomorrow's expected location with current shed.working_from_home state:
+   - If WFH is "on" but tomorrow I should be at the office → remind me to turn it OFF
+   - If WFH is "off" but tomorrow I'll be working from home → remind me to turn it ON so the shed pre-heats
+   - If the toggle is already set correctly for tomorrow → no need to mention it
+3. Phrase it helpfully, e.g.:
+   - "Tomorrow you're in the office - consider turning off the WFH toggle so the shed doesn't heat unnecessarily."
+   - "You're working from home tomorrow - make sure WFH is enabled so your shed is warm in the morning."
+
 PI UPS STATUS:
 - If there was a recent power outage (in the last 24 hours), mention it (e.g., "There was a power blip yesterday evening")
 - If currently running on battery power (on_ac_power is false), definitely mention this - it's important
@@ -355,6 +378,17 @@ READ LATER (from GoodLinks):
 - Check read_later for interesting saved articles
 - If is_evening is TRUE and there are read_later items, you might casually suggest one as relaxing evening reading
 - Don't always mention read later - only if it fits naturally and there's something interesting with a good summary
+
+DAILY WISDOM (from Merlin Mann's Wisdom Project):
+- Check current_wisdom for today's wisdom quote
+- Occasionally weave the wisdom into your briefing naturally - perhaps as a philosophical observation that relates to the day ahead
+- Don't force it - only reference the wisdom if it genuinely connects to something in the briefing (e.g., a busy day might connect to wisdom about priorities)
+- You might end with the wisdom if it provides fitting closure, or use it as a transition
+- Examples of natural integration:
+  - "As a certain wise soul reminds us: '[wisdom quote]' - perhaps something to consider as you tackle today's tasks."
+  - "Speaking of which, I'm reminded: '[wisdom quote]'"
+- Don't mention it's from Merlin Mann - just present it as wisdom
+- Skip the wisdom entirely if it doesn't fit naturally with the day's content
 
 ⚠️ WARNING STATE PRIORITY:
 The following should ALWAYS be mentioned prominently if they occur:
@@ -460,14 +494,14 @@ def main():
         if shed_states:
             temp_state = shed_states.get('sensor.temperature_sensor_2', {})
             thermostat_state = shed_states.get('climate.shed_thermostat', {})
-            motion_override = shed_states.get('input_boolean.shed_motion_override', {})
+            working_from_home = shed_states.get('input_boolean.working_from_home', {})
             desk_lamp = shed_states.get('light.smart_rgb_bulb_2208114772038152050448e1e9a17678', {})
             shelf_light = shed_states.get('light.govee_h617a_501b', {})
             daily_data['shed'] = {
                 'temperature': temp_state.get('state'),
                 'thermostat_status': thermostat_state.get('state'),
                 'thermostat_target': thermostat_state.get('attributes', {}).get('temperature'),
-                'motion_override': motion_override.get('state'),
+                'working_from_home': working_from_home.get('state'),
                 'desk_lamp': desk_lamp.get('state'),
                 'shelf_light': shelf_light.get('state')
             }
