@@ -934,6 +934,7 @@
             <button onclick="playSound('audio2'); loadWeather()">WEATHER</button>
             <button onclick="playSound('audio2'); loadTvShows()">MEDIA</button>
             <button onclick="playSound('audio2'); loadHomeStatus(); loadShedStatus()">HOME</button>
+            <button onclick="playSound('audio2'); openSettings()">SETTINGS</button>
           </nav>
         </div>
         <div class="bar-panel first-bar-panel">
@@ -984,7 +985,7 @@
           <!-- Dashboard Grid -->
           <div class="dashboard-grid">
             <!-- Weather Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="weather">
               <div class="panel-header">
                 <h2 class="section-title">Weather</h2>
                 <a href="weather://" class="app-link" title="Open Weather" onclick="playSound('audio1')">
@@ -999,7 +1000,7 @@
             </div>
 
             <!-- Schedule Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="schedule">
               <div class="panel-header">
                 <h2 class="section-title">Schedule</h2>
                 <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical" onclick="playSound('audio1')">
@@ -1014,7 +1015,7 @@
             </div>
 
             <!-- Tasks Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="tasks">
               <div class="panel-header">
                 <h2 class="section-title">Tasks</h2>
                 <div class="header-actions">
@@ -1036,7 +1037,7 @@
             </div>
 
             <!-- Shed Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="shed">
               <div class="panel-header">
                 <h2 class="section-title">Shed</h2>
                 <div class="header-actions">
@@ -1058,7 +1059,7 @@
             </div>
 
             <!-- Home Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="home">
               <div class="panel-header">
                 <h2 class="section-title">Home</h2>
                 <div class="header-actions">
@@ -1080,7 +1081,7 @@
             </div>
 
             <!-- Pi Status Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="piStatus">
               <div class="panel-header">
                 <h2 class="section-title">Pi Status</h2>
                 <div class="header-actions">
@@ -1102,7 +1103,7 @@
             </div>
 
             <!-- Bills Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="bills">
               <div class="panel-header">
                 <h2 class="section-title">Bills Due</h2>
                 <div class="header-actions">
@@ -1124,7 +1125,7 @@
             </div>
 
             <!-- Read Later Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="readLater">
               <div class="panel-header">
                 <h2 class="section-title">Read Later</h2>
                 <div class="header-actions">
@@ -1146,7 +1147,7 @@
             </div>
 
             <!-- Wisdom Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="wisdom">
               <div class="panel-header">
                 <h2 class="section-title">Wisdom</h2>
                 <div class="header-actions">
@@ -1163,7 +1164,7 @@
             </div>
 
             <!-- TV Shows Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="tvShows">
               <div class="panel-header">
                 <h2 class="section-title">TV Shows and Movies</h2>
                 <div class="header-actions">
@@ -1190,7 +1191,7 @@
             </div>
 
             <!-- Anybox Panel -->
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="anybox">
               <div class="panel-header">
                 <h2 class="section-title">Anybox</h2>
                 <div class="header-actions">
@@ -2255,8 +2256,195 @@
       }
     }
 
+    // Settings management
+    let currentSettings = null;
+    let autoRefreshInterval = null;
+
+    const panelNames = {
+      weather: 'WEATHER',
+      schedule: 'SCHEDULE',
+      tasks: 'TASKS',
+      shed: 'SHED',
+      home: 'HOME',
+      piStatus: 'PI STATUS',
+      bills: 'BILLS DUE',
+      readLater: 'READ LATER',
+      wisdom: 'WISDOM',
+      tvShows: 'TV SHOWS',
+      anybox: 'ANYBOX'
+    };
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success) {
+          currentSettings = data.settings;
+          applySettings(currentSettings);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    function applySettings(settings) {
+      // Apply panel visibility
+      if (settings.panels) {
+        Object.entries(settings.panels).forEach(([panelId, config]) => {
+          const panel = document.querySelector(`[data-panel="${panelId}"]`);
+          if (panel) {
+            panel.style.display = config.visible ? '' : 'none';
+          }
+        });
+      }
+
+      // Setup auto-refresh
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      const refreshMs = settings.refreshIntervals?.autoRefresh || 0;
+      if (refreshMs > 0) {
+        autoRefreshInterval = setInterval(() => {
+          refreshAll();
+        }, refreshMs);
+      }
+    }
+
+    function openSettings() {
+      const overlay = document.getElementById('settings-overlay');
+      overlay.classList.add('visible');
+      populateSettingsForm(currentSettings);
+      document.addEventListener('keydown', handleSettingsEscape);
+    }
+
+    function closeSettings() {
+      const overlay = document.getElementById('settings-overlay');
+      overlay.classList.remove('visible');
+      document.removeEventListener('keydown', handleSettingsEscape);
+    }
+
+    function closeSettingsOnOverlay(event) {
+      if (event.target.id === 'settings-overlay') {
+        playSound('audio2');
+        closeSettings();
+      }
+    }
+
+    function handleSettingsEscape(event) {
+      if (event.key === 'Escape') {
+        playSound('audio2');
+        closeSettings();
+      }
+    }
+
+    function switchSettingsTab(tabName) {
+      document.querySelectorAll('.lcars-settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.lcars-settings-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `settings-pane-${tabName}`);
+      });
+    }
+
+    function populateSettingsForm(settings) {
+      if (!settings) return;
+
+      // Populate panel toggles
+      const togglesContainer = document.getElementById('panel-toggles');
+      togglesContainer.innerHTML = Object.entries(panelNames).map(([id, name]) => {
+        const isVisible = settings.panels?.[id]?.visible !== false;
+        return `
+          <label class="lcars-toggle-item">
+            <span>${name}</span>
+            <input type="checkbox" data-panel-toggle="${id}" ${isVisible ? 'checked' : ''}>
+            <span class="lcars-toggle-switch"></span>
+          </label>
+        `;
+      }).join('');
+
+      // Populate entity IDs
+      const entities = settings.homeAssistant?.entities || {};
+      document.getElementById('entity-ecobee').value = entities.ecobee || '';
+      document.getElementById('entity-back-door-lock').value = entities.backDoorLock || '';
+      document.getElementById('entity-shed-door').value = entities.shedDoorSensor || '';
+      document.getElementById('entity-garage-door').value = entities.garageDoorSensor || '';
+
+      // Populate API URLs
+      document.getElementById('url-ha').value = settings.homeAssistant?.url || '';
+      document.getElementById('url-channels').value = settings.apiUrls?.channelsDvr || '';
+      document.getElementById('url-pi').value = settings.apiUrls?.piMonitor || '';
+
+      // Populate preferences
+      document.getElementById('refresh-interval').value = settings.refreshIntervals?.autoRefresh || 0;
+      const theme = settings.theme?.preference || 'lcars';
+      document.getElementById('pref-theme-default').checked = theme === 'default';
+      document.getElementById('pref-theme-lcars').checked = theme === 'lcars';
+    }
+
+    async function saveSettings() {
+      const newSettings = {
+        version: currentSettings?.version || 1,
+        panels: {},
+        homeAssistant: {
+          url: document.getElementById('url-ha').value,
+          entities: {
+            ecobee: document.getElementById('entity-ecobee').value,
+            backDoorLock: document.getElementById('entity-back-door-lock').value,
+            shedDoorSensor: document.getElementById('entity-shed-door').value,
+            garageDoorSensor: document.getElementById('entity-garage-door').value
+          }
+        },
+        apiUrls: {
+          channelsDvr: document.getElementById('url-channels').value,
+          piMonitor: document.getElementById('url-pi').value
+        },
+        refreshIntervals: {
+          autoRefresh: parseInt(document.getElementById('refresh-interval').value) || 0
+        },
+        theme: {
+          preference: document.querySelector('input[name="theme"]:checked')?.value || 'lcars'
+        }
+      };
+
+      // Collect panel visibility
+      document.querySelectorAll('[data-panel-toggle]').forEach(toggle => {
+        const panelId = toggle.dataset.panelToggle;
+        newSettings.panels[panelId] = { visible: toggle.checked };
+      });
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newSettings)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          currentSettings = newSettings;
+          applySettings(newSettings);
+          closeSettings();
+
+          // If theme changed to default, redirect
+          if (newSettings.theme.preference === 'default') {
+            localStorage.setItem('dashboard-theme', 'default');
+            window.location.href = 'index.html';
+          }
+        } else {
+          alert('Failed to save settings: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error saving settings');
+      }
+    }
+
     // Initialize
     async function init() {
+      // Load settings first
+      await loadSettings();
+
       // Start data cascade animation
       startDataCascade();
 
@@ -2293,6 +2481,336 @@
 
     init();
   </script>
+
+  <!-- Settings Modal (LCARS style) -->
+  <div class="lcars-settings-overlay" id="settings-overlay" onclick="closeSettingsOnOverlay(event)">
+    <div class="lcars-settings-modal">
+      <div class="lcars-settings-header">
+        <div class="lcars-settings-title">SETTINGS CONFIGURATION</div>
+        <button class="lcars-settings-close" onclick="playSound('audio2'); closeSettings()">CLOSE</button>
+      </div>
+      <div class="lcars-settings-tabs">
+        <button class="lcars-settings-tab active" data-tab="panels" onclick="playSound('audio1'); switchSettingsTab('panels')">PANELS</button>
+        <button class="lcars-settings-tab" data-tab="home-assistant" onclick="playSound('audio1'); switchSettingsTab('home-assistant')">HOME ASSISTANT</button>
+        <button class="lcars-settings-tab" data-tab="api-urls" onclick="playSound('audio1'); switchSettingsTab('api-urls')">API URLS</button>
+        <button class="lcars-settings-tab" data-tab="preferences" onclick="playSound('audio1'); switchSettingsTab('preferences')">PREFERENCES</button>
+      </div>
+      <div class="lcars-settings-content">
+        <!-- Panels Tab -->
+        <div class="lcars-settings-pane active" id="settings-pane-panels">
+          <div class="lcars-settings-section-title">PANEL VISIBILITY</div>
+          <div class="lcars-toggle-list" id="panel-toggles">
+            <!-- Generated by JS -->
+          </div>
+        </div>
+        <!-- Home Assistant Tab -->
+        <div class="lcars-settings-pane" id="settings-pane-home-assistant">
+          <div class="lcars-settings-section-title">ENTITY IDS</div>
+          <div class="lcars-form-group">
+            <label>ECOBEE THERMOSTAT</label>
+            <input type="text" id="entity-ecobee" class="lcars-input" placeholder="climate.my_ecobee">
+          </div>
+          <div class="lcars-form-group">
+            <label>BACK DOOR LOCK</label>
+            <input type="text" id="entity-back-door-lock" class="lcars-input" placeholder="lock.back_door_lock">
+          </div>
+          <div class="lcars-form-group">
+            <label>SHED DOOR SENSOR</label>
+            <input type="text" id="entity-shed-door" class="lcars-input" placeholder="binary_sensor.shed_door_sensor">
+          </div>
+          <div class="lcars-form-group">
+            <label>GARAGE DOOR SENSOR</label>
+            <input type="text" id="entity-garage-door" class="lcars-input" placeholder="binary_sensor.contact_sensor">
+          </div>
+        </div>
+        <!-- API URLs Tab -->
+        <div class="lcars-settings-pane" id="settings-pane-api-urls">
+          <div class="lcars-settings-section-title">SERVICE URLS</div>
+          <div class="lcars-form-group">
+            <label>HOME ASSISTANT URL</label>
+            <input type="text" id="url-ha" class="lcars-input" placeholder="http://172.17.0.1:8123">
+          </div>
+          <div class="lcars-form-group">
+            <label>CHANNELS DVR URL</label>
+            <input type="text" id="url-channels" class="lcars-input" placeholder="http://100.127.232.39:8089">
+          </div>
+          <div class="lcars-form-group">
+            <label>PI MONITOR URL</label>
+            <input type="text" id="url-pi" class="lcars-input" placeholder="http://100.125.128.51:5001">
+          </div>
+        </div>
+        <!-- Preferences Tab -->
+        <div class="lcars-settings-pane" id="settings-pane-preferences">
+          <div class="lcars-settings-section-title">AUTO-REFRESH</div>
+          <div class="lcars-form-group">
+            <label>REFRESH INTERVAL</label>
+            <select id="refresh-interval" class="lcars-select">
+              <option value="0">NEVER (MANUAL ONLY)</option>
+              <option value="60000">EVERY MINUTE</option>
+              <option value="300000">EVERY 5 MINUTES</option>
+              <option value="600000">EVERY 10 MINUTES</option>
+              <option value="1800000">EVERY 30 MINUTES</option>
+            </select>
+          </div>
+          <div class="lcars-settings-section-title" style="margin-top: 1rem;">THEME</div>
+          <div class="lcars-radio-group">
+            <label class="lcars-radio">
+              <input type="radio" name="theme" value="default" id="pref-theme-default">
+              <span>DEFAULT</span>
+            </label>
+            <label class="lcars-radio">
+              <input type="radio" name="theme" value="lcars" id="pref-theme-lcars">
+              <span>LCARS</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="lcars-settings-footer">
+        <button class="lcars-btn-secondary" onclick="playSound('audio2'); closeSettings()">CANCEL</button>
+        <button class="lcars-btn-primary" onclick="playSound('audio3'); saveSettings()">SAVE CHANGES</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* LCARS Settings Modal Styles */
+    .lcars-settings-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    .lcars-settings-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    .lcars-settings-modal {
+      background: #000;
+      border: 3px solid var(--african-violet);
+      border-radius: 0 30px 30px 0;
+      width: 90%;
+      max-width: 650px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .lcars-settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--african-violet);
+      border-radius: 0 25px 0 0;
+    }
+    .lcars-settings-title {
+      color: #000;
+      font-family: 'Antonio', sans-serif;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .lcars-settings-close {
+      background: var(--butterscotch);
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      padding: 0.4rem 1rem;
+      font-family: 'Antonio', sans-serif;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .lcars-settings-close:hover {
+      background: var(--orange);
+    }
+    .lcars-settings-tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: #111;
+      border-bottom: 2px solid #333;
+      flex-wrap: wrap;
+    }
+    .lcars-settings-tab {
+      background: #333;
+      color: var(--butterscotch);
+      border: none;
+      border-radius: 50px;
+      padding: 0.5rem 1rem;
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .lcars-settings-tab:hover {
+      background: #444;
+    }
+    .lcars-settings-tab.active {
+      background: var(--bluey);
+      color: #000;
+    }
+    .lcars-settings-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.5rem;
+    }
+    .lcars-settings-pane {
+      display: none;
+    }
+    .lcars-settings-pane.active {
+      display: block;
+    }
+    .lcars-settings-section-title {
+      color: var(--african-violet);
+      font-family: 'Antonio', sans-serif;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+    }
+    .lcars-toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .lcars-toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: #1a1a1a;
+      border-left: 4px solid var(--bluey);
+      cursor: pointer;
+    }
+    .lcars-toggle-item:hover {
+      background: #222;
+    }
+    .lcars-toggle-item span:first-child {
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.9rem;
+    }
+    .lcars-toggle-item input[type="checkbox"] {
+      display: none;
+    }
+    .lcars-toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      background: #333;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+    .lcars-toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: #666;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+    .lcars-toggle-item input:checked + .lcars-toggle-switch {
+      background: var(--bluey);
+    }
+    .lcars-toggle-item input:checked + .lcars-toggle-switch::after {
+      left: 26px;
+      background: #000;
+    }
+    .lcars-form-group {
+      margin-bottom: 1rem;
+    }
+    .lcars-form-group label {
+      display: block;
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+    .lcars-input, .lcars-select {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-left: 4px solid var(--african-violet);
+      color: var(--african-violet);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.9rem;
+    }
+    .lcars-input:focus, .lcars-select:focus {
+      outline: none;
+      border-color: var(--bluey);
+    }
+    .lcars-input::placeholder {
+      color: #555;
+    }
+    .lcars-select option {
+      background: #1a1a1a;
+      color: var(--african-violet);
+    }
+    .lcars-radio-group {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .lcars-radio {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .lcars-radio input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--bluey);
+    }
+    .lcars-radio span {
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+    }
+    .lcars-settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: #111;
+      border-top: 2px solid #333;
+    }
+    .lcars-btn-primary, .lcars-btn-secondary {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Antonio', sans-serif;
+      font-weight: bold;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .lcars-btn-primary {
+      background: var(--bluey);
+      color: #000;
+    }
+    .lcars-btn-primary:hover {
+      background: var(--sunflower);
+    }
+    .lcars-btn-secondary {
+      background: #333;
+      color: var(--butterscotch);
+    }
+    .lcars-btn-secondary:hover {
+      background: #444;
+    }
+  </style>
+
   <div class="headtrim"></div>
   <div class="baseboard"></div>
 </body>
