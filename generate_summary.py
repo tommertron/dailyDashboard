@@ -127,6 +127,32 @@ def load_config():
     """Load the config file."""
     return load_json_file('config.json')
 
+
+def load_ai_settings():
+    """Load AI prompt settings from settings.json."""
+    settings = load_json_file('settings.json')
+    if not settings:
+        return None
+
+    ai_prompts = settings.get('aiPrompts', {})
+    active_persona = ai_prompts.get('activePersona', 'picard')
+    active_template = ai_prompts.get('activeTemplate', 'default')
+
+    personas = ai_prompts.get('personas', {})
+    templates = ai_prompts.get('templates', {})
+    rules = ai_prompts.get('rules', {})
+
+    persona = personas.get(active_persona, {})
+    template = templates.get(active_template, {})
+    rule_text = rules.get('default', '')
+
+    return {
+        'persona_name': persona.get('name', 'AI Assistant'),
+        'system_prompt': persona.get('systemPrompt', ''),
+        'intro_prompt': template.get('introPrompt', ''),
+        'rules': rule_text
+    }
+
 def gather_daily_data():
     """Gather all daily data from JSON files."""
     now = datetime.now()
@@ -288,125 +314,37 @@ def get_tomorrow_forecast(forecast_data):
 def call_openai(api_key, daily_data):
     """Call OpenAI API to generate a summary."""
     today = datetime.now().strftime("%A, %B %d, %Y")
-    day_of_week = datetime.now().strftime("%A")
 
-    prompt = f"""Based on the following data from my dashboard for {today}, give me a friendly 2-3 sentence summary.
+    # Load AI settings from settings.json
+    ai_settings = load_ai_settings()
+
+    if ai_settings and ai_settings.get('intro_prompt') and ai_settings.get('system_prompt'):
+        # Use configurable prompts from settings
+        intro_prompt = ai_settings['intro_prompt']
+        rules = ai_settings['rules']
+        system_prompt = ai_settings['system_prompt']
+
+        # Replace placeholders in intro prompt
+        prompt = intro_prompt.replace('{date}', today)
+        prompt = prompt.replace('{data}', json.dumps(daily_data, indent=2))
+        prompt = prompt.replace('{rules}', rules)
+    else:
+        # Fallback to hardcoded default prompt if settings not available
+        prompt = f"""Based on the following data from my dashboard for {today}, give me a friendly 2-3 sentence summary.
 
 Dashboard Data:
 {json.dumps(daily_data, indent=2)}
 
-CALENDAR EVENTS (next 24 hours):
-- The calendar_events list contains events for the next 24 hours, which may include both today and tomorrow
-- Parse the "start" field (e.g., "Dec 30, 2025 at 9:00 AM") to determine if each event is today or tomorrow
-- If is_evening is TRUE (after 5pm), focus more on tomorrow's events as a "preview of tomorrow"
-- In the evening, lead with tomorrow's schedule (e.g., "Tomorrow you have..." or "Looking ahead to tomorrow...")
-- During the day, focus on today's remaining events
-
-Include in your summary:
-- Current weather (temperature, conditions)
-- Tomorrow's weather forecast (from tomorrow_weather field: high/low temps and conditions) - mention briefly, especially if notably different from today
-- Calendar events (today's events during the day, tomorrow's preview in the evening)
-- My pending tasks from Things (what needs to be done)
-- If there are interesting saved links in Anybox, briefly mention one worth checking out
-- Any upcoming bills due in the next 7 days (mention amount and due date)
-
-ANYBOX STATS (reading list):
-- Check anybox_stats for total links saved, links added in the last 7 days, and untagged count
-- If untagged count is high (10+), you might gently suggest organizing some links
-- If added_last_7_days is notably high or low, you can mention it casually (e.g., "You've been saving lots of articles lately!")
-- Don't always mention these stats - only if there's something notable
-
-TV SHOWS (upcoming_tv_shows):
-- Check upcoming_tv_shows for new episodes releasing soon
-- If there's an episode releasing TODAY, mention it as something to look forward to (e.g., "New episode of [Show] drops today!")
-- If is_evening is TRUE and there's a show releasing today, it's a great evening activity suggestion
-- Don't list multiple shows - just highlight one if it's releasing today or tomorrow
-
-UPCOMING BILLS/MONEY:
-- Check the money_and_bills field for any upcoming bills or financial info
-- If there are upcoming bills or payments due soon, mention them briefly
-- If no relevant financial info, no need to mention it
-
-SHED HEATING (check is_workday_hours and is_evening booleans in the data):
-- The shed is my home office where I work from home
-- IMPORTANT: When mentioning temperature, use the EXACT value from shed.temperature (e.g., if it says "1.9", say "1.9°C" - never round!)
-- If is_workday_hours is TRUE:
-  → If shed.temperature is below 15 AND shed.thermostat_status is "off", mention the exact temp and suggest turning on heat
-  → If shed is already heating or temp >= 15°C, no need to mention
-- If is_workday_hours is FALSE:
-  → Do NOT suggest turning on the shed heat - the workday is done
-  → BUT if is_evening is TRUE and shed.thermostat_status is "heat", suggest turning it off to save energy
-- Skip shed entirely if calendar shows I'm at the office
-
-WORKING FROM HOME TOGGLE (shed.working_from_home - IMPORTANT EVENING CHECK):
-- The "Working From Home" (WFH) toggle controls whether the shed will automatically pre-heat in the morning
-- If WFH is "on", the shed heater will turn on automatically to warm up before work
-- If WFH is "off", the shed stays cold (appropriate for office days)
-
-⚠️ EVENING REMINDER (if is_evening is TRUE, this is important!):
-1. Look at tomorrow's calendar events to determine work location:
-   - Look for events with "office" in the title/calendar name, or work meetings at external locations
-   - If you see office-related events tomorrow → I'll be at the office → WFH should be OFF
-   - If tomorrow looks like a home day (no office events, or events mentioning "home"/"remote") → WFH should be ON
-2. Compare tomorrow's expected location with current shed.working_from_home state:
-   - If WFH is "on" but tomorrow I should be at the office → remind me to turn it OFF
-   - If WFH is "off" but tomorrow I'll be working from home → remind me to turn it ON so the shed pre-heats
-   - If the toggle is already set correctly for tomorrow → no need to mention it
-3. Phrase it helpfully, e.g.:
-   - "Tomorrow you're in the office - consider turning off the WFH toggle so the shed doesn't heat unnecessarily."
-   - "You're working from home tomorrow - make sure WFH is enabled so your shed is warm in the morning."
-
-PI UPS STATUS:
-- If there was a recent power outage (in the last 24 hours), mention it (e.g., "There was a power blip yesterday evening")
-- If currently running on battery power (on_ac_power is false), definitely mention this - it's important
-- If battery_percent is below 50%, mention the low battery level
-- Otherwise, no need to mention the Pi/UPS status - it's just background info
-
-HOME STATUS (IMPORTANT - check for warnings):
-- Check the "home" object for door and lock states
-- ⚠️ PRIORITY WARNING: If back_door_lock is "unlocked", ALWAYS mention this prominently - it's a security concern!
-- ⚠️ PRIORITY WARNING: If shed_door is "open" or garage_door is "open", mention it - especially if it's evening or overnight
-- If everything is locked and closed, no need to mention home status
-- Only mention the ecobee if hvac_action is notable (heating/cooling actively running)
-
-BACKUP STATUS:
-- Check the "backup" object for backup health
-- If healthcheck is not "up" or last_backup has failed_jobs, mention it as a concern
-- If backups are healthy, no need to mention them
-
-READ LATER (from GoodLinks):
-- Check read_later for interesting saved articles
-- If is_evening is TRUE and there are read_later items, you might casually suggest one as relaxing evening reading
-- Don't always mention read later - only if it fits naturally and there's something interesting with a good summary
-
-DAILY WISDOM (from Merlin Mann's Wisdom Project):
-- Check current_wisdom for today's wisdom quote
-- Occasionally weave the wisdom into your briefing naturally - perhaps as a philosophical observation that relates to the day ahead
-- Don't force it - only reference the wisdom if it genuinely connects to something in the briefing (e.g., a busy day might connect to wisdom about priorities)
-- You might end with the wisdom if it provides fitting closure, or use it as a transition
-- Examples of natural integration:
-  - "As a certain wise soul reminds us: '[wisdom quote]' - perhaps something to consider as you tackle today's tasks."
-  - "Speaking of which, I'm reminded: '[wisdom quote]'"
-- Don't mention it's from Merlin Mann - just present it as wisdom
-- Skip the wisdom entirely if it doesn't fit naturally with the day's content
-
-⚠️ WARNING STATE PRIORITY:
-The following should ALWAYS be mentioned prominently if they occur:
-1. Unlocked back door (security risk)
-2. Open doors (shed/garage) especially at night
-3. Pi running on battery (power issue)
-4. Failed backups
-5. Low UPS battery
-These are "yellow alert" situations that need attention!
-
 IMPORTANT: Do NOT start with any greeting like "Good morning" or "Good afternoon" - the dashboard already shows a greeting. Just dive straight into the briefing.
 
-Write in second person ("You have...", "Your day...") as Captain Picard delivering a daily briefing. Be eloquent, measured, and dignified yet warm. You may end with "Make it so" or "Engage" when appropriate. Keep it concise - 2-3 sentences max."""
+Write in second person ("You have...", "Your day..."). Keep it concise - 2-3 sentences max."""
+
+        system_prompt = "You are a helpful assistant providing daily briefings."
 
     request_body = json.dumps({
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "You are Captain Jean-Luc Picard of the USS Enterprise. Deliver the daily briefing with your characteristic eloquence, authority, and wisdom. Use Picard's distinctive speech patterns - measured, thoughtful, and occasionally philosophical. You may include subtle references like 'Make it so', 'Engage', or 'Tea, Earl Grey, Hot' when appropriate, but don't overdo it. Maintain your dignified composure while being warm and encouraging."},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 300,
