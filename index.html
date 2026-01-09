@@ -49,13 +49,19 @@
               <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
             </svg>
           </button>
+          <button class="theme-btn settings-btn" onclick="openSettings()" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
         </div>
         <div class="date-badge" id="date-badge"></div>
       </div>
     </header>
 
     <div class="three-column-grid">
-      <div class="panel">
+      <div class="panel" data-panel="weather">
         <div class="panel-header">
           <h2 class="section-title">Weather</h2>
           <a href="weather://" class="app-link" title="Open Weather">
@@ -69,21 +75,28 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="schedule">
         <div class="panel-header">
           <h2 class="section-title">Schedule</h2>
-          <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </a>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="calendar-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </a>
+          </div>
         </div>
         <div class="panel-body" id="calendar-container">
           <div class="panel-empty">Loading...</div>
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="tasks">
         <div class="panel-header">
           <h2 class="section-title">Tasks</h2>
           <div class="header-actions">
@@ -104,7 +117,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="shed">
         <div class="panel-header">
           <h2 class="section-title">Shed</h2>
           <div class="header-actions">
@@ -125,7 +138,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="home">
         <div class="panel-header">
           <h2 class="section-title">Home</h2>
           <div class="header-actions">
@@ -146,7 +159,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="piStatus">
         <div class="panel-header">
           <h2 class="section-title">Pi Status</h2>
           <div class="header-actions">
@@ -167,7 +180,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="bills">
         <div class="panel-header">
           <h2 class="section-title">Bills Due</h2>
           <div class="header-actions">
@@ -188,11 +201,11 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-panel="readLater">
         <div class="panel-header">
           <h2 class="section-title">Read Later</h2>
           <div class="header-actions">
-            <button class="icon-btn" onclick="loadReadLater()" title="Refresh">
+            <button class="icon-btn" onclick="refreshPanel('goodlinks')" title="Refresh from GoodLinks" id="readlater-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -209,7 +222,7 @@
         </div>
       </div>
 
-      <div class="panel wisdom-panel">
+      <div class="panel wisdom-panel" data-panel="wisdom">
         <div class="panel-header">
           <h2 class="section-title">Wisdom</h2>
           <div class="header-actions">
@@ -225,11 +238,11 @@
         </div>
       </div>
 
-      <div class="panel tv-panel">
+      <div class="panel tv-panel" data-panel="tvShows">
         <div class="panel-header">
           <h2 class="section-title">TV Shows and Movies</h2>
           <div class="header-actions tv-header-links">
-            <button class="icon-btn" onclick="loadTvShows()" title="Refresh">
+            <button class="icon-btn" onclick="refreshPanel('sequel')" title="Refresh from Sequel" id="tv-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -251,11 +264,11 @@
         </div>
       </div>
 
-      <div class="panel links-panel">
+      <div class="panel links-panel" data-panel="anybox">
         <div class="panel-header">
           <h2 class="section-title">Anybox</h2>
           <div class="header-actions">
-            <button class="icon-btn" onclick="loadLinks()" title="Shuffle Links">
+            <button class="icon-btn" onclick="refreshPanel('anybox')" title="Refresh from Anybox" id="anybox-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -539,6 +552,53 @@
       } finally {
         btn.disabled = false;
         btn.style.opacity = '1';
+      }
+    }
+
+    // Generic panel refresh function that uses the configurable shortcuts
+    async function refreshPanel(panelType) {
+      // Map panel types to button IDs and reload functions
+      const panelConfig = {
+        tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos(true) },
+        bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
+        calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
+        anybox: { btnId: 'anybox-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
+        sequel: { btnId: 'tv-refresh-btn', reload: () => loadTvShows() },
+        goodlinks: { btnId: 'readlater-refresh-btn', reload: () => loadReadLater() }
+      };
+
+      const config = panelConfig[panelType];
+      if (!config) {
+        console.error('Unknown panel type:', panelType);
+        return;
+      }
+
+      const btn = document.getElementById(config.btnId);
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+      }
+
+      try {
+        const response = await fetch(`/api/refresh/${panelType}`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          // Wait for file to sync, then reload
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await config.reload();
+        } else {
+          console.error('Refresh failed:', result.error);
+          alert(`Failed to refresh ${panelType}: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error refreshing panel:', error);
+        alert(`Error refreshing ${panelType}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
       }
     }
 
@@ -1406,8 +1466,578 @@
       }
     }
 
+    // Settings management
+    let currentSettings = null;
+    let autoRefreshInterval = null;
+
+    const panelNames = {
+      weather: 'Weather',
+      schedule: 'Schedule',
+      tasks: 'Tasks',
+      shed: 'Shed',
+      home: 'Home',
+      piStatus: 'Pi Status',
+      bills: 'Bills Due',
+      readLater: 'Read Later',
+      wisdom: 'Wisdom',
+      tvShows: 'TV Shows',
+      anybox: 'Anybox'
+    };
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success) {
+          currentSettings = data.settings;
+          applySettings(currentSettings);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+
+    function applySettings(settings) {
+      // Apply panel visibility
+      if (settings.panels) {
+        Object.entries(settings.panels).forEach(([panelId, config]) => {
+          const panel = document.querySelector(`[data-panel="${panelId}"]`);
+          if (panel) {
+            panel.style.display = config.visible ? '' : 'none';
+          }
+        });
+      }
+
+      // Setup auto-refresh
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      const refreshMs = settings.refreshIntervals?.autoRefresh || 0;
+      if (refreshMs > 0) {
+        autoRefreshInterval = setInterval(() => {
+          refreshAllData();
+        }, refreshMs);
+      }
+    }
+
+    function refreshAllData() {
+      loadWeather();
+      loadCalendar();
+      loadTodos();
+      loadShedStatus();
+      loadHomeStatus();
+      loadPiStatus();
+      loadMoney();
+      loadReadLater();
+      loadWisdom();
+      loadTvShows();
+      loadAnyboxStats();
+    }
+
+    function openSettings() {
+      const overlay = document.getElementById('settings-overlay');
+      overlay.classList.add('visible');
+      populateSettingsForm(currentSettings);
+      document.addEventListener('keydown', handleSettingsEscape);
+    }
+
+    function closeSettings() {
+      const overlay = document.getElementById('settings-overlay');
+      overlay.classList.remove('visible');
+      document.removeEventListener('keydown', handleSettingsEscape);
+    }
+
+    function closeSettingsOnOverlay(event) {
+      if (event.target.id === 'settings-overlay') {
+        closeSettings();
+      }
+    }
+
+    function handleSettingsEscape(event) {
+      if (event.key === 'Escape') {
+        closeSettings();
+      }
+    }
+
+    function switchSettingsTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+      });
+      // Update panes
+      document.querySelectorAll('.settings-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `settings-pane-${tabName}`);
+      });
+    }
+
+    function populateSettingsForm(settings) {
+      if (!settings) return;
+
+      // Populate panel toggles
+      const togglesContainer = document.getElementById('panel-toggles');
+      togglesContainer.innerHTML = Object.entries(panelNames).map(([id, name]) => {
+        const isVisible = settings.panels?.[id]?.visible !== false;
+        return `
+          <label class="settings-toggle-item">
+            <span>${name}</span>
+            <input type="checkbox" data-panel-toggle="${id}" ${isVisible ? 'checked' : ''}>
+            <span class="settings-toggle-switch"></span>
+          </label>
+        `;
+      }).join('');
+
+      // Populate API URLs
+      document.getElementById('url-ha').value = settings.homeAssistant?.url || '';
+      document.getElementById('url-channels').value = settings.apiUrls?.channelsDvr || '';
+      document.getElementById('url-pi').value = settings.apiUrls?.piMonitor || '';
+
+      // Populate preferences
+      document.getElementById('refresh-interval').value = settings.refreshIntervals?.autoRefresh || 0;
+      const theme = settings.theme?.preference || 'default';
+      document.getElementById('pref-theme-default').checked = theme === 'default';
+      document.getElementById('pref-theme-lcars').checked = theme === 'lcars';
+
+      // Populate refresh commands (SSH config)
+      const sshConfig = settings.refreshCommands?.ssh || {};
+      document.getElementById('ssh-host').value = sshConfig.host || '';
+      document.getElementById('ssh-user').value = sshConfig.user || '';
+      document.getElementById('ssh-timeout').value = sshConfig.timeout || 30;
+
+      // Populate shortcuts list
+      const shortcutsContainer = document.getElementById('shortcuts-list');
+      const shortcuts = settings.refreshCommands?.shortcuts || {};
+      const shortcutLabels = {
+        tasks: 'Tasks (Things)',
+        bills: 'Bills (Money)',
+        calendar: 'Calendar',
+        anybox: 'Anybox Links',
+        sequel: 'TV Shows (Sequel)',
+        goodlinks: 'Read Later (GoodLinks)'
+      };
+      shortcutsContainer.innerHTML = Object.entries(shortcutLabels).map(([id, label]) => {
+        const shortcut = shortcuts[id] || {};
+        return `
+          <div class="shortcut-item">
+            <div class="shortcut-header">
+              <label class="settings-toggle-item shortcut-toggle">
+                <span>${label}</span>
+                <input type="checkbox" data-shortcut-toggle="${id}" ${shortcut.enabled ? 'checked' : ''}>
+                <span class="settings-toggle-switch"></span>
+              </label>
+            </div>
+            <div class="shortcut-config">
+              <input type="text" class="settings-input" data-shortcut-name="${id}"
+                     value="${shortcut.shortcutName || ''}" placeholder="Shortcut name...">
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Populate AI Prompts
+      const aiPrompts = settings.aiPrompts || {};
+      const personas = aiPrompts.personas || {};
+      const templates = aiPrompts.templates || {};
+
+      // Populate persona dropdown
+      const personaSelect = document.getElementById('active-persona');
+      personaSelect.innerHTML = Object.entries(personas).map(([id, persona]) =>
+        `<option value="${id}" ${id === aiPrompts.activePersona ? 'selected' : ''}>${persona.name}</option>`
+      ).join('');
+
+      // Populate template dropdown
+      const templateSelect = document.getElementById('active-template');
+      templateSelect.innerHTML = Object.entries(templates).map(([id, template]) =>
+        `<option value="${id}" ${id === aiPrompts.activeTemplate ? 'selected' : ''}>${template.name}</option>`
+      ).join('');
+
+      // Populate personas list
+      const personasList = document.getElementById('personas-list');
+      personasList.innerHTML = Object.entries(personas).map(([id, persona]) => `
+        <div class="ai-item" data-persona-id="${id}">
+          <div class="ai-item-header">
+            <span class="ai-item-name">${persona.name}</span>
+            <div class="ai-item-actions">
+              <button class="icon-btn small" onclick="editPersona('${id}')" title="Edit">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button class="icon-btn small" onclick="deletePersona('${id}')" title="Delete">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p class="ai-item-description">${persona.description || ''}</p>
+        </div>
+      `).join('');
+
+      // Populate templates list
+      const templatesList = document.getElementById('templates-list');
+      templatesList.innerHTML = Object.entries(templates).map(([id, template]) => `
+        <div class="ai-item" data-template-id="${id}">
+          <div class="ai-item-header">
+            <span class="ai-item-name">${template.name}</span>
+            <div class="ai-item-actions">
+              <button class="icon-btn small" onclick="editTemplate('${id}')" title="Edit">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button class="icon-btn small" onclick="deleteTemplate('${id}')" title="Delete">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p class="ai-item-description">${template.description || ''}</p>
+        </div>
+      `).join('');
+
+      // Populate HA Panels list
+      const haPanels = settings.homeAssistant?.panels || {};
+      const haPanelsList = document.getElementById('ha-panels-list');
+      haPanelsList.innerHTML = Object.entries(haPanels).map(([id, panel]) => {
+        const entitiesHtml = (panel.entities || []).map((e, idx) =>
+          `<div class="ha-entity-row">
+            <span class="entity-name">${e.displayName}</span>
+            <span class="entity-id">${e.entityId}</span>
+            <span class="entity-type">${e.type}</span>
+            <button class="icon-btn small" onclick="removeHaEntity('${id}', ${idx})" title="Remove">×</button>
+          </div>`
+        ).join('');
+
+        return `
+          <div class="ha-panel-item" data-panel-id="${id}">
+            <div class="ha-panel-header">
+              <label class="settings-toggle-item">
+                <span>${panel.name || id}</span>
+                <input type="checkbox" data-ha-panel-toggle="${id}" ${panel.visible !== false ? 'checked' : ''}>
+                <span class="settings-toggle-switch"></span>
+              </label>
+              <div class="ha-panel-actions">
+                <button class="icon-btn small" onclick="editHaPanel('${id}')" title="Edit">✏</button>
+                <button class="icon-btn small" onclick="deleteHaPanel('${id}')" title="Delete">🗑</button>
+              </div>
+            </div>
+            <div class="ha-entities-list">
+              ${entitiesHtml || '<p class="no-entities">No entities configured</p>'}
+            </div>
+            <button class="settings-btn-secondary small" onclick="addHaEntity('${id}')">+ Add Entity</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function saveSettings() {
+      const newSettings = {
+        version: 2,
+        panels: {},
+        homeAssistant: {
+          url: document.getElementById('url-ha').value,
+          // Preserve existing panels structure from v2 settings
+          panels: currentSettings?.homeAssistant?.panels || {}
+        },
+        apiUrls: {
+          channelsDvr: document.getElementById('url-channels').value,
+          piMonitor: document.getElementById('url-pi').value
+        },
+        refreshIntervals: {
+          autoRefresh: parseInt(document.getElementById('refresh-interval').value) || 0
+        },
+        refreshCommands: {
+          ssh: {
+            host: document.getElementById('ssh-host').value,
+            user: document.getElementById('ssh-user').value,
+            timeout: parseInt(document.getElementById('ssh-timeout').value) || 30
+          },
+          shortcuts: {}
+        },
+        aiPrompts: {
+          activePersona: document.getElementById('active-persona').value,
+          activeTemplate: document.getElementById('active-template').value,
+          personas: currentSettings?.aiPrompts?.personas || {},
+          templates: currentSettings?.aiPrompts?.templates || {},
+          rules: currentSettings?.aiPrompts?.rules || {}
+        },
+        theme: {
+          preference: document.querySelector('input[name="theme"]:checked')?.value || 'default'
+        }
+      };
+
+      // Collect panel visibility
+      document.querySelectorAll('[data-panel-toggle]').forEach(toggle => {
+        const panelId = toggle.dataset.panelToggle;
+        newSettings.panels[panelId] = { visible: toggle.checked };
+      });
+
+      // Collect shortcuts configuration
+      document.querySelectorAll('[data-shortcut-toggle]').forEach(toggle => {
+        const shortcutId = toggle.dataset.shortcutToggle;
+        const nameInput = document.querySelector(`[data-shortcut-name="${shortcutId}"]`);
+        const existingShortcut = currentSettings?.refreshCommands?.shortcuts?.[shortcutId] || {};
+        newSettings.refreshCommands.shortcuts[shortcutId] = {
+          enabled: toggle.checked,
+          shortcutName: nameInput?.value || '',
+          description: existingShortcut.description || ''
+        };
+      });
+
+      // Collect HA panel visibility
+      document.querySelectorAll('[data-ha-panel-toggle]').forEach(toggle => {
+        const panelId = toggle.dataset.haPanelToggle;
+        if (newSettings.homeAssistant.panels[panelId]) {
+          newSettings.homeAssistant.panels[panelId].visible = toggle.checked;
+        }
+      });
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newSettings)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          currentSettings = newSettings;
+          applySettings(newSettings);
+          closeSettings();
+
+          // If theme changed to LCARS, redirect
+          if (newSettings.theme.preference === 'lcars') {
+            localStorage.setItem('dashboard-theme', 'lcars');
+            window.location.href = 'lcars.html';
+          }
+        } else {
+          alert('Failed to save settings: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        alert('Error saving settings');
+      }
+    }
+
+    // AI Prompt Management Functions - Persona Editor
+    function openPersonaEditor(id = null) {
+      const overlay = document.getElementById('persona-editor-overlay');
+      const title = document.getElementById('persona-editor-title');
+      const idField = document.getElementById('persona-editor-id');
+      const nameField = document.getElementById('persona-editor-name');
+      const descField = document.getElementById('persona-editor-description');
+      const promptField = document.getElementById('persona-editor-prompt');
+
+      if (id) {
+        const persona = currentSettings?.aiPrompts?.personas?.[id];
+        if (!persona) return;
+        title.textContent = 'Edit Persona';
+        idField.value = id;
+        nameField.value = persona.name || '';
+        descField.value = persona.description || '';
+        promptField.value = persona.systemPrompt || '';
+      } else {
+        title.textContent = 'New Persona';
+        idField.value = '';
+        nameField.value = '';
+        descField.value = '';
+        promptField.value = '';
+      }
+      overlay.classList.add('visible');
+    }
+
+    function closePersonaEditor() {
+      document.getElementById('persona-editor-overlay').classList.remove('visible');
+    }
+
+    function savePersonaEditor() {
+      const id = document.getElementById('persona-editor-id').value;
+      const name = document.getElementById('persona-editor-name').value.trim();
+      const description = document.getElementById('persona-editor-description').value.trim();
+      const systemPrompt = document.getElementById('persona-editor-prompt').value.trim();
+
+      if (!name) { alert('Please enter a name'); return; }
+      if (!systemPrompt) { alert('Please enter personality instructions'); return; }
+
+      if (!currentSettings.aiPrompts) currentSettings.aiPrompts = {};
+      if (!currentSettings.aiPrompts.personas) currentSettings.aiPrompts.personas = {};
+
+      const newId = id || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (!id && currentSettings.aiPrompts.personas[newId]) {
+        alert('A persona with this ID already exists');
+        return;
+      }
+
+      currentSettings.aiPrompts.personas[newId] = { name, description, systemPrompt };
+      populateSettingsForm(currentSettings);
+      closePersonaEditor();
+    }
+
+    function addNewPersona() { openPersonaEditor(); }
+    function editPersona(id) { openPersonaEditor(id); }
+
+    function deletePersona(id) {
+      if (Object.keys(currentSettings?.aiPrompts?.personas || {}).length <= 1) {
+        alert('Cannot delete the last persona');
+        return;
+      }
+      if (!confirm(`Delete persona "${currentSettings.aiPrompts.personas[id]?.name}"?`)) return;
+
+      delete currentSettings.aiPrompts.personas[id];
+      if (currentSettings.aiPrompts.activePersona === id) {
+        currentSettings.aiPrompts.activePersona = Object.keys(currentSettings.aiPrompts.personas)[0];
+      }
+      populateSettingsForm(currentSettings);
+    }
+
+    // AI Prompt Management Functions - Template Editor
+    function openTemplateEditor(id = null) {
+      const overlay = document.getElementById('template-editor-overlay');
+      const title = document.getElementById('template-editor-title');
+      const idField = document.getElementById('template-editor-id');
+      const nameField = document.getElementById('template-editor-name');
+      const descField = document.getElementById('template-editor-description');
+      const promptField = document.getElementById('template-editor-prompt');
+
+      if (id) {
+        const template = currentSettings?.aiPrompts?.templates?.[id];
+        if (!template) return;
+        title.textContent = 'Edit Template';
+        idField.value = id;
+        nameField.value = template.name || '';
+        descField.value = template.description || '';
+        promptField.value = template.introPrompt || '';
+      } else {
+        title.textContent = 'New Template';
+        idField.value = '';
+        nameField.value = '';
+        descField.value = '';
+        promptField.value = '';
+      }
+      overlay.classList.add('visible');
+    }
+
+    function closeTemplateEditor() {
+      document.getElementById('template-editor-overlay').classList.remove('visible');
+    }
+
+    function saveTemplateEditor() {
+      const id = document.getElementById('template-editor-id').value;
+      const name = document.getElementById('template-editor-name').value.trim();
+      const description = document.getElementById('template-editor-description').value.trim();
+      const introPrompt = document.getElementById('template-editor-prompt').value.trim();
+
+      if (!name) { alert('Please enter a name'); return; }
+      if (!introPrompt) { alert('Please enter an intro prompt'); return; }
+
+      if (!currentSettings.aiPrompts) currentSettings.aiPrompts = {};
+      if (!currentSettings.aiPrompts.templates) currentSettings.aiPrompts.templates = {};
+
+      const newId = id || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (!id && currentSettings.aiPrompts.templates[newId]) {
+        alert('A template with this ID already exists');
+        return;
+      }
+
+      currentSettings.aiPrompts.templates[newId] = { name, description, introPrompt };
+      populateSettingsForm(currentSettings);
+      closeTemplateEditor();
+    }
+
+    function addNewTemplate() { openTemplateEditor(); }
+    function editTemplate(id) { openTemplateEditor(id); }
+
+    function deleteTemplate(id) {
+      if (Object.keys(currentSettings?.aiPrompts?.templates || {}).length <= 1) {
+        alert('Cannot delete the last template');
+        return;
+      }
+      if (!confirm(`Delete template "${currentSettings.aiPrompts.templates[id]?.name}"?`)) return;
+
+      delete currentSettings.aiPrompts.templates[id];
+      if (currentSettings.aiPrompts.activeTemplate === id) {
+        currentSettings.aiPrompts.activeTemplate = Object.keys(currentSettings.aiPrompts.templates)[0];
+      }
+      populateSettingsForm(currentSettings);
+    }
+
+    function closeEditorOnOverlay(event, type) {
+      if (event.target.classList.contains('editor-overlay')) {
+        if (type === 'persona') closePersonaEditor();
+        else if (type === 'template') closeTemplateEditor();
+      }
+    }
+
+    // HA Panel Management Functions
+    function addHaPanel() {
+      const name = prompt('Enter panel name (e.g., "Living Room"):');
+      if (!name) return;
+
+      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (currentSettings?.homeAssistant?.panels?.[id]) {
+        alert('A panel with this ID already exists');
+        return;
+      }
+
+      if (!currentSettings.homeAssistant) currentSettings.homeAssistant = {};
+      if (!currentSettings.homeAssistant.panels) currentSettings.homeAssistant.panels = {};
+
+      currentSettings.homeAssistant.panels[id] = {
+        name: name,
+        visible: true,
+        entities: [],
+        scenes: []
+      };
+      populateSettingsForm(currentSettings);
+    }
+
+    function editHaPanel(id) {
+      const panel = currentSettings?.homeAssistant?.panels?.[id];
+      if (!panel) return;
+
+      const name = prompt('Edit panel name:', panel.name);
+      if (!name) return;
+
+      panel.name = name;
+      populateSettingsForm(currentSettings);
+    }
+
+    function deleteHaPanel(id) {
+      if (!confirm(`Delete panel "${currentSettings.homeAssistant.panels[id]?.name}"?`)) return;
+      delete currentSettings.homeAssistant.panels[id];
+      populateSettingsForm(currentSettings);
+    }
+
+    function addHaEntity(panelId) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel) return;
+
+      const entityId = prompt('Enter Home Assistant entity ID (e.g., sensor.temperature):');
+      if (!entityId) return;
+
+      const displayName = prompt('Enter display name (e.g., "Temperature"):');
+      if (!displayName) return;
+
+      const type = prompt('Enter entity type (sensor, toggle, climate, lock, door, light):') || 'sensor';
+
+      if (!panel.entities) panel.entities = [];
+      panel.entities.push({ entityId, displayName, type });
+      populateSettingsForm(currentSettings);
+    }
+
+    function removeHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities) return;
+
+      panel.entities.splice(entityIndex, 1);
+      populateSettingsForm(currentSettings);
+    }
+
     // Initialize
     async function init() {
+      await loadSettings();
       document.getElementById('date-badge').textContent = formatDate();
 
       const config = await loadConfig();
@@ -1432,5 +2062,222 @@
     }
     init();
   </script>
+
+  <!-- Settings Modal -->
+  <div class="settings-overlay" id="settings-overlay" onclick="closeSettingsOnOverlay(event)">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="settings-close-btn" onclick="closeSettings()">&times;</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="panels" onclick="switchSettingsTab('panels')">Panels</button>
+          <button class="settings-tab" data-tab="refresh" onclick="switchSettingsTab('refresh')">Refresh</button>
+          <button class="settings-tab" data-tab="ai-prompts" onclick="switchSettingsTab('ai-prompts')">AI Prompts</button>
+          <button class="settings-tab" data-tab="home-assistant" onclick="switchSettingsTab('home-assistant')">Home Assistant</button>
+          <button class="settings-tab" data-tab="api-urls" onclick="switchSettingsTab('api-urls')">API URLs</button>
+          <button class="settings-tab" data-tab="preferences" onclick="switchSettingsTab('preferences')">Preferences</button>
+        </div>
+        <div class="settings-content">
+          <!-- Panels Tab -->
+          <div class="settings-pane active" id="settings-pane-panels">
+            <div class="settings-section">
+              <h3>Panel Visibility</h3>
+              <p class="settings-description">Toggle which panels appear on your dashboard.</p>
+              <div class="settings-toggle-list" id="panel-toggles">
+                <!-- Generated by JS -->
+              </div>
+            </div>
+          </div>
+          <!-- Refresh Commands Tab -->
+          <div class="settings-pane" id="settings-pane-refresh">
+            <div class="settings-section">
+              <h3>SSH Connection</h3>
+              <p class="settings-description">Configure the SSH connection to your Mac for running Shortcuts.</p>
+              <div class="settings-form-group">
+                <label for="ssh-host">SSH Host</label>
+                <input type="text" id="ssh-host" class="settings-input" placeholder="toms-mac-mini.local">
+              </div>
+              <div class="settings-form-group">
+                <label for="ssh-user">SSH User</label>
+                <input type="text" id="ssh-user" class="settings-input" placeholder="tomrobertson">
+              </div>
+              <div class="settings-form-group">
+                <label for="ssh-timeout">Timeout (seconds)</label>
+                <input type="number" id="ssh-timeout" class="settings-input" placeholder="30" min="5" max="120">
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Shortcuts</h3>
+              <p class="settings-description">Configure which Apple Shortcuts to run for each refresh action.</p>
+              <div class="shortcuts-list" id="shortcuts-list">
+                <!-- Generated by JS -->
+              </div>
+            </div>
+          </div>
+          <!-- AI Prompts Tab -->
+          <div class="settings-pane" id="settings-pane-ai-prompts">
+            <div class="settings-section">
+              <h3>Active Configuration</h3>
+              <p class="settings-description">Select which persona and template to use for AI summaries.</p>
+              <div class="settings-form-group">
+                <label for="active-persona">Persona</label>
+                <select id="active-persona" class="settings-select">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div class="settings-form-group">
+                <label for="active-template">Template</label>
+                <select id="active-template" class="settings-select">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Personas</h3>
+              <p class="settings-description">Define different AI personalities for your daily briefings.</p>
+              <div class="personas-list" id="personas-list">
+                <!-- Generated by JS -->
+              </div>
+              <button class="settings-btn-secondary" onclick="addNewPersona()" style="margin-top: 0.75rem;">+ Add Persona</button>
+            </div>
+            <div class="settings-section">
+              <h3>Templates</h3>
+              <p class="settings-description">Define different prompt templates for the AI to follow.</p>
+              <div class="templates-list" id="templates-list">
+                <!-- Generated by JS -->
+              </div>
+              <button class="settings-btn-secondary" onclick="addNewTemplate()" style="margin-top: 0.75rem;">+ Add Template</button>
+            </div>
+          </div>
+          <!-- Home Assistant Tab -->
+          <div class="settings-pane" id="settings-pane-home-assistant">
+            <div class="settings-section">
+              <h3>HA Panels</h3>
+              <p class="settings-description">Configure Home Assistant panels and their entities.</p>
+              <div class="ha-panels-list" id="ha-panels-list">
+                <!-- Generated by JS -->
+              </div>
+              <button class="settings-btn-secondary" onclick="addHaPanel()" style="margin-top: 0.75rem;">+ Add Panel</button>
+            </div>
+          </div>
+          <!-- API URLs Tab -->
+          <div class="settings-pane" id="settings-pane-api-urls">
+            <div class="settings-section">
+              <h3>Service URLs</h3>
+              <p class="settings-description">Configure the URLs for external services.</p>
+              <div class="settings-form-group">
+                <label for="url-ha">Home Assistant URL</label>
+                <input type="text" id="url-ha" class="settings-input" placeholder="http://172.17.0.1:8123">
+              </div>
+              <div class="settings-form-group">
+                <label for="url-channels">Channels DVR URL</label>
+                <input type="text" id="url-channels" class="settings-input" placeholder="http://100.127.232.39:8089">
+              </div>
+              <div class="settings-form-group">
+                <label for="url-pi">Pi Monitor URL</label>
+                <input type="text" id="url-pi" class="settings-input" placeholder="http://100.125.128.51:5001">
+              </div>
+            </div>
+          </div>
+          <!-- Preferences Tab -->
+          <div class="settings-pane" id="settings-pane-preferences">
+            <div class="settings-section">
+              <h3>Auto-Refresh</h3>
+              <p class="settings-description">How often should the dashboard refresh data?</p>
+              <div class="settings-form-group">
+                <label for="refresh-interval">Refresh Interval</label>
+                <select id="refresh-interval" class="settings-select">
+                  <option value="0">Never (manual only)</option>
+                  <option value="60000">Every minute</option>
+                  <option value="300000">Every 5 minutes</option>
+                  <option value="600000">Every 10 minutes</option>
+                  <option value="1800000">Every 30 minutes</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Theme</h3>
+              <p class="settings-description">Choose your dashboard theme.</p>
+              <div class="settings-radio-group">
+                <label class="settings-radio">
+                  <input type="radio" name="theme" value="default" id="pref-theme-default">
+                  <span>Default</span>
+                </label>
+                <label class="settings-radio">
+                  <input type="radio" name="theme" value="lcars" id="pref-theme-lcars">
+                  <span>LCARS</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="settings-btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="settings-btn-primary" onclick="saveSettings()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Persona Editor Modal -->
+  <div class="editor-overlay" id="persona-editor-overlay" onclick="closeEditorOnOverlay(event, 'persona')">
+    <div class="editor-modal">
+      <div class="editor-header">
+        <h3 id="persona-editor-title">Edit Persona</h3>
+        <button class="settings-close-btn" onclick="closePersonaEditor()">&times;</button>
+      </div>
+      <div class="editor-body">
+        <input type="hidden" id="persona-editor-id">
+        <div class="settings-form-group">
+          <label for="persona-editor-name">Name</label>
+          <input type="text" id="persona-editor-name" class="settings-input" placeholder="e.g., Captain Picard">
+        </div>
+        <div class="settings-form-group">
+          <label for="persona-editor-description">Description</label>
+          <input type="text" id="persona-editor-description" class="settings-input" placeholder="Brief description of this persona">
+        </div>
+        <div class="settings-form-group">
+          <label for="persona-editor-prompt">Personality Instructions (System Prompt)</label>
+          <textarea id="persona-editor-prompt" class="settings-textarea" rows="8" placeholder="Describe the AI personality, speaking style, and character traits..."></textarea>
+        </div>
+      </div>
+      <div class="editor-footer">
+        <button class="settings-btn-secondary" onclick="closePersonaEditor()">Cancel</button>
+        <button class="settings-btn-primary" onclick="savePersonaEditor()">Save Persona</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Editor Modal -->
+  <div class="editor-overlay" id="template-editor-overlay" onclick="closeEditorOnOverlay(event, 'template')">
+    <div class="editor-modal">
+      <div class="editor-header">
+        <h3 id="template-editor-title">Edit Template</h3>
+        <button class="settings-close-btn" onclick="closeTemplateEditor()">&times;</button>
+      </div>
+      <div class="editor-body">
+        <input type="hidden" id="template-editor-id">
+        <div class="settings-form-group">
+          <label for="template-editor-name">Name</label>
+          <input type="text" id="template-editor-name" class="settings-input" placeholder="e.g., Full Briefing">
+        </div>
+        <div class="settings-form-group">
+          <label for="template-editor-description">Description</label>
+          <input type="text" id="template-editor-description" class="settings-input" placeholder="Brief description of this template">
+        </div>
+        <div class="settings-form-group">
+          <label for="template-editor-prompt">Intro Prompt</label>
+          <p class="settings-hint">Use {date}, {data}, and {rules} as placeholders</p>
+          <textarea id="template-editor-prompt" class="settings-textarea" rows="8" placeholder="The prompt template sent to the AI..."></textarea>
+        </div>
+      </div>
+      <div class="editor-footer">
+        <button class="settings-btn-secondary" onclick="closeTemplateEditor()">Cancel</button>
+        <button class="settings-btn-primary" onclick="saveTemplateEditor()">Save Template</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

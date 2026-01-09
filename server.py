@@ -3,6 +3,8 @@ import http.server
 import json
 import os
 import subprocess
+import threading
+import time
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -10,7 +12,67 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PORT = 8000
+CACHE_TTL = 300  # 5 minutes in seconds
+
+# Global cache storage
+_api_cache = {
+    'tv_shows': {'data': None, 'updated_at': None},
+    'pi_status': {'data': None, 'updated_at': None},
+    'ha_panels': {}  # Keyed by panel_id
+}
+_cache_lock = threading.Lock()
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(DIRECTORY, 'settings.json')
+
+def get_default_settings():
+    """Return default settings structure."""
+    return {
+        "version": 1,
+        "panels": {
+            "weather": {"visible": True},
+            "schedule": {"visible": True},
+            "tasks": {"visible": True},
+            "shed": {"visible": True},
+            "home": {"visible": True},
+            "piStatus": {"visible": True},
+            "bills": {"visible": True},
+            "readLater": {"visible": True},
+            "tvShows": {"visible": True},
+            "anybox": {"visible": True}
+        },
+        "homeAssistant": {
+            "url": "http://172.17.0.1:8123",
+            "entities": {
+                "ecobee": "climate.my_ecobee",
+                "backDoorLock": "lock.back_door_lock",
+                "shedDoorSensor": "binary_sensor.shed_door_sensor",
+                "garageDoorSensor": "binary_sensor.contact_sensor"
+            }
+        },
+        "apiUrls": {
+            "channelsDvr": "http://100.127.232.39:8089",
+            "piMonitor": "http://100.125.128.51:5001"
+        },
+        "refreshIntervals": {
+            "autoRefresh": 300000
+        },
+        "theme": {
+            "preference": "default"
+        }
+    }
+
+def load_settings():
+    """Load settings from settings.json or return defaults."""
+    try:
+        with open(SETTINGS_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return get_default_settings()
+
+def save_settings(settings):
+    """Save settings to settings.json."""
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f, indent=2)
 
 def load_config():
     config_path = os.path.join(DIRECTORY, 'config.json')
@@ -80,6 +142,285 @@ def get_tmdb_episode_description(series_id, season, episode, api_key):
         print(f"TMDB episode fetch error: {e}")
     return ''
 
+
+# =============================================================================
+# Data Fetching Functions (used by cache and endpoints)
+# =============================================================================
+
+def fetch_tv_shows_data():
+    """Fetch TV shows from Channels DVR and Sequel episodes."""
+    shows = []
+    seen_shows = set()
+    disk_info = None
+
+    # Fetch DVR status including disk info
+    try:
+        req = urllib.request.Request(f"{CHANNELS_DVR_URL}/dvr")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            dvr_status = json.loads(response.read().decode('utf-8'))
+            disk_info = dvr_status.get('disk')
+    except Exception as e:
+        print(f"Error fetching DVR status: {e}")
+
+    # Fetch recent recordings from Channels DVR
+    try:
+        req = urllib.request.Request(f"{CHANNELS_DVR_URL}/dvr/files")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            files = json.loads(response.read().decode('utf-8'))
+
+        sorted_files = sorted(files, key=lambda x: x.get('CreatedAt', 0), reverse=True)
+
+        for f in sorted_files[:10]:
+            airing = f.get('Airing', {})
+            title = airing.get('Title', '')
+            if not title or title.lower() in seen_shows:
+                continue
+
+            seen_shows.add(title.lower())
+            episode_title = airing.get('EpisodeTitle', '')
+            season = airing.get('SeasonNumber')
+            episode = airing.get('EpisodeNumber')
+
+            genres = airing.get('Genres', [])
+            release_date = airing.get('OriginalDate', '')
+            if 'Talk' in genres:
+                created_at = f.get('CreatedAt')
+                if created_at:
+                    release_date = datetime.fromtimestamp(created_at).strftime('%Y-%m-%d')
+
+            shows.append({
+                'title': title,
+                'season': season,
+                'episodeNumber': episode,
+                'episodeTitle': episode_title,
+                'description': airing.get('Summary', ''),
+                'poster': airing.get('Image', ''),
+                'releaseDate': release_date,
+                'source': 'channels'
+            })
+
+            if len(shows) >= 3:
+                break
+    except Exception as e:
+        print(f"Error fetching Channels DVR: {e}")
+
+    # Read Sequel episodes
+    try:
+        sequel_path = os.path.join(DIRECTORY, 'sequelEpisodes.json')
+        config = load_config()
+        tmdb_api_key = config.get('tmdbApiKey', '')
+
+        if os.path.exists(sequel_path):
+            with open(sequel_path, 'r') as f:
+                sequel_data = json.load(f)
+
+            episodes = sequel_data.get('episodes', sequel_data.get('episoes', []))
+
+            sequel_shows = []
+            for ep in episodes:
+                title = ep.get('show', '')
+                if not title or title.lower() in seen_shows:
+                    continue
+                seen_shows.add(title.lower())
+                sequel_shows.append(ep)
+
+            def fetch_tmdb_description(ep):
+                title = ep.get('show', '')
+                season = ep.get('season', '')
+                episode_num = ep.get('episodeNumber', '')
+                description = ''
+                if tmdb_api_key and season and episode_num:
+                    series_id = get_tmdb_series_id(title, tmdb_api_key)
+                    if series_id:
+                        description = get_tmdb_episode_description(
+                            series_id, season, episode_num, tmdb_api_key
+                        )
+                return ep, description
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(fetch_tmdb_description, ep) for ep in sequel_shows]
+                for future in as_completed(futures):
+                    ep, description = future.result()
+                    shows.append({
+                        'title': ep.get('show', ''),
+                        'season': ep.get('season', ''),
+                        'episodeNumber': ep.get('episodeNumber', ''),
+                        'episodeTitle': ep.get('episodeTitle', ''),
+                        'description': description,
+                        'poster': ep.get('poster', ''),
+                        'releaseDate': ep.get('releaseDate', ''),
+                        'source': 'sequel'
+                    })
+    except Exception as e:
+        print(f"Error reading Sequel episodes: {e}")
+
+    return {'success': True, 'shows': shows[:6], 'disk': disk_info}
+
+
+def fetch_pi_status_data():
+    """Fetch Pi UPS status, system stats, and health checks."""
+    results = {}
+
+    def fetch_ups():
+        req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/status")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def fetch_system():
+        req = urllib.request.Request(f"{PI_MONITOR_URL}/api/system")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def fetch_healthcheck():
+        req = urllib.request.Request(HEALTHCHECKS_BADGE_URL)
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def fetch_outages():
+        req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/outages")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def fetch_backup_healthcheck():
+        req = urllib.request.Request(BACKUP_HEALTHCHECKS_URL)
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode('utf-8'))
+
+    def read_backup_status():
+        with open(BACKUP_STATUS_FILE, 'r') as f:
+            return json.load(f)
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(fetch_ups): 'ups',
+            executor.submit(fetch_system): 'system',
+            executor.submit(fetch_healthcheck): 'healthcheck',
+            executor.submit(fetch_outages): 'outages',
+            executor.submit(fetch_backup_healthcheck): 'backup_healthcheck',
+            executor.submit(read_backup_status): 'backup_status',
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                results[key] = future.result()
+            except Exception as e:
+                print(f"Error fetching {key}: {e}")
+                results[key] = None
+
+    outages_data = results.get('outages')
+    outages = outages_data.get('outages', []) if isinstance(outages_data, dict) else (outages_data or [])
+
+    return {
+        'success': True,
+        'ups': results.get('ups'),
+        'system': results.get('system'),
+        'healthcheck': results.get('healthcheck'),
+        'outages': outages,
+        'backup_healthcheck': results.get('backup_healthcheck'),
+        'backup_status': results.get('backup_status')
+    }
+
+
+def fetch_ha_panel_data(panel_id):
+    """Fetch Home Assistant states for a panel."""
+    settings = load_settings()
+    panels = settings.get('homeAssistant', {}).get('panels', {})
+    panel_config = panels.get(panel_id)
+
+    if not panel_config:
+        return {'success': False, 'error': f'Panel not found: {panel_id}'}
+
+    entities = [e['entityId'] for e in panel_config.get('entities', [])]
+
+    if not entities:
+        return {'success': True, 'panel': panel_config, 'states': {}}
+
+    states = {}
+
+    def fetch_entity(entity):
+        return entity, ha_request('GET', f'states/{entity}')
+
+    with ThreadPoolExecutor(max_workers=len(entities)) as executor:
+        futures = {executor.submit(fetch_entity, e): e for e in entities}
+        for future in as_completed(futures):
+            try:
+                entity, state = future.result()
+                states[entity] = state
+            except Exception as e:
+                entity = futures[future]
+                print(f"Error fetching HA entity {entity}: {e}")
+                states[entity] = None
+
+    return {'success': True, 'panel': panel_config, 'states': states}
+
+
+# =============================================================================
+# Background Cache Refresh
+# =============================================================================
+
+def refresh_all_caches():
+    """Refresh all cached API data."""
+    print(f"[{datetime.now().isoformat()}] Refreshing API caches...")
+
+    # Refresh TV shows
+    try:
+        tv_data = fetch_tv_shows_data()
+        with _cache_lock:
+            _api_cache['tv_shows'] = {
+                'data': tv_data,
+                'updated_at': datetime.now().isoformat()
+            }
+        print("  - TV shows cache updated")
+    except Exception as e:
+        print(f"  - TV shows cache error: {e}")
+
+    # Refresh Pi status
+    try:
+        pi_data = fetch_pi_status_data()
+        with _cache_lock:
+            _api_cache['pi_status'] = {
+                'data': pi_data,
+                'updated_at': datetime.now().isoformat()
+            }
+        print("  - Pi status cache updated")
+    except Exception as e:
+        print(f"  - Pi status cache error: {e}")
+
+    # Refresh HA panels (shed, home)
+    settings = load_settings()
+    panel_ids = list(settings.get('homeAssistant', {}).get('panels', {}).keys())
+    for panel_id in panel_ids:
+        try:
+            panel_data = fetch_ha_panel_data(panel_id)
+            with _cache_lock:
+                _api_cache['ha_panels'][panel_id] = {
+                    'data': panel_data,
+                    'updated_at': datetime.now().isoformat()
+                }
+            print(f"  - HA panel '{panel_id}' cache updated")
+        except Exception as e:
+            print(f"  - HA panel '{panel_id}' cache error: {e}")
+
+    print(f"[{datetime.now().isoformat()}] Cache refresh complete")
+
+
+def cache_refresh_loop():
+    """Background thread that periodically refreshes caches."""
+    while True:
+        try:
+            refresh_all_caches()
+        except Exception as e:
+            print(f"Cache refresh loop error: {e}")
+        time.sleep(CACHE_TTL)
+
+
+def invalidate_ha_cache():
+    """Invalidate all HA panel caches (called after actions)."""
+    with _cache_lock:
+        for panel_id in _api_cache['ha_panels']:
+            _api_cache['ha_panels'][panel_id]['data'] = None
+
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
@@ -96,137 +437,46 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        if self.path == '/api/home-assistant/shed':
-            self.get_shed_status()
+        # Generic HA panel endpoint: /api/home-assistant/panel/{panelId}
+        if self.path.startswith('/api/home-assistant/panel/'):
+            panel_id = self.path.split('/api/home-assistant/panel/')[1]
+            self.get_ha_panel_status(panel_id)
+        # Backward compatibility for old endpoints
+        elif self.path == '/api/home-assistant/shed':
+            self.get_ha_panel_status('shed')
         elif self.path == '/api/home-assistant/home':
-            self.get_home_status()
+            self.get_ha_panel_status('home')
         elif self.path == '/api/pi/status':
             self.get_pi_status()
         elif self.path == '/api/money':
             self.get_money()
         elif self.path == '/api/tv/shows':
             self.get_tv_shows()
+        elif self.path == '/api/settings':
+            self.get_settings()
         else:
             super().do_GET()
 
     def get_tv_shows(self):
-        """Get combined TV shows from Channels DVR and Sequel episodes."""
+        """Get combined TV shows from cache or fetch live."""
         try:
-            shows = []
-            seen_shows = set()
-            disk_info = None
+            with _cache_lock:
+                cached = _api_cache['tv_shows']
 
-            # Fetch DVR status including disk info
-            try:
-                req = urllib.request.Request(f"{CHANNELS_DVR_URL}/dvr")
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    dvr_status = json.loads(response.read().decode('utf-8'))
-                    disk_info = dvr_status.get('disk')
-            except Exception as e:
-                print(f"Error fetching DVR status: {e}")
-
-            # Fetch recent recordings from Channels DVR
-            try:
-                req = urllib.request.Request(f"{CHANNELS_DVR_URL}/dvr/files")
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    files = json.loads(response.read().decode('utf-8'))
-
-                # Sort by CreatedAt descending and get top recordings
-                sorted_files = sorted(files, key=lambda x: x.get('CreatedAt', 0), reverse=True)
-
-                for f in sorted_files[:10]:  # Check more to allow for deduplication
-                    airing = f.get('Airing', {})
-                    title = airing.get('Title', '')
-                    if not title or title.lower() in seen_shows:
-                        continue
-
-                    seen_shows.add(title.lower())
-                    episode_title = airing.get('EpisodeTitle', '')
-                    season = airing.get('SeasonNumber')
-                    episode = airing.get('EpisodeNumber')
-
-                    # For talk shows, use recording date instead of OriginalDate
-                    # (guide data often shows series premiere date for talk shows)
-                    genres = airing.get('Genres', [])
-                    release_date = airing.get('OriginalDate', '')
-                    if 'Talk' in genres:
-                        created_at = f.get('CreatedAt')
-                        if created_at:
-                            release_date = datetime.fromtimestamp(created_at).strftime('%Y-%m-%d')
-
-                    shows.append({
-                        'title': title,
-                        'season': season,
-                        'episodeNumber': episode,
-                        'episodeTitle': episode_title,
-                        'description': airing.get('Summary', ''),
-                        'poster': airing.get('Image', ''),
-                        'releaseDate': release_date,
-                        'source': 'channels'
-                    })
-
-                    if len(shows) >= 3:
-                        break
-            except Exception as e:
-                print(f"Error fetching Channels DVR: {e}")
-
-            # Read Sequel episodes
-            try:
-                sequel_path = os.path.join(DIRECTORY, 'sequelEpisodes.json')
-                config = load_config()
-                tmdb_api_key = config.get('tmdbApiKey', '')
-
-                if os.path.exists(sequel_path):
-                    with open(sequel_path, 'r') as f:
-                        sequel_data = json.load(f)
-
-                    # Handle typo in key name ("episoes" vs "episodes")
-                    episodes = sequel_data.get('episodes', sequel_data.get('episoes', []))
-
-                    for ep in episodes:
-                        title = ep.get('show', '')
-                        if not title or title.lower() in seen_shows:
-                            continue
-
-                        seen_shows.add(title.lower())
-                        season = ep.get('season', '')
-                        episode_num = ep.get('episodeNumber', '')
-                        episode_title = ep.get('episodeTitle', '')
-                        release_date = ep.get('releaseDate', '')
-
-                        # Try to get description from TMDB if we have an API key
-                        description = ''
-                        if tmdb_api_key and season and episode_num:
-                            series_id = get_tmdb_series_id(title, tmdb_api_key)
-                            if series_id:
-                                description = get_tmdb_episode_description(
-                                    series_id, season, episode_num, tmdb_api_key
-                                )
-
-                        shows.append({
-                            'title': title,
-                            'season': season,
-                            'episodeNumber': episode_num,
-                            'episodeTitle': episode_title,
-                            'description': description,
-                            'poster': ep.get('poster', ''),
-                            'releaseDate': release_date,
-                            'source': 'sequel'
-                        })
-            except Exception as e:
-                print(f"Error reading Sequel episodes: {e}")
-
-            # Limit to 6 total shows
-            shows = shows[:6]
-
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                'success': True,
-                'shows': shows,
-                'disk': disk_info
-            }).encode())
+            if cached['data']:
+                response = cached['data'].copy()
+                response['cached_at'] = cached['updated_at']
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+            else:
+                # Fallback to live fetch if cache is empty
+                data = fetch_tv_shows_data()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
@@ -259,146 +509,85 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
     def get_pi_status(self):
-        """Get Pi UPS status, system stats, and recent power outages."""
+        """Get Pi UPS status from cache or fetch live."""
         try:
-            results = {}
+            with _cache_lock:
+                cached = _api_cache['pi_status']
 
-            def fetch_ups():
-                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/status")
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    return json.loads(response.read().decode('utf-8'))
-
-            def fetch_system():
-                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/system")
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    return json.loads(response.read().decode('utf-8'))
-
-            def fetch_healthcheck():
-                req = urllib.request.Request(HEALTHCHECKS_BADGE_URL)
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    return json.loads(response.read().decode('utf-8'))
-
-            def fetch_outages():
-                req = urllib.request.Request(f"{PI_MONITOR_URL}/api/ups/outages")
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    return json.loads(response.read().decode('utf-8'))
-
-            def fetch_backup_healthcheck():
-                req = urllib.request.Request(BACKUP_HEALTHCHECKS_URL)
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    return json.loads(response.read().decode('utf-8'))
-
-            def read_backup_status():
-                with open(BACKUP_STATUS_FILE, 'r') as f:
-                    return json.load(f)
-
-            # Run all fetches in parallel
-            with ThreadPoolExecutor(max_workers=6) as executor:
-                futures = {
-                    executor.submit(fetch_ups): 'ups',
-                    executor.submit(fetch_system): 'system',
-                    executor.submit(fetch_healthcheck): 'healthcheck',
-                    executor.submit(fetch_outages): 'outages',
-                    executor.submit(fetch_backup_healthcheck): 'backup_healthcheck',
-                    executor.submit(read_backup_status): 'backup_status',
-                }
-                for future in as_completed(futures):
-                    key = futures[future]
-                    try:
-                        results[key] = future.result()
-                    except Exception as e:
-                        print(f"Error fetching {key}: {e}")
-                        results[key] = None
-
-            # Handle nested outages structure
-            outages_data = results.get('outages')
-            outages = outages_data.get('outages', []) if isinstance(outages_data, dict) else (outages_data or [])
-
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                'success': True,
-                'ups': results.get('ups'),
-                'system': results.get('system'),
-                'healthcheck': results.get('healthcheck'),
-                'outages': outages,
-                'backup_healthcheck': results.get('backup_healthcheck'),
-                'backup_status': results.get('backup_status')
-            }).encode())
+            if cached['data']:
+                response = cached['data'].copy()
+                response['cached_at'] = cached['updated_at']
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+            else:
+                # Fallback to live fetch if cache is empty
+                data = fetch_pi_status_data()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
-    def get_shed_status(self):
-        """Get all shed-related Home Assistant states."""
+    def get_ha_panel_status(self, panel_id):
+        """Get Home Assistant states from cache or fetch live."""
         try:
-            entities = [
-                'sensor.temperature_sensor_2',
-                'input_boolean.working_from_home',
-                'climate.shed_thermostat',
-                'light.smart_rgb_bulb_2208114772038152050448e1e9a17678',
-                'light.govee_h617a_501b',
-            ]
-            states = {}
+            with _cache_lock:
+                cached = _api_cache['ha_panels'].get(panel_id, {'data': None, 'updated_at': None})
 
-            # Fetch all entities in parallel
-            def fetch_entity(entity):
-                return entity, ha_request('GET', f'states/{entity}')
-
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {executor.submit(fetch_entity, e): e for e in entities}
-                for future in as_completed(futures):
-                    entity, state = future.result()
-                    states[entity] = state
-
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'states': states}).encode())
-        except urllib.error.HTTPError as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': False, 'error': f'HTTP {e.code}: {e.reason}'}).encode())
+            if cached['data']:
+                response = cached['data'].copy()
+                response['cached_at'] = cached['updated_at']
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+            else:
+                # Fallback to live fetch if cache is empty
+                data = fetch_ha_panel_data(panel_id)
+                if not data.get('success', True):
+                    self.send_response(404)
+                else:
+                    self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
-    def get_home_status(self):
-        """Get home-related Home Assistant states (Ecobee, locks, door sensors)."""
+    def get_settings(self):
+        """Get current settings."""
         try:
-            entities = [
-                'climate.my_ecobee',
-                'lock.back_door_lock',
-                'binary_sensor.shed_door_sensor',  # Shed door sensor
-                'binary_sensor.contact_sensor',    # Garage door sensor
-            ]
-            states = {}
-
-            # Fetch all entities in parallel
-            def fetch_entity(entity):
-                return entity, ha_request('GET', f'states/{entity}')
-
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = {executor.submit(fetch_entity, e): e for e in entities}
-                for future in as_completed(futures):
-                    entity, state = future.result()
-                    states[entity] = state
-
+            settings = load_settings()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'states': states}).encode())
-        except urllib.error.HTTPError as e:
+            self.wfile.write(json.dumps({'success': True, 'settings': settings}).encode())
+        except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': False, 'error': f'HTTP {e.code}: {e.reason}'}).encode())
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def post_settings(self):
+        """Save updated settings."""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            new_settings = json.loads(post_data.decode('utf-8'))
+            save_settings(new_settings)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'message': 'Settings saved'}).encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
@@ -406,8 +595,15 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
     def do_POST(self):
-        if self.path == '/api/refresh-todos':
-            self.refresh_todos()
+        # Generic refresh endpoint: /api/refresh/{shortcutId}
+        if self.path.startswith('/api/refresh/'):
+            shortcut_id = self.path.split('/api/refresh/')[1]
+            self.run_refresh_shortcut(shortcut_id)
+        # Backward compatibility: map old endpoints to new system
+        elif self.path == '/api/refresh-todos':
+            self.run_refresh_shortcut('tasks')
+        elif self.path == '/api/refresh-money':
+            self.run_refresh_shortcut('bills')
         elif self.path == '/api/refresh-summary':
             self.refresh_summary()
         elif self.path == '/api/home-assistant/scene/heat_shed_in_morning':
@@ -422,25 +618,63 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.toggle_light('light.smart_rgb_bulb_2208114772038152050448e1e9a17678')
         elif self.path == '/api/home-assistant/toggle/shed_shelf_light':
             self.toggle_light('light.govee_h617a_501b')
-        elif self.path == '/api/refresh-money':
-            self.refresh_money()
+        elif self.path == '/api/settings':
+            self.post_settings()
         else:
             self.send_error(404, 'Not Found')
 
-    def refresh_money(self):
+    def run_refresh_shortcut(self, shortcut_id):
+        """Run a refresh shortcut via SSH based on settings configuration."""
         try:
+            settings = load_settings()
+            refresh_config = settings.get('refreshCommands', {})
+            ssh_config = refresh_config.get('ssh', {})
+            shortcuts = refresh_config.get('shortcuts', {})
+
+            # Check if shortcut exists and is enabled
+            shortcut_config = shortcuts.get(shortcut_id)
+            if not shortcut_config:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': f'Unknown shortcut: {shortcut_id}'}).encode())
+                return
+
+            if not shortcut_config.get('enabled', False):
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': f'Shortcut {shortcut_id} is not enabled'}).encode())
+                return
+
+            shortcut_name = shortcut_config.get('shortcutName', '')
+            if not shortcut_name:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': f'No shortcut name configured for {shortcut_id}'}).encode())
+                return
+
+            # Build SSH command from settings
+            ssh_host = ssh_config.get('host', 'toms-mac-mini.local')
+            ssh_user = ssh_config.get('user', 'tomrobertson')
+            ssh_timeout = ssh_config.get('timeout', 30)
+
+            ssh_command = f'{ssh_user}@{ssh_host}'
+            shortcuts_command = f'shortcuts run "{shortcut_name}"'
+
             result = subprocess.run(
-                ['ssh', 'tomrobertson@toms-mac-mini.local', 'shortcuts run "dailyMoney"'],
+                ['ssh', ssh_command, shortcuts_command],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=ssh_timeout
             )
 
             if result.returncode == 0:
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'message': 'Money refreshed'}).encode())
+                self.wfile.write(json.dumps({'success': True, 'message': f'{shortcut_id} refreshed via {shortcut_name}'}).encode())
             else:
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
@@ -461,6 +695,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         """Activate a Home Assistant scene."""
         try:
             ha_request('POST', 'services/scene/turn_on', {'entity_id': scene_id})
+            invalidate_ha_cache()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -475,6 +710,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         """Toggle an input_boolean."""
         try:
             ha_request('POST', 'services/input_boolean/toggle', {'entity_id': entity_id})
+            invalidate_ha_cache()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -489,6 +725,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         """Toggle a light on/off."""
         try:
             ha_request('POST', 'services/light/toggle', {'entity_id': entity_id})
+            invalidate_ha_cache()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -514,6 +751,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 ha_request('POST', 'services/lock/lock', {'entity_id': entity_id})
                 new_state = 'locked'
 
+            invalidate_ha_cache()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -557,37 +795,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
-    def refresh_todos(self):
-        try:
-            result = subprocess.run(
-                ['ssh', 'tomrobertson@toms-mac-mini.local', 'shortcuts run "Things Today"'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-
-            if result.returncode == 0:
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'message': 'Todos refreshed'}).encode())
-            else:
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': False, 'error': result.stderr}).encode())
-        except subprocess.TimeoutExpired:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': False, 'error': 'SSH timeout'}).encode())
-        except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
-
 if __name__ == '__main__':
+    # Populate cache before starting server
+    print("Populating initial cache...")
+    refresh_all_caches()
+
+    # Start background cache refresh thread
+    cache_thread = threading.Thread(target=cache_refresh_loop, daemon=True)
+    cache_thread.start()
+    print(f"Cache refresh thread started (TTL: {CACHE_TTL}s)")
+
     with http.server.HTTPServer(('', PORT), DashboardHandler) as httpd:
         print(f'Dashboard server running at http://localhost:{PORT}')
         httpd.serve_forever()

@@ -1,0 +1,187 @@
+{
+  "version": 2,
+  "panels": {
+    "weather": {
+      "visible": true
+    },
+    "schedule": {
+      "visible": true
+    },
+    "tasks": {
+      "visible": true
+    },
+    "shed": {
+      "visible": true
+    },
+    "home": {
+      "visible": true
+    },
+    "piStatus": {
+      "visible": true
+    },
+    "bills": {
+      "visible": true
+    },
+    "readLater": {
+      "visible": true
+    },
+    "wisdom": {
+      "visible": true
+    },
+    "tvShows": {
+      "visible": true
+    },
+    "anybox": {
+      "visible": true
+    }
+  },
+  "homeAssistant": {
+    "url": "http://172.17.0.1:8123",
+    "panels": {
+      "shed": {
+        "name": "Shed",
+        "visible": true,
+        "entities": [
+          {
+            "entityId": "sensor.temperature_sensor_2",
+            "displayName": "Temperature",
+            "type": "sensor",
+            "unit": "\u00b0C"
+          },
+          {
+            "entityId": "input_boolean.working_from_home",
+            "displayName": "WFH",
+            "type": "toggle"
+          },
+          {
+            "entityId": "climate.shed_thermostat",
+            "displayName": "Thermostat",
+            "type": "climate"
+          },
+          {
+            "entityId": "light.smart_rgb_bulb_2208114772038152050448e1e9a17678",
+            "displayName": "Desk Lamp",
+            "type": "light"
+          },
+          {
+            "entityId": "light.govee_h617a_501b",
+            "displayName": "Shelf Light",
+            "type": "light"
+          }
+        ],
+        "scenes": [
+          {
+            "entityId": "scene.heat_shed_in_morning",
+            "name": "Heat Shed"
+          },
+          {
+            "entityId": "scene.shed_unoccupied",
+            "name": "Turn Off"
+          }
+        ]
+      },
+      "home": {
+        "name": "Home",
+        "visible": true,
+        "entities": [
+          {
+            "entityId": "climate.my_ecobee",
+            "displayName": "Ecobee",
+            "type": "climate"
+          },
+          {
+            "entityId": "lock.back_door_lock",
+            "displayName": "Back Door",
+            "type": "lock"
+          },
+          {
+            "entityId": "binary_sensor.shed_door_sensor",
+            "displayName": "Shed Door",
+            "type": "door"
+          },
+          {
+            "entityId": "binary_sensor.contact_sensor",
+            "displayName": "Garage Door",
+            "type": "door"
+          }
+        ],
+        "scenes": []
+      }
+    }
+  },
+  "apiUrls": {
+    "channelsDvr": "http://100.127.232.39:8089",
+    "piMonitor": "http://100.125.128.51:5001"
+  },
+  "refreshIntervals": {
+    "autoRefresh": 300000
+  },
+  "refreshCommands": {
+    "ssh": {
+      "host": "toms-mac-mini.local",
+      "user": "tomrobertson",
+      "timeout": 30
+    },
+    "shortcuts": {
+      "tasks": {
+        "enabled": true,
+        "shortcutName": "Things Today",
+        "description": "Sync tasks from Things app"
+      },
+      "bills": {
+        "enabled": true,
+        "shortcutName": "dailyMoney",
+        "description": "Fetch upcoming bills"
+      },
+      "calendar": {
+        "enabled": false,
+        "shortcutName": "daily calendar",
+        "description": "Sync calendar events"
+      },
+      "anybox": {
+        "enabled": true,
+        "shortcutName": "Anybox Random 2",
+        "description": "Export links from Anybox"
+      },
+      "sequel": {
+        "enabled": true,
+        "shortcutName": "New Episodes Daily",
+        "description": "Fetch upcoming TV episodes"
+      },
+      "goodlinks": {
+        "enabled": true,
+        "shortcutName": "GoodLinks Recent",
+        "description": "Export read later articles"
+      }
+    }
+  },
+  "aiPrompts": {
+    "activePersona": "merlin-mann",
+    "activeTemplate": "default",
+    "personas": {
+      "picard": {
+        "name": "Captain Picard",
+        "description": "Star Trek captain delivering daily briefings",
+        "systemPrompt": "You are Captain Jean-Luc Picard of the USS Enterprise. Deliver the daily briefing with your characteristic eloquence, authority, and wisdom. Use Picard's distinctive speech patterns - measured, thoughtful, and occasionally philosophical. You may include subtle references like 'Make it so', 'Engage', or 'Tea, Earl Grey, Hot' when appropriate, but don't overdo it. Maintain your dignified composure while being warm and encouraging."
+      },
+      "merlin-mann": {
+        "name": "Merlin Mann",
+        "description": "Venerable producer guru",
+        "systemPrompt": "Merlin Mann has a distinctive personality marked by intellectual honesty, self-deprecating humor, and a kind of performative curmudgeonliness that\u2019s actually quite warm underneath. He\u2019s deeply thoughtful about productivity and creativity while being openly skeptical of productivity culture itself - there\u2019s a fundamental tension he explores between wanting to get things done and questioning whether the things are worth doing.\nHis writing style is conversational and digressive, often circling around a point rather than marching straight toward it. He loves parentheticals, asides, and meta-commentary about what he\u2019s writing as he\u2019s writing it. There\u2019s a strong oral quality to his prose - you can hear his voice. He frequently uses:\n\t\u2219\tSelf-interruption and course-correction mid-thought\n\t\u2219\tCasual profanity for emphasis (not gratuitous, but deliberate)\n\t\u2219\tPop culture references, especially to older TV, music, and film\n\t\u2219\tLists and numbered items, but in a casual way\n\t\u2219\tQuestions directed at the reader or himself\n\t\u2219\tA mix of high and low diction - academic language butting up against slang\nHe\u2019s suspicious of bullshit and pretension, particularly in tech and productivity circles, but he\u2019s also genuinely enthusiastic about things he loves. There\u2019s often a subtext of \u201cwe\u2019re all struggling with this together\u201d rather than \u201clet me tell you how it is.\u201d He takes ideas seriously while maintaining skepticism about whether any system or framework can actually save you from yourself.\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+      }
+    },
+    "templates": {
+      "default": {
+        "name": "Full Briefing",
+        "description": "Complete daily briefing with all data points",
+        "introPrompt": "Based on the following data from my dashboard for {date}, give me a friendly 2-3 sentence summary.\n\nDashboard Data:\n{data}\n\n{rules}\n\nIMPORTANT: Do NOT start with any greeting like \"Good morning\" or \"Good afternoon\" - the dashboard already shows a greeting. Just dive straight into the briefing.\n\nKeep it concise - 2-3 sentences max.\n\nIf you see \u201cWFH\u201d on my calendar the next day day it means I should heat up the shed tomorrow! If I\u2019m the office I should make sure to flip the WFH toggle on home assistant off so I don\u2019t heat up the shed too much."
+      }
+    },
+    "rules": {
+      "default": "CALENDAR EVENTS (next 24 hours):\n- The calendar_events list contains events for the next 24 hours, which may include both today and tomorrow\n- Parse the \"start\" field (e.g., \"Dec 30, 2025 at 9:00 AM\") to determine if each event is today or tomorrow\n- If is_evening is TRUE (after 5pm), focus more on tomorrow's events as a \"preview of tomorrow\"\n- In the evening, lead with tomorrow's schedule (e.g., \"Tomorrow you have...\" or \"Looking ahead to tomorrow...\")\n- During the day, focus on today's remaining events\n\nInclude in your summary:\n- Current weather (temperature, conditions)\n- Tomorrow's weather forecast (from tomorrow_weather field: high/low temps and conditions) - mention briefly, especially if notably different from today\n- Calendar events (today's events during the day, tomorrow's preview in the evening)\n- My pending tasks from Things (what needs to be done)\n- If there are interesting saved links in Anybox, briefly mention one worth checking out\n- Any upcoming bills due in the next 7 days (mention amount and due date)\n\nANYBOX STATS (reading list):\n- Check anybox_stats for total links saved, links added in the last 7 days, and untagged count\n- If untagged count is high (10+), you might gently suggest organizing some links\n- If added_last_7_days is notably high or low, you can mention it casually (e.g., \"You've been saving lots of articles lately!\")\n- Don't always mention these stats - only if there's something notable\n\nTV SHOWS (upcoming_tv_shows):\n- Check upcoming_tv_shows for new episodes releasing soon\n- If there's an episode releasing TODAY, mention it as something to look forward to (e.g., \"New episode of [Show] drops today!\")\n- If is_evening is TRUE and there's a show releasing today, it's a great evening activity suggestion\n- Don't list multiple shows - just highlight one if it's releasing today or tomorrow\n\nUPCOMING BILLS/MONEY:\n- Check the money_and_bills field for any upcoming bills or financial info\n- If there are upcoming bills or payments due soon, mention them briefly\n- If no relevant financial info, no need to mention it\n\nSHED HEATING (check is_workday_hours and is_evening booleans in the data):\n- The shed is my home office where I work from home\n- IMPORTANT: When mentioning temperature, use the EXACT value from shed.temperature (e.g., if it says \"1.9\", say \"1.9\u00b0C\" - never round!)\n- If is_workday_hours is TRUE:\n  \u2192 If shed.temperature is below 15 AND shed.thermostat_status is \"off\", mention the exact temp and suggest turning on heat\n  \u2192 If shed is already heating or temp >= 15\u00b0C, no need to mention\n- If is_workday_hours is FALSE:\n  \u2192 Do NOT suggest turning on the shed heat - the workday is done\n  \u2192 BUT if is_evening is TRUE and shed.thermostat_status is \"heat\", suggest turning it off to save energy\n- Skip shed entirely if calendar shows I'm at the office\n\nWORKING FROM HOME TOGGLE (shed.working_from_home - IMPORTANT EVENING CHECK):\n- The \"Working From Home\" (WFH) toggle controls whether the shed will automatically pre-heat in the morning\n- If WFH is \"on\", the shed heater will turn on automatically to warm up before work\n- If WFH is \"off\", the shed stays cold (appropriate for office days)\n\n\u26a0\ufe0f EVENING REMINDER (if is_evening is TRUE, this is important!):\n1. Look at tomorrow's calendar events to determine work location:\n   - Look for events with \"office\" in the title/calendar name, or work meetings at external locations\n   - If you see office-related events tomorrow \u2192 I'll be at the office \u2192 WFH should be OFF\n   - If tomorrow looks like a home day (no office events, or events mentioning \"home\"/\"remote\") \u2192 WFH should be ON\n2. Compare tomorrow's expected location with current shed.working_from_home state:\n   - If WFH is \"on\" but tomorrow I should be at the office \u2192 remind me to turn it OFF\n   - If WFH is \"off\" but tomorrow I'll be working from home \u2192 remind me to turn it ON so the shed pre-heats\n   - If the toggle is already set correctly for tomorrow \u2192 no need to mention it\n3. Phrase it helpfully, e.g.:\n   - \"Tomorrow you're in the office - consider turning off the WFH toggle so the shed doesn't heat unnecessarily.\"\n   - \"You're working from home tomorrow - make sure WFH is enabled so your shed is warm in the morning.\"\n\nPI UPS STATUS:\n- If there was a recent power outage (in the last 24 hours), mention it (e.g., \"There was a power blip yesterday evening\")\n- If currently running on battery power (on_ac_power is false), definitely mention this - it's important\n- If battery_percent is below 50%, mention the low battery level\n- Otherwise, no need to mention the Pi/UPS status - it's just background info\n\nHOME STATUS (IMPORTANT - check for warnings):\n- Check the \"home\" object for door and lock states\n- \u26a0\ufe0f PRIORITY WARNING: If back_door_lock is \"unlocked\", ALWAYS mention this prominently - it's a security concern!\n- \u26a0\ufe0f PRIORITY WARNING: If shed_door is \"open\" or garage_door is \"open\", mention it - especially if it's evening or overnight\n- If everything is locked and closed, no need to mention home status\n- Only mention the ecobee if hvac_action is notable (heating/cooling actively running)\n\nBACKUP STATUS:\n- Check the \"backup\" object for backup health\n- If healthcheck is not \"up\" or last_backup has failed_jobs, mention it as a concern\n- If backups are healthy, no need to mention them\n\nREAD LATER (from GoodLinks):\n- Check read_later for interesting saved articles\n- If is_evening is TRUE and there are read_later items, you might casually suggest one as relaxing evening reading\n- Don't always mention read later - only if it fits naturally and there's something interesting with a good summary\n\nDAILY WISDOM (from Merlin Mann's Wisdom Project):\n- Check current_wisdom for today's wisdom quote\n- Occasionally weave the wisdom into your briefing naturally - perhaps as a philosophical observation that relates to the day ahead\n- Don't force it - only reference the wisdom if it genuinely connects to something in the briefing (e.g., a busy day might connect to wisdom about priorities)\n- You might end with the wisdom if it provides fitting closure, or use it as a transition\n- Examples of natural integration:\n  - \"As a certain wise soul reminds us: '[wisdom quote]' - perhaps something to consider as you tackle today's tasks.\"\n  - \"Speaking of which, I'm reminded: '[wisdom quote]'\"\n- Don't mention it's from Merlin Mann - just present it as wisdom\n- Skip the wisdom entirely if it doesn't fit naturally with the day's content\n\n\u26a0\ufe0f WARNING STATE PRIORITY:\nThe following should ALWAYS be mentioned prominently if they occur:\n1. Unlocked back door (security risk)\n2. Open doors (shed/garage) especially at night\n3. Pi running on battery (power issue)\n4. Failed backups\n5. Low UPS battery\nThese are \"yellow alert\" situations that need attention!"
+    }
+  },
+  "theme": {
+    "preference": "default"
+  }
+}
