@@ -1615,18 +1615,20 @@
       }
     }
 
-    async function fetchWeather(lat, lon, apiKey) {
+    async function fetchWeather(lat, lon) {
       try {
-        const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`);
+        // Use backend proxy to keep API key secure
+        const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
         return await response.json();
       } catch (error) {
         return null;
       }
     }
 
-    async function fetchForecast(lat, lon, apiKey) {
+    async function fetchForecast(lat, lon) {
       try {
-        const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`);
+        // Use backend proxy to keep API key secure
+        const response = await fetch(`/api/forecast?lat=${lat}&lon=${lon}`);
         return await response.json();
       } catch (error) {
         return null;
@@ -1687,20 +1689,19 @@
     }
 
     async function loadWeather() {
-      const config = await loadConfig();
       const location = await loadLocation();
-      if (!config || !config.openWeatherApiKey) {
-        document.getElementById('weather-container').innerHTML = '<div class="panel-empty">Missing API key</div>';
-        return;
-      }
       if (!location) {
         document.getElementById('weather-container').innerHTML = '<div class="panel-empty">Unable to load location</div>';
         return;
       }
       const [weather, forecast] = await Promise.all([
-        fetchWeather(location.lat, location.long, config.openWeatherApiKey),
-        fetchForecast(location.lat, location.long, config.openWeatherApiKey)
+        fetchWeather(location.lat, location.long),
+        fetchForecast(location.lat, location.long)
       ]);
+      if (!weather || weather.error) {
+        document.getElementById('weather-container').innerHTML = '<div class="panel-empty">Unable to load weather</div>';
+        return;
+      }
       renderWeather(location, weather, forecast);
     }
 
@@ -2311,10 +2312,259 @@
       }
     }
 
+    // =========================================================================
+    // API Key Management
+    // =========================================================================
+
+    let currentConfig = {};
+
+    async function loadConfigForSettings() {
+      try {
+        const response = await fetch('/api/config');
+        const result = await response.json();
+        if (result.success) {
+          currentConfig = result.config;
+          populateApiKeysForm(result.config);
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    }
+
+    function populateApiKeysForm(config) {
+      document.getElementById('config-name').value = config.name || '';
+
+      updateKeyStatus('openweather', config.hasOpenWeatherKey, config.openWeatherApiKeyMasked);
+      updateKeyStatus('openai', config.hasOpenaiKey, config.openaiApiKeyMasked);
+      updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
+      updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
+    }
+
+    function updateKeyStatus(service, hasKey, maskedKey) {
+      const statusEl = document.getElementById(`status-${service}`);
+      const inputEl = document.getElementById(`key-${service}`);
+
+      if (hasKey) {
+        statusEl.textContent = `CONFIGURED (${maskedKey})`;
+        statusEl.className = 'lcars-api-key-status configured';
+        inputEl.placeholder = 'Enter new key to replace';
+      } else {
+        statusEl.textContent = 'NOT CONFIGURED';
+        statusEl.className = 'lcars-api-key-status';
+        inputEl.placeholder = 'Enter API key';
+      }
+    }
+
+    async function testApiKey(service) {
+      const statusEl = document.getElementById(`status-${service}`);
+      statusEl.textContent = 'TESTING...';
+      statusEl.className = 'lcars-api-key-status testing';
+
+      try {
+        const response = await fetch(`/api/test/${service}`);
+        const result = await response.json();
+
+        if (result.success) {
+          statusEl.textContent = 'CONNECTED';
+          statusEl.className = 'lcars-api-key-status configured';
+          playSound('audio1');
+        } else {
+          statusEl.textContent = result.error || 'TEST FAILED';
+          statusEl.className = 'lcars-api-key-status error';
+          playSound('audio2');
+        }
+      } catch (error) {
+        statusEl.textContent = 'CONNECTION FAILED';
+        statusEl.className = 'lcars-api-key-status error';
+        playSound('audio2');
+      }
+    }
+
+    async function saveApiKeys() {
+      const updates = {};
+
+      const name = document.getElementById('config-name').value;
+      const openweatherKey = document.getElementById('key-openweather').value;
+      const openaiKey = document.getElementById('key-openai').value;
+      const haKey = document.getElementById('key-homeassistant').value;
+      const tmdbKey = document.getElementById('key-tmdb').value;
+
+      if (name) updates.name = name;
+      if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
+      if (openaiKey) updates.openaiApiKey = openaiKey;
+      if (haKey) updates.homeAssistantApiKey = haKey;
+      if (tmdbKey) updates.tmdbApiKey = tmdbKey;
+
+      if (Object.keys(updates).length === 0) return true;
+
+      try {
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          document.getElementById('key-openweather').value = '';
+          document.getElementById('key-openai').value = '';
+          document.getElementById('key-homeassistant').value = '';
+          document.getElementById('key-tmdb').value = '';
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Error saving API keys:', error);
+        return false;
+      }
+    }
+
+    // =========================================================================
+    // Home Assistant Panel Management
+    // =========================================================================
+
+    function addHaPanel() {
+      const name = prompt('Enter panel name (e.g., "Living Room"):');
+      if (!name) return;
+
+      const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (currentSettings?.homeAssistant?.panels?.[id]) {
+        alert('A panel with this ID already exists');
+        return;
+      }
+
+      if (!currentSettings.homeAssistant) currentSettings.homeAssistant = {};
+      if (!currentSettings.homeAssistant.panels) currentSettings.homeAssistant.panels = {};
+
+      currentSettings.homeAssistant.panels[id] = {
+        name: name,
+        visible: true,
+        entities: [],
+        scenes: []
+      };
+      playSound('audio1');
+      populateSettingsForm(currentSettings);
+    }
+
+    function editHaPanel(id) {
+      const panel = currentSettings?.homeAssistant?.panels?.[id];
+      if (!panel) return;
+
+      const name = prompt('Edit panel name:', panel.name);
+      if (!name) return;
+
+      panel.name = name;
+      playSound('audio1');
+      populateSettingsForm(currentSettings);
+    }
+
+    function deleteHaPanel(id) {
+      if (!confirm(`Delete panel "${currentSettings.homeAssistant.panels[id]?.name}"?`)) return;
+      delete currentSettings.homeAssistant.panels[id];
+      playSound('audio2');
+      populateSettingsForm(currentSettings);
+    }
+
+    function addHaEntity(panelId) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel) return;
+
+      const entityId = prompt('Enter Home Assistant entity ID (e.g., sensor.temperature):');
+      if (!entityId) return;
+
+      const displayName = prompt('Enter display name (e.g., "Temperature"):');
+      if (!displayName) return;
+
+      const type = prompt('Enter entity type (sensor, toggle, climate, lock, door, light):') || 'sensor';
+
+      if (!panel.entities) panel.entities = [];
+      panel.entities.push({ entityId, displayName, type });
+      playSound('audio1');
+      populateSettingsForm(currentSettings);
+    }
+
+    function removeHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities) return;
+
+      panel.entities.splice(entityIndex, 1);
+      playSound('audio2');
+      populateSettingsForm(currentSettings);
+    }
+
+    function editHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities || !panel.entities[entityIndex]) return;
+
+      const entity = panel.entities[entityIndex];
+      const row = document.querySelector(`[data-entity-edit="${panelId}-${entityIndex}"]`);
+      if (!row) return;
+
+      // Replace row with edit form
+      row.innerHTML = `
+        <div class="lcars-entity-edit-form">
+          <div class="lcars-edit-row">
+            <label>Name</label>
+            <input type="text" id="edit-name-${panelId}-${entityIndex}" value="${entity.displayName || ''}" placeholder="Display Name">
+          </div>
+          <div class="lcars-edit-row">
+            <label>Entity ID</label>
+            <input type="text" id="edit-id-${panelId}-${entityIndex}" value="${entity.entityId || ''}" placeholder="sensor.example">
+          </div>
+          <div class="lcars-edit-row">
+            <label>Type</label>
+            <select id="edit-type-${panelId}-${entityIndex}">
+              <option value="sensor" ${entity.type === 'sensor' ? 'selected' : ''}>sensor</option>
+              <option value="toggle" ${entity.type === 'toggle' ? 'selected' : ''}>toggle</option>
+              <option value="climate" ${entity.type === 'climate' ? 'selected' : ''}>climate</option>
+              <option value="lock" ${entity.type === 'lock' ? 'selected' : ''}>lock</option>
+              <option value="door" ${entity.type === 'door' ? 'selected' : ''}>door</option>
+              <option value="light" ${entity.type === 'light' ? 'selected' : ''}>light</option>
+            </select>
+          </div>
+          <div class="lcars-edit-row">
+            <label>Unit</label>
+            <input type="text" id="edit-unit-${panelId}-${entityIndex}" value="${entity.unit || ''}" placeholder="°C, %, etc">
+          </div>
+          <div class="lcars-edit-actions">
+            <button class="lcars-btn-small" onclick="saveHaEntity('${panelId}', ${entityIndex})">Save</button>
+            <button class="lcars-btn-small secondary" onclick="cancelEditHaEntity()">Cancel</button>
+          </div>
+        </div>
+      `;
+      row.classList.add('editing');
+      document.getElementById(`edit-name-${panelId}-${entityIndex}`).focus();
+    }
+
+    function saveHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities || !panel.entities[entityIndex]) return;
+
+      const name = document.getElementById(`edit-name-${panelId}-${entityIndex}`).value.trim();
+      const entityId = document.getElementById(`edit-id-${panelId}-${entityIndex}`).value.trim();
+      const type = document.getElementById(`edit-type-${panelId}-${entityIndex}`).value;
+      const unit = document.getElementById(`edit-unit-${panelId}-${entityIndex}`).value.trim();
+
+      if (!name || !entityId) {
+        alert('Name and Entity ID are required');
+        return;
+      }
+
+      panel.entities[entityIndex] = { entityId, displayName: name, type, unit: unit || undefined };
+      playSound('audio1');
+      populateSettingsForm(currentSettings);
+    }
+
+    function cancelEditHaEntity() {
+      playSound('audio2');
+      populateSettingsForm(currentSettings);
+    }
+
     function openSettings() {
       const overlay = document.getElementById('settings-overlay');
       overlay.classList.add('visible');
       populateSettingsForm(currentSettings);
+      loadConfigForSettings();
       document.addEventListener('keydown', handleSettingsEscape);
     }
 
@@ -2363,12 +2613,49 @@
         `;
       }).join('');
 
-      // Populate entity IDs
-      const entities = settings.homeAssistant?.entities || {};
-      document.getElementById('entity-ecobee').value = entities.ecobee || '';
-      document.getElementById('entity-back-door-lock').value = entities.backDoorLock || '';
-      document.getElementById('entity-shed-door').value = entities.shedDoorSensor || '';
-      document.getElementById('entity-garage-door').value = entities.garageDoorSensor || '';
+      // Populate HA Panels (dynamic v2 format)
+      const haPanels = settings.homeAssistant?.panels || {};
+      const haPanelsList = document.getElementById('ha-panels-list');
+
+      if (Object.keys(haPanels).length === 0) {
+        haPanelsList.innerHTML = '<p class="lcars-no-entities">NO PANELS CONFIGURED</p>';
+      } else {
+        haPanelsList.innerHTML = Object.entries(haPanels).map(([id, panel]) => {
+          const entitiesHtml = (panel.entities || []).map((e, idx) =>
+            `<div class="lcars-ha-entity-row" data-entity-edit="${id}-${idx}">
+              <div class="lcars-entity-info">
+                <span class="lcars-entity-name">${e.displayName}</span>
+                <span class="lcars-entity-id">${e.entityId}</span>
+              </div>
+              <span class="lcars-entity-type">${e.type}</span>
+              <div class="lcars-entity-actions">
+                <button class="lcars-icon-btn" onclick="editHaEntity('${id}', ${idx})" title="Edit">✎</button>
+                <button class="lcars-icon-btn" onclick="removeHaEntity('${id}', ${idx})" title="Remove">×</button>
+              </div>
+            </div>`
+          ).join('');
+
+          return `
+            <div class="lcars-ha-panel-item" data-panel-id="${id}">
+              <div class="lcars-ha-panel-header">
+                <label class="lcars-toggle-item" style="margin: 0;">
+                  <span>${panel.name || id}</span>
+                  <input type="checkbox" data-ha-panel-toggle="${id}" ${panel.visible !== false ? 'checked' : ''}>
+                  <span class="lcars-toggle-switch"></span>
+                </label>
+                <div class="lcars-ha-panel-actions">
+                  <button class="lcars-icon-btn" onclick="editHaPanel('${id}')" title="Edit">✎</button>
+                  <button class="lcars-icon-btn" onclick="deleteHaPanel('${id}')" title="Delete">🗑</button>
+                </div>
+              </div>
+              <div class="lcars-ha-entities-list">
+                ${entitiesHtml || '<p class="lcars-no-entities">NO ENTITIES</p>'}
+              </div>
+              <button class="lcars-btn-secondary small" onclick="addHaEntity('${id}')">+ ADD ENTITY</button>
+            </div>
+          `;
+        }).join('');
+      }
 
       // Populate API URLs
       document.getElementById('url-ha').value = settings.homeAssistant?.url || '';
@@ -2383,18 +2670,20 @@
     }
 
     async function saveSettings() {
+      // Save API keys first
+      await saveApiKeys();
+
       const newSettings = {
-        version: currentSettings?.version || 1,
+        version: 2,
         panels: {},
         homeAssistant: {
           url: document.getElementById('url-ha').value,
-          entities: {
-            ecobee: document.getElementById('entity-ecobee').value,
-            backDoorLock: document.getElementById('entity-back-door-lock').value,
-            shedDoorSensor: document.getElementById('entity-shed-door').value,
-            garageDoorSensor: document.getElementById('entity-garage-door').value
-          }
+          panels: currentSettings?.homeAssistant?.panels || {}
         },
+        aiPrompts: currentSettings?.aiPrompts || {
+          summary: "Create a brief, friendly morning briefing based on today's schedule and tasks."
+        },
+        refreshCommands: currentSettings?.refreshCommands || {},
         apiUrls: {
           channelsDvr: document.getElementById('url-channels').value,
           piMonitor: document.getElementById('url-pi').value
@@ -2491,6 +2780,7 @@
       </div>
       <div class="lcars-settings-tabs">
         <button class="lcars-settings-tab active" data-tab="panels" onclick="playSound('audio1'); switchSettingsTab('panels')">PANELS</button>
+        <button class="lcars-settings-tab" data-tab="api-keys" onclick="playSound('audio1'); switchSettingsTab('api-keys')">API KEYS</button>
         <button class="lcars-settings-tab" data-tab="home-assistant" onclick="playSound('audio1'); switchSettingsTab('home-assistant')">HOME ASSISTANT</button>
         <button class="lcars-settings-tab" data-tab="api-urls" onclick="playSound('audio1'); switchSettingsTab('api-urls')">API URLS</button>
         <button class="lcars-settings-tab" data-tab="preferences" onclick="playSound('audio1'); switchSettingsTab('preferences')">PREFERENCES</button>
@@ -2503,25 +2793,68 @@
             <!-- Generated by JS -->
           </div>
         </div>
+        <!-- API Keys Tab -->
+        <div class="lcars-settings-pane" id="settings-pane-api-keys">
+          <div class="lcars-settings-section-title">API KEYS</div>
+          <p class="lcars-settings-help">Configure API keys for external services.</p>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>OPENWEATHERMAP</label>
+              <span class="lcars-api-key-status" id="status-openweather">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-openweather" class="lcars-input" placeholder="Enter API key">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('openweather')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>OPENAI</label>
+              <span class="lcars-api-key-status" id="status-openai">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-openai" class="lcars-input" placeholder="Enter API key">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('openai')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>HOME ASSISTANT</label>
+              <span class="lcars-api-key-status" id="status-homeassistant">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-homeassistant" class="lcars-input" placeholder="Enter long-lived access token">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('homeassistant')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>TMDB</label>
+              <span class="lcars-api-key-status" id="status-tmdb">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-tmdb" class="lcars-input" placeholder="Enter API key">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('tmdb')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-form-group" style="margin-top: 1rem;">
+            <label>DISPLAY NAME</label>
+            <input type="text" id="config-name" class="lcars-input" placeholder="Your name">
+          </div>
+        </div>
         <!-- Home Assistant Tab -->
         <div class="lcars-settings-pane" id="settings-pane-home-assistant">
-          <div class="lcars-settings-section-title">ENTITY IDS</div>
-          <div class="lcars-form-group">
-            <label>ECOBEE THERMOSTAT</label>
-            <input type="text" id="entity-ecobee" class="lcars-input" placeholder="climate.my_ecobee">
+          <div class="lcars-settings-section-title">HA PANELS</div>
+          <p class="lcars-settings-help">Configure Home Assistant panels and their entities.</p>
+          <div class="lcars-ha-panels-list" id="ha-panels-list">
+            <!-- Generated by JS -->
           </div>
-          <div class="lcars-form-group">
-            <label>BACK DOOR LOCK</label>
-            <input type="text" id="entity-back-door-lock" class="lcars-input" placeholder="lock.back_door_lock">
-          </div>
-          <div class="lcars-form-group">
-            <label>SHED DOOR SENSOR</label>
-            <input type="text" id="entity-shed-door" class="lcars-input" placeholder="binary_sensor.shed_door_sensor">
-          </div>
-          <div class="lcars-form-group">
-            <label>GARAGE DOOR SENSOR</label>
-            <input type="text" id="entity-garage-door" class="lcars-input" placeholder="binary_sensor.contact_sensor">
-          </div>
+          <button class="lcars-btn-secondary" onclick="playSound('audio1'); addHaPanel()" style="margin-top: 1rem;">+ ADD PANEL</button>
         </div>
         <!-- API URLs Tab -->
         <div class="lcars-settings-pane" id="settings-pane-api-urls">
@@ -2808,6 +3141,240 @@
     }
     .lcars-btn-secondary:hover {
       background: #444;
+    }
+    .lcars-btn-secondary.small {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+    }
+    .lcars-settings-help {
+      color: #666;
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    /* API Keys styles */
+    .lcars-api-key-item {
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: #111;
+      border-left: 3px solid var(--african-violet);
+    }
+    .lcars-api-key-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .lcars-api-key-header label {
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.85rem;
+    }
+    .lcars-api-key-status {
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      background: #333;
+      color: #666;
+    }
+    .lcars-api-key-status.configured {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+    }
+    .lcars-api-key-status.error {
+      background: rgba(248, 113, 113, 0.15);
+      color: #f87171;
+    }
+    .lcars-api-key-status.testing {
+      background: rgba(250, 204, 21, 0.15);
+      color: #facc15;
+    }
+    .lcars-api-key-input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .lcars-api-key-input-row input {
+      flex: 1;
+    }
+    /* HA Panels styles */
+    .lcars-ha-panels-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .lcars-ha-panel-item {
+      background: #111;
+      border-left: 3px solid var(--bluey);
+      padding: 0.75rem;
+    }
+    .lcars-ha-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .lcars-ha-panel-actions {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .lcars-icon-btn {
+      background: #333;
+      color: var(--butterscotch);
+      border: none;
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .lcars-icon-btn:hover {
+      background: #444;
+    }
+    .lcars-ha-entities-list {
+      margin: 0.5rem 0;
+      background: #0a0a0a;
+      padding: 0.5rem;
+    }
+    .lcars-ha-entity-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      font-size: 0.8rem;
+      border-radius: 4px;
+    }
+    .lcars-entity-actions {
+      display: flex;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .lcars-ha-entity-row:not(:last-child) {
+      border-bottom: 1px solid #222;
+    }
+    .lcars-entity-info {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .lcars-entity-name {
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+      display: block;
+    }
+    .lcars-entity-id {
+      color: #555;
+      font-size: 0.7rem;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lcars-entity-type {
+      color: var(--african-violet);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      background: #222;
+      border-radius: 3px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .lcars-no-entities {
+      color: #444;
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+    /* Inline entity edit form */
+    .lcars-ha-entity-row.editing {
+      background: #1a1a1a;
+      padding: 0.75rem;
+    }
+    .lcars-entity-edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .lcars-edit-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .lcars-edit-row label {
+      color: var(--butterscotch);
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.75rem;
+      width: 60px;
+      flex-shrink: 0;
+    }
+    .lcars-edit-row input,
+    .lcars-edit-row select {
+      flex: 1;
+      background: #000;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      border-radius: 3px;
+    }
+    .lcars-edit-row input:focus,
+    .lcars-edit-row select:focus {
+      border-color: var(--butterscotch);
+      outline: none;
+    }
+    .lcars-edit-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      justify-content: flex-end;
+    }
+    .lcars-btn-small {
+      background: var(--bluey);
+      color: #000;
+      border: none;
+      padding: 0.4rem 0.75rem;
+      font-family: 'Antonio', sans-serif;
+      font-size: 0.8rem;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .lcars-btn-small:hover {
+      filter: brightness(1.1);
+    }
+    .lcars-btn-small.secondary {
+      background: #333;
+      color: #fff;
+    }
+    /* Mobile HA settings */
+    @media (max-width: 600px) {
+      .lcars-ha-panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .lcars-ha-panel-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+      .lcars-icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+      }
+      .lcars-ha-entity-row {
+        padding: 0.75rem 0.5rem;
+      }
+      .lcars-entity-name {
+        font-size: 0.9rem;
+      }
+      .lcars-entity-id {
+        font-size: 0.65rem;
+      }
+      .lcars-btn-secondary.small {
+        width: 100%;
+        padding: 0.75rem;
+      }
     }
   </style>
 
