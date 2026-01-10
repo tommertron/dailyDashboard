@@ -781,11 +781,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     # Connection Test Endpoints
     # =========================================================================
 
-    def test_openweather(self):
+    def test_openweather(self, provided_key=None):
         """Test OpenWeatherMap API key."""
         try:
-            config = load_config()
-            key = config.get('openWeatherApiKey')
+            # Use provided key or fall back to config
+            if provided_key:
+                key = provided_key
+            else:
+                config = load_config()
+                key = config.get('openWeatherApiKey')
+
             if not key:
                 self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
                 return
@@ -974,6 +979,12 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.toggle_light('light.govee_h617a_501b')
         elif self.path == '/api/settings':
             self.post_settings()
+        # Test endpoints with provided key
+        elif self.path == '/api/test/openweather':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8')) if post_data else {}
+            self.test_openweather(provided_key=data.get('key'))
         else:
             self.send_error(404, 'Not Found')
 

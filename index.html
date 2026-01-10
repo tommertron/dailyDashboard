@@ -1474,6 +1474,7 @@
 
     // Settings management
     let currentSettings = null;
+    let currentConfig = null;
     let autoRefreshInterval = null;
 
     const panelNames = {
@@ -2224,15 +2225,188 @@
       populateSettingsForm(currentSettings);
     }
 
+    // Onboarding Wizard
+    let onboardingState = {
+      currentStep: 1,
+      totalSteps: 5,
+      data: {
+        name: '',
+        weatherApiKey: '',
+        openaiApiKey: '',
+        enabledPanels: ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater']
+      }
+    };
+
+    function shouldShowOnboarding() {
+      // Show if first run or no name configured
+      const isFirstRun = currentSettings?.isFirstRun !== false;
+      const hasName = currentConfig?.name && currentConfig.name.trim() !== '';
+      return isFirstRun && !hasName;
+    }
+
+    function openOnboarding() {
+      onboardingState.currentStep = 1;
+      const overlay = document.getElementById('onboarding-overlay');
+      overlay.classList.add('visible');
+      updateOnboardingStep();
+    }
+
+    function closeOnboarding() {
+      document.getElementById('onboarding-overlay').classList.remove('visible');
+    }
+
+    function updateOnboardingStep() {
+      const step = onboardingState.currentStep;
+
+      // Update progress dots
+      document.querySelectorAll('.onboarding-dot').forEach((dot, idx) => {
+        dot.classList.toggle('active', idx + 1 === step);
+        dot.classList.toggle('completed', idx + 1 < step);
+      });
+
+      // Show current step
+      document.querySelectorAll('.onboarding-step').forEach(el => {
+        el.classList.remove('active');
+      });
+      document.getElementById(`onboarding-step-${step}`).classList.add('active');
+
+      // Update buttons
+      document.getElementById('onboarding-back').style.display = step === 1 ? 'none' : 'inline-block';
+      document.getElementById('onboarding-next').textContent = step === onboardingState.totalSteps ? 'Finish' : 'Next';
+    }
+
+    function onboardingNext() {
+      const step = onboardingState.currentStep;
+
+      // Validate and save current step data
+      if (step === 1) {
+        // Welcome - no validation needed
+      } else if (step === 2) {
+        // Name
+        const name = document.getElementById('onboarding-name').value.trim();
+        onboardingState.data.name = name;
+      } else if (step === 3) {
+        // Weather API key
+        const key = document.getElementById('onboarding-weather-key').value.trim();
+        onboardingState.data.weatherApiKey = key;
+      } else if (step === 4) {
+        // Panel selection
+        const panels = [];
+        document.querySelectorAll('.onboarding-panel-check:checked').forEach(cb => {
+          panels.push(cb.value);
+        });
+        onboardingState.data.enabledPanels = panels;
+      } else if (step === 5) {
+        // Final step - save everything
+        saveOnboarding();
+        return;
+      }
+
+      if (onboardingState.currentStep < onboardingState.totalSteps) {
+        onboardingState.currentStep++;
+        updateOnboardingStep();
+      }
+    }
+
+    function onboardingBack() {
+      if (onboardingState.currentStep > 1) {
+        onboardingState.currentStep--;
+        updateOnboardingStep();
+      }
+    }
+
+    async function saveOnboarding() {
+      const data = onboardingState.data;
+
+      // Save config (name and API keys)
+      try {
+        const configPayload = {};
+        if (data.name) configPayload.name = data.name;
+        if (data.weatherApiKey) configPayload.openWeatherApiKey = data.weatherApiKey;
+        if (data.openaiApiKey) configPayload.openaiApiKey = data.openaiApiKey;
+
+        if (Object.keys(configPayload).length > 0) {
+          await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(configPayload)
+          });
+        }
+
+        // Update panel visibility in settings
+        const allPanels = ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater', 'tvShows', 'anybox', 'piStatus', 'shed', 'home'];
+        allPanels.forEach(panel => {
+          if (currentSettings.panels[panel]) {
+            currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
+          }
+        });
+
+        // Mark onboarding complete
+        currentSettings.isFirstRun = false;
+
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentSettings)
+        });
+
+        closeOnboarding();
+
+        // Reload to apply changes
+        window.location.reload();
+      } catch (error) {
+        console.error('Error saving onboarding:', error);
+        alert('Failed to save settings. Please try again.');
+      }
+    }
+
+    async function testOnboardingWeatherKey() {
+      const key = document.getElementById('onboarding-weather-key').value.trim();
+      const status = document.getElementById('onboarding-weather-status');
+
+      if (!key) {
+        status.textContent = '';
+        return;
+      }
+
+      status.textContent = 'Testing...';
+      status.className = 'onboarding-key-status';
+
+      try {
+        const response = await fetch('/api/test/openweather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          status.textContent = 'Connected!';
+          status.className = 'onboarding-key-status success';
+        } else {
+          status.textContent = 'Invalid key';
+          status.className = 'onboarding-key-status error';
+        }
+      } catch (e) {
+        status.textContent = 'Test failed';
+        status.className = 'onboarding-key-status error';
+      }
+    }
+
     // Initialize
     async function init() {
       await loadSettings();
       document.getElementById('date-badge').textContent = formatDate();
 
-      const config = await loadConfig();
-      const name = config?.name || '';
+      currentConfig = await loadConfig();
+      const name = currentConfig?.name || '';
       const greeting = getGreeting();
       document.getElementById('greeting-text').textContent = name ? `${greeting.replace('!', '')}, ${name}!` : greeting;
+
+      // Check if onboarding should be shown
+      if (shouldShowOnboarding()) {
+        openOnboarding();
+      }
 
       loadAiSummary();
       loadWeather();
@@ -2278,6 +2452,11 @@
               <div class="settings-toggle-list" id="panel-toggles">
                 <!-- Generated by JS -->
               </div>
+            </div>
+            <div class="settings-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light);">
+              <h3>Setup</h3>
+              <p class="settings-description">Run the setup wizard again to reconfigure your dashboard.</p>
+              <button class="settings-btn-secondary" onclick="closeSettings(); openOnboarding();">Run Setup Wizard</button>
             </div>
           </div>
           <!-- API Keys Tab -->
@@ -2527,6 +2706,115 @@
       <div class="editor-footer">
         <button class="settings-btn-secondary" onclick="closeTemplateEditor()">Cancel</button>
         <button class="settings-btn-primary" onclick="saveTemplateEditor()">Save Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Onboarding Wizard -->
+  <div class="onboarding-overlay" id="onboarding-overlay">
+    <div class="onboarding-modal">
+      <div class="onboarding-progress">
+        <span class="onboarding-dot active" data-step="1"></span>
+        <span class="onboarding-dot" data-step="2"></span>
+        <span class="onboarding-dot" data-step="3"></span>
+        <span class="onboarding-dot" data-step="4"></span>
+        <span class="onboarding-dot" data-step="5"></span>
+      </div>
+
+      <!-- Step 1: Welcome -->
+      <div class="onboarding-step active" id="onboarding-step-1">
+        <div class="onboarding-icon">👋</div>
+        <h2>Welcome to Daily Dashboard!</h2>
+        <p>Your personal command center for staying organized.</p>
+        <p class="onboarding-subtext">This quick setup will help you get started in just a minute.</p>
+      </div>
+
+      <!-- Step 2: Name -->
+      <div class="onboarding-step" id="onboarding-step-2">
+        <div class="onboarding-icon">👤</div>
+        <h2>What should we call you?</h2>
+        <p>This is used for greetings and AI summaries.</p>
+        <div class="onboarding-input-group">
+          <input type="text" id="onboarding-name" placeholder="Your name" class="onboarding-input">
+        </div>
+      </div>
+
+      <!-- Step 3: Weather API -->
+      <div class="onboarding-step" id="onboarding-step-3">
+        <div class="onboarding-icon">🌤️</div>
+        <h2>Weather Setup</h2>
+        <p>See current weather and tomorrow's forecast.</p>
+        <div class="onboarding-input-group">
+          <input type="text" id="onboarding-weather-key" placeholder="OpenWeatherMap API Key" class="onboarding-input">
+          <button class="onboarding-test-btn" onclick="testOnboardingWeatherKey()">Test</button>
+          <span id="onboarding-weather-status" class="onboarding-key-status"></span>
+        </div>
+        <p class="onboarding-hint">Get a free key at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org/api</a></p>
+        <p class="onboarding-skip-hint">You can skip this and add it later in Settings.</p>
+      </div>
+
+      <!-- Step 4: Panel Selection -->
+      <div class="onboarding-step" id="onboarding-step-4">
+        <div class="onboarding-icon">📊</div>
+        <h2>Choose Your Panels</h2>
+        <p>Select which panels to show. You can change these anytime.</p>
+        <div class="onboarding-panels-grid">
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="weather" checked>
+            <span>Weather</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="schedule" checked>
+            <span>Schedule</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="tasks" checked>
+            <span>Tasks</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="bills" checked>
+            <span>Bills</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="wisdom" checked>
+            <span>Wisdom</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="readLater" checked>
+            <span>Read Later</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="tvShows">
+            <span>TV Shows</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="anybox">
+            <span>Anybox</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 5: Complete -->
+      <div class="onboarding-step" id="onboarding-step-5">
+        <div class="onboarding-icon">🎉</div>
+        <h2>You're All Set!</h2>
+        <p>Your dashboard is ready to use.</p>
+        <div class="onboarding-next-steps">
+          <p><strong>Next steps:</strong></p>
+          <ul>
+            <li>Add events to <code>calendar.json</code> for your schedule</li>
+            <li>Add tasks to <code>todos.json</code> for your task list</li>
+            <li>Check <strong>Settings</strong> for more customization</li>
+          </ul>
+        </div>
+        <p class="onboarding-hint">
+          <a href="https://github.com/tommertron/dailyDashboard#readme" target="_blank">View full documentation</a>
+        </p>
+      </div>
+
+      <div class="onboarding-footer">
+        <button class="onboarding-btn secondary" id="onboarding-back" onclick="onboardingBack()">Back</button>
+        <button class="onboarding-btn primary" id="onboarding-next" onclick="onboardingNext()">Next</button>
       </div>
     </div>
   </div>

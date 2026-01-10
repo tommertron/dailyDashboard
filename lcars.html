@@ -2259,6 +2259,7 @@
 
     // Settings management
     let currentSettings = null;
+    let currentConfig = null;
     let autoRefreshInterval = null;
 
     const panelNames = {
@@ -2729,6 +2730,130 @@
       }
     }
 
+    // Onboarding Wizard
+    let onboardingState = {
+      currentStep: 1,
+      totalSteps: 5,
+      data: {
+        name: '',
+        weatherApiKey: '',
+        enabledPanels: ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater']
+      }
+    };
+
+    function shouldShowOnboarding() {
+      const isFirstRun = currentSettings?.isFirstRun !== false;
+      const hasName = currentConfig?.name && currentConfig.name.trim() !== '';
+      return isFirstRun && !hasName;
+    }
+
+    function openOnboarding() {
+      onboardingState.currentStep = 1;
+      document.getElementById('onboarding-overlay').classList.add('visible');
+      updateOnboardingStep();
+      playSound('audio1');
+    }
+
+    function closeOnboarding() {
+      document.getElementById('onboarding-overlay').classList.remove('visible');
+      playSound('audio2');
+    }
+
+    function updateOnboardingStep() {
+      const step = onboardingState.currentStep;
+      document.querySelectorAll('.lcars-onboarding-dot').forEach((dot, idx) => {
+        dot.classList.toggle('active', idx + 1 === step);
+        dot.classList.toggle('completed', idx + 1 < step);
+      });
+      document.querySelectorAll('.lcars-onboarding-step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`lcars-onboarding-step-${step}`).classList.add('active');
+      document.getElementById('lcars-onboarding-back').style.display = step === 1 ? 'none' : 'inline-block';
+      document.getElementById('lcars-onboarding-next').textContent = step === onboardingState.totalSteps ? 'FINISH' : 'NEXT';
+    }
+
+    function onboardingNext() {
+      const step = onboardingState.currentStep;
+      if (step === 2) {
+        onboardingState.data.name = document.getElementById('lcars-onboarding-name').value.trim();
+      } else if (step === 3) {
+        onboardingState.data.weatherApiKey = document.getElementById('lcars-onboarding-weather-key').value.trim();
+      } else if (step === 4) {
+        const panels = [];
+        document.querySelectorAll('.lcars-onboarding-panel-check:checked').forEach(cb => panels.push(cb.value));
+        onboardingState.data.enabledPanels = panels;
+      } else if (step === 5) {
+        saveOnboarding();
+        return;
+      }
+      if (onboardingState.currentStep < onboardingState.totalSteps) {
+        onboardingState.currentStep++;
+        updateOnboardingStep();
+        playSound('audio1');
+      }
+    }
+
+    function onboardingBack() {
+      if (onboardingState.currentStep > 1) {
+        onboardingState.currentStep--;
+        updateOnboardingStep();
+        playSound('audio2');
+      }
+    }
+
+    async function saveOnboarding() {
+      const data = onboardingState.data;
+      try {
+        const configPayload = {};
+        if (data.name) configPayload.name = data.name;
+        if (data.weatherApiKey) configPayload.openWeatherApiKey = data.weatherApiKey;
+        if (Object.keys(configPayload).length > 0) {
+          await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(configPayload)
+          });
+        }
+        const allPanels = ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater', 'tvShows', 'anybox', 'piStatus', 'shed', 'home'];
+        allPanels.forEach(panel => {
+          if (currentSettings.panels[panel]) {
+            currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
+          }
+        });
+        currentSettings.isFirstRun = false;
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentSettings)
+        });
+        closeOnboarding();
+        window.location.reload();
+      } catch (error) {
+        console.error('Error saving onboarding:', error);
+        alert('Failed to save settings');
+      }
+    }
+
+    async function testOnboardingWeatherKey() {
+      const key = document.getElementById('lcars-onboarding-weather-key').value.trim();
+      const status = document.getElementById('lcars-onboarding-weather-status');
+      if (!key) { status.textContent = ''; return; }
+      status.textContent = 'TESTING...';
+      status.className = 'lcars-onboarding-key-status';
+      try {
+        const response = await fetch('/api/test/openweather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key })
+        });
+        const result = await response.json();
+        status.textContent = result.success ? 'CONNECTED' : 'INVALID';
+        status.className = 'lcars-onboarding-key-status ' + (result.success ? 'success' : 'error');
+      } catch (e) {
+        status.textContent = 'FAILED';
+        status.className = 'lcars-onboarding-key-status error';
+      }
+    }
+
     // Initialize
     async function init() {
       // Load settings first
@@ -2742,10 +2867,15 @@
       setInterval(updateTimeDisplay, 60000);
 
       // Set greeting
-      const config = await loadConfig();
-      const name = config?.name || '';
+      currentConfig = await loadConfig();
+      const name = currentConfig?.name || '';
       const greeting = getGreeting();
       document.getElementById('greeting-text').textContent = name ? `${greeting.replace('!', '')}, ${name}!` : greeting;
+
+      // Check if onboarding should be shown
+      if (shouldShowOnboarding()) {
+        openOnboarding();
+      }
 
       // Update banner with date
       const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase();
@@ -2791,6 +2921,11 @@
           <div class="lcars-settings-section-title">PANEL VISIBILITY</div>
           <div class="lcars-toggle-list" id="panel-toggles">
             <!-- Generated by JS -->
+          </div>
+          <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid #333;">
+            <div class="lcars-settings-section-title">SETUP</div>
+            <p class="lcars-settings-help">Run the setup wizard again to reconfigure.</p>
+            <button class="lcars-btn-secondary" onclick="closeSettings(); openOnboarding();">RUN SETUP WIZARD</button>
           </div>
         </div>
         <!-- API Keys Tab -->
@@ -3376,7 +3511,250 @@
         padding: 0.75rem;
       }
     }
+
+    /* LCARS Onboarding Wizard */
+    .lcars-onboarding-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 3000;
+      padding: 1rem;
+    }
+    .lcars-onboarding-overlay.visible {
+      display: flex;
+    }
+    .lcars-onboarding-modal {
+      background: #111;
+      border: 3px solid var(--butterscotch);
+      border-radius: 20px;
+      max-width: 500px;
+      width: 100%;
+      padding: 2rem;
+      text-align: center;
+    }
+    .lcars-onboarding-progress {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .lcars-onboarding-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #333;
+      transition: all 0.3s;
+    }
+    .lcars-onboarding-dot.active {
+      background: var(--butterscotch);
+      transform: scale(1.3);
+    }
+    .lcars-onboarding-dot.completed {
+      background: var(--bluey);
+    }
+    .lcars-onboarding-step {
+      display: none;
+      min-height: 220px;
+    }
+    .lcars-onboarding-step.active {
+      display: block;
+    }
+    .lcars-onboarding-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .lcars-onboarding-step h2 {
+      font-family: 'Antonio', sans-serif;
+      font-size: 1.5rem;
+      color: var(--butterscotch);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+    }
+    .lcars-onboarding-step p {
+      color: #aaa;
+      margin-bottom: 0.5rem;
+    }
+    .lcars-onboarding-input {
+      width: 100%;
+      max-width: 300px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      background: #000;
+      border: 2px solid #333;
+      color: #fff;
+      border-radius: 5px;
+      text-align: center;
+      margin: 1rem auto;
+      display: block;
+    }
+    .lcars-onboarding-input:focus {
+      outline: none;
+      border-color: var(--butterscotch);
+    }
+    .lcars-onboarding-test-btn {
+      background: var(--bluey);
+      color: #000;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Antonio', sans-serif;
+      margin-top: 0.5rem;
+    }
+    .lcars-onboarding-key-status {
+      display: block;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+      font-family: 'Antonio', sans-serif;
+    }
+    .lcars-onboarding-key-status.success { color: #4ade80; }
+    .lcars-onboarding-key-status.error { color: #f87171; }
+    .lcars-onboarding-hint {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 1rem;
+    }
+    .lcars-onboarding-hint a { color: var(--bluey); }
+    .lcars-onboarding-panels-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin: 1rem 0;
+      text-align: left;
+    }
+    .lcars-onboarding-panel-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: #1a1a1a;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #ccc;
+    }
+    .lcars-onboarding-panel-check {
+      accent-color: var(--butterscotch);
+    }
+    .lcars-onboarding-next-steps {
+      text-align: left;
+      background: #1a1a1a;
+      padding: 1rem;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+    .lcars-onboarding-next-steps ul {
+      margin: 0.5rem 0 0 1.25rem;
+      padding: 0;
+      color: #aaa;
+    }
+    .lcars-onboarding-next-steps code {
+      background: #333;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+    }
+    .lcars-onboarding-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 2px solid #333;
+    }
+    .lcars-onboarding-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      font-family: 'Antonio', sans-serif;
+      text-transform: uppercase;
+    }
+    .lcars-onboarding-btn.primary {
+      background: var(--butterscotch);
+      color: #000;
+    }
+    .lcars-onboarding-btn.secondary {
+      background: #333;
+      color: #aaa;
+    }
   </style>
+
+  <!-- LCARS Onboarding Wizard -->
+  <div class="lcars-onboarding-overlay" id="onboarding-overlay">
+    <div class="lcars-onboarding-modal">
+      <div class="lcars-onboarding-progress">
+        <span class="lcars-onboarding-dot active"></span>
+        <span class="lcars-onboarding-dot"></span>
+        <span class="lcars-onboarding-dot"></span>
+        <span class="lcars-onboarding-dot"></span>
+        <span class="lcars-onboarding-dot"></span>
+      </div>
+
+      <div class="lcars-onboarding-step active" id="lcars-onboarding-step-1">
+        <div class="lcars-onboarding-icon">👋</div>
+        <h2>Welcome to Daily Dashboard</h2>
+        <p>Your personal command center for staying organized.</p>
+        <p style="color:#666; font-size:0.9rem;">This quick setup will get you started in a minute.</p>
+      </div>
+
+      <div class="lcars-onboarding-step" id="lcars-onboarding-step-2">
+        <div class="lcars-onboarding-icon">👤</div>
+        <h2>What should we call you?</h2>
+        <p>Used for greetings and AI summaries.</p>
+        <input type="text" id="lcars-onboarding-name" class="lcars-onboarding-input" placeholder="Your name">
+      </div>
+
+      <div class="lcars-onboarding-step" id="lcars-onboarding-step-3">
+        <div class="lcars-onboarding-icon">🌤️</div>
+        <h2>Weather Setup</h2>
+        <p>See current weather and tomorrow's forecast.</p>
+        <input type="text" id="lcars-onboarding-weather-key" class="lcars-onboarding-input" placeholder="OpenWeatherMap API Key">
+        <button class="lcars-onboarding-test-btn" onclick="testOnboardingWeatherKey()">TEST KEY</button>
+        <span id="lcars-onboarding-weather-status" class="lcars-onboarding-key-status"></span>
+        <p class="lcars-onboarding-hint">Get a free key at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org/api</a></p>
+      </div>
+
+      <div class="lcars-onboarding-step" id="lcars-onboarding-step-4">
+        <div class="lcars-onboarding-icon">📊</div>
+        <h2>Choose Your Panels</h2>
+        <p>Select which panels to show.</p>
+        <div class="lcars-onboarding-panels-grid">
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="weather" checked><span>Weather</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="schedule" checked><span>Schedule</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="tasks" checked><span>Tasks</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="bills" checked><span>Bills</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="wisdom" checked><span>Wisdom</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="readLater" checked><span>Read Later</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="tvShows"><span>TV Shows</span></label>
+          <label class="lcars-onboarding-panel-option"><input type="checkbox" class="lcars-onboarding-panel-check" value="anybox"><span>Anybox</span></label>
+        </div>
+      </div>
+
+      <div class="lcars-onboarding-step" id="lcars-onboarding-step-5">
+        <div class="lcars-onboarding-icon">🎉</div>
+        <h2>You're All Set!</h2>
+        <p>Your dashboard is ready.</p>
+        <div class="lcars-onboarding-next-steps">
+          <p style="color:var(--butterscotch);">NEXT STEPS:</p>
+          <ul>
+            <li>Add events to <code>calendar.json</code></li>
+            <li>Add tasks to <code>todos.json</code></li>
+            <li>Check Settings for more options</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="lcars-onboarding-footer">
+        <button class="lcars-onboarding-btn secondary" id="lcars-onboarding-back" onclick="onboardingBack()">BACK</button>
+        <button class="lcars-onboarding-btn primary" id="lcars-onboarding-next" onclick="onboardingNext()">NEXT</button>
+      </div>
+    </div>
+  </div>
 
   <div class="headtrim"></div>
   <div class="baseboard"></div>
