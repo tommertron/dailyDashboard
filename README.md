@@ -1,135 +1,182 @@
 # Daily Dashboard
 
-A personal dashboard for daily information display.
+A personal dashboard for daily information display - weather, calendar, tasks, and more.
 
-## Setup
+## Quick Install
 
-The dashboard expects several JSON data files to be present. These files are not included in the repository as they contain personal data. Create them in the project root with the following formats:
-
-### anyboxStats.json
-Statistics from Anybox link manager.
-```json
-{
-  "all": 549,
-  "last7": 20,
-  "untagged": 1
-}
+```bash
+curl -fsSL https://raw.githubusercontent.com/tommertron/dailyDashboard/main/install.sh | bash
 ```
 
-### calendar.json
-Calendar events as newline-delimited JSON strings within an `events` field.
-```json
-{
-  "events": "{\"calendar\":\"Family\",\"title\":\"Event Name\",\"end\":\"Dec 31, 2025 at 6:00 PM\",\"allday\":\"No\",\"start\":\"Dec 31, 2025 at 6:00 PM\"}\n{\"calendar\":\"Work\",\"title\":\"Meeting\",\"end\":\"Jan 1, 2026 at 9:00 AM\",\"allday\":\"No\",\"start\":\"Jan 1, 2026 at 9:00 AM\"}"
-}
+Then open http://localhost:8000 in your browser.
+
+### Install Options
+
+```bash
+# Custom port
+curl -fsSL .../install.sh | bash -s -- --port 8080
+
+# Custom directory
+curl -fsSL .../install.sh | bash -s -- --dir /opt/dashboard
+
+# Update existing installation
+cd ~/.daily-dashboard && ./install.sh --update
+
+# Uninstall
+cd ~/.daily-dashboard && ./install.sh --uninstall
 ```
 
-### daily-links.json
-Links saved today.
+## Requirements
+
+- Docker and Docker Compose
+- That's it!
+
+## First-Time Setup
+
+1. Open http://localhost:8000
+2. Click the Settings gear icon
+3. Go to **API Keys** tab
+4. Add your API keys:
+   - **OpenWeatherMap** (free): Get one at [openweathermap.org/api](https://openweathermap.org/api)
+   - **OpenAI** (optional): For AI daily summaries
+   - **Home Assistant** (optional): For smart home integration
+   - **TMDB** (optional): For TV show posters
+
+## Features
+
+### Panels
+
+| Panel | Description | Requires |
+|-------|-------------|----------|
+| Weather | Current weather + tomorrow's forecast | OpenWeatherMap API key |
+| Schedule | Today's calendar events | calendar.json |
+| Tasks | Todo list from Things | todos.json |
+| Bills | Upcoming bills | money.txt |
+| Wisdom | Daily wisdom quote | wisdom.json |
+| Read Later | Saved articles | readlater.json |
+| TV Shows | Upcoming episodes | TMDB API key + sequelEpisodes.json |
+| Home/Shed | Home Assistant controls | Home Assistant setup |
+| Pi Status | Raspberry Pi monitoring | Pi Monitor service |
+| Anybox | Random saved links | anyboxStats.json + daily-links.json |
+
+### Themes
+
+- **Default**: Clean, light theme
+- **LCARS**: Star Trek-inspired dark theme
+
+Switch themes using the buttons in the header.
+
+## Data Files
+
+The dashboard reads from JSON files that can be updated by external scripts or shortcuts.
+
+### Required Format
+
+<details>
+<summary>calendar.json</summary>
+
 ```json
 {
-  "generatedAt": "Dec 31, 2025 at 12:05 PM",
-  "links": [
-    {
-      "url": "https://example.com",
-      "title": "Example Site",
-      "comment": "Optional comment"
-    }
-  ]
+  "events": "{\"calendar\":\"Work\",\"title\":\"Meeting\",\"start\":\"Jan 1, 2026 at 9:00 AM\",\"end\":\"Jan 1, 2026 at 10:00 AM\",\"allday\":\"No\"}\n{\"calendar\":\"Family\",\"title\":\"Dinner\",\"start\":\"Jan 1, 2026 at 6:00 PM\",\"end\":\"Jan 1, 2026 at 8:00 PM\",\"allday\":\"No\"}"
 }
 ```
+</details>
 
-### daily-summary.json
-AI-generated daily summary.
-```json
-{
-  "summary": "Your daily summary text here.",
-  "generated_at": "2025-12-31 13:00:04",
-  "date": "2025-12-31"
-}
-```
+<details>
+<summary>todos.json</summary>
 
-### location.json
-Current location data.
-```json
-{
-  "updated": "Dec 31, 2025 at 12:50 AM",
-  "address": "123 Main St\nCity ST 12345\nCountry",
-  "city": "City",
-  "region": "Country",
-  "lat": "43.123456",
-  "state": "ST",
-  "long": "-79.123456"
-}
-```
-
-### sequelEpisodes.json
-Upcoming TV episodes from Sequel.
-```json
-{
-  "episodes": [
-    {
-      "season": "1",
-      "episodeTitle": "Episode Title",
-      "poster": "https://image.tmdb.org/t/p/w1280/poster.jpg",
-      "episodeNumber": "8",
-      "show": "Show Name",
-      "TheMovieDV": "6415093",
-      "releaseDate": "Dec 9, 2025 at 9:00 PM"
-    }
-  ]
-}
-```
-
-### starredLinks.json
-Starred/favorite links.
-```json
-{
-  "generatedAt": "Dec 31, 2025 at 1:21 PM",
-  "links": [
-    {
-      "url": "https://example.com",
-      "title": "Link Title",
-      "comment": "Optional comment"
-    }
-  ]
-}
-```
-
-### todos.json
-Todo items.
 ```json
 {
   "todos": [
-    {
-      "status": "Open",
-      "tags": {},
-      "title": "Task name",
-      "notes": ""
-    },
-    {
-      "status": "Completed",
-      "tags": {},
-      "title": "Done task",
-      "notes": ""
-    }
+    {"status": "Open", "title": "Task name", "notes": "", "tags": {}},
+    {"status": "Completed", "title": "Done task", "notes": "", "tags": {}}
   ]
 }
 ```
+</details>
 
-### money.txt
-Plain text file for financial notes (format flexible).
+<details>
+<summary>location.json</summary>
 
-### config.json
-Application configuration (not tracked).
+```json
+{
+  "city": "Toronto",
+  "lat": "43.6532",
+  "long": "-79.3832",
+  "updated": "Jan 1, 2026 at 12:00 AM"
+}
+```
+</details>
 
-## Running
+<details>
+<summary>Other files</summary>
+
+- `daily-summary.json` - AI-generated summary
+- `money.txt` - Plain text bills/financial notes
+- `wisdom.json` - Daily wisdom quote
+- `readlater.json` - Read later articles
+- `sequelEpisodes.json` - Upcoming TV episodes
+- `anyboxStats.json` - Anybox link statistics
+- `daily-links.json` - Links saved today
+- `starredLinks.json` - Starred/favorite links
+</details>
+
+## Commands
 
 ```bash
-docker compose up
+# Start dashboard
+cd ~/.daily-dashboard && docker compose up -d
+
+# Stop dashboard
+cd ~/.daily-dashboard && docker compose down
+
+# View logs
+cd ~/.daily-dashboard && docker compose logs -f
+
+# Update to latest version
+cd ~/.daily-dashboard && git pull && docker compose up -d --build
+
+# Restart (after editing mounted files)
+cd ~/.daily-dashboard && docker compose restart
 ```
 
-Or run directly:
+## Configuration
+
+### Settings
+
+All settings are configurable through the in-app Settings panel:
+- Panel visibility toggles
+- Home Assistant entity configuration
+- API URLs for integrations
+- Theme preference
+- Auto-refresh interval
+
+### Environment Variables
+
+Set timezone in docker-compose.yml:
+```yaml
+environment:
+  - TZ=America/Toronto
+```
+
+## Development
+
 ```bash
+# Clone repo
+git clone https://github.com/tommertron/dailyDashboard.git
+cd dailyDashboard
+
+# Create data files
+echo '[]' > todos.json calendar.json
+echo '{}' > config.json settings.json
+
+# Run with Docker
+docker compose up -d --build
+
+# Or run directly (Python 3.12+)
 python server.py
 ```
+
+## License
+
+MIT
