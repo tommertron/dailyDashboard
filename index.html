@@ -709,11 +709,14 @@
       }
     }
 
-    async function fetchWeather(lat, lon, apiKey) {
+    async function fetchWeather(lat, lon) {
       try {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`
-        );
+        // Use backend proxy to keep API key secure
+        const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+        if (!response.ok) {
+          console.error('Weather fetch failed:', response.status);
+          return null;
+        }
         return await response.json();
       } catch (error) {
         console.error('Error fetching weather:', error);
@@ -721,11 +724,14 @@
       }
     }
 
-    async function fetchForecast(lat, lon, apiKey) {
+    async function fetchForecast(lat, lon) {
       try {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`
-        );
+        // Use backend proxy to keep API key secure
+        const response = await fetch(`/api/forecast?lat=${lat}&lon=${lon}`);
+        if (!response.ok) {
+          console.error('Forecast fetch failed:', response.status);
+          return null;
+        }
         return await response.json();
       } catch (error) {
         console.error('Error fetching forecast:', error);
@@ -805,14 +811,7 @@
     }
 
     async function loadWeather() {
-      const config = await loadConfig();
       const location = await loadLocation();
-
-      if (!config || !config.openWeatherApiKey) {
-        document.getElementById('weather-container').innerHTML =
-          '<div class="empty-state">Missing API key in config.json</div>';
-        return;
-      }
 
       if (!location) {
         document.getElementById('weather-container').innerHTML =
@@ -821,9 +820,16 @@
       }
 
       const [weather, forecast] = await Promise.all([
-        fetchWeather(location.lat, location.long, config.openWeatherApiKey),
-        fetchForecast(location.lat, location.long, config.openWeatherApiKey)
+        fetchWeather(location.lat, location.long),
+        fetchForecast(location.lat, location.long)
       ]);
+
+      if (!weather || weather.error) {
+        document.getElementById('weather-container').innerHTML =
+          '<div class="empty-state">Weather API key not configured. Add it in Settings > API Keys.</div>';
+        return;
+      }
+
       renderWeather(location, weather, forecast);
     }
 
@@ -1535,10 +1541,120 @@
       loadAnyboxStats();
     }
 
+    // =========================================================================
+    // API Key Management
+    // =========================================================================
+
+    let currentConfig = {};
+
+    async function loadConfigForSettings() {
+      try {
+        const response = await fetch('/api/config');
+        const result = await response.json();
+        if (result.success) {
+          currentConfig = result.config;
+          populateApiKeysForm(result.config);
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    }
+
+    function populateApiKeysForm(config) {
+      document.getElementById('config-name').value = config.name || '';
+
+      // Update status indicators
+      updateKeyStatus('openweather', config.hasOpenWeatherKey, config.openWeatherApiKeyMasked);
+      updateKeyStatus('openai', config.hasOpenaiKey, config.openaiApiKeyMasked);
+      updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
+      updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
+    }
+
+    function updateKeyStatus(service, hasKey, maskedKey) {
+      const statusEl = document.getElementById(`status-${service}`);
+      const inputEl = document.getElementById(`key-${service}`);
+
+      if (hasKey) {
+        statusEl.textContent = `Configured (${maskedKey})`;
+        statusEl.className = 'api-key-status configured';
+        inputEl.placeholder = 'Enter new key to replace';
+      } else {
+        statusEl.textContent = 'Not configured';
+        statusEl.className = 'api-key-status';
+        inputEl.placeholder = 'Enter API key';
+      }
+    }
+
+    async function testApiKey(service) {
+      const statusEl = document.getElementById(`status-${service}`);
+      statusEl.textContent = 'Testing...';
+      statusEl.className = 'api-key-status testing';
+
+      try {
+        const response = await fetch(`/api/test/${service}`);
+        const result = await response.json();
+
+        if (result.success) {
+          statusEl.textContent = 'Connected';
+          statusEl.className = 'api-key-status configured';
+        } else {
+          statusEl.textContent = result.error || 'Test failed';
+          statusEl.className = 'api-key-status error';
+        }
+      } catch (error) {
+        statusEl.textContent = 'Connection failed';
+        statusEl.className = 'api-key-status error';
+      }
+    }
+
+    async function saveApiKeys() {
+      const updates = {};
+
+      // Only include keys that have values (don't overwrite with empty)
+      const name = document.getElementById('config-name').value;
+      const openweatherKey = document.getElementById('key-openweather').value;
+      const openaiKey = document.getElementById('key-openai').value;
+      const haKey = document.getElementById('key-homeassistant').value;
+      const tmdbKey = document.getElementById('key-tmdb').value;
+
+      if (name) updates.name = name;
+      if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
+      if (openaiKey) updates.openaiApiKey = openaiKey;
+      if (haKey) updates.homeAssistantApiKey = haKey;
+      if (tmdbKey) updates.tmdbApiKey = tmdbKey;
+
+      if (Object.keys(updates).length === 0) return true;
+
+      try {
+        const response = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          // Clear input fields after save
+          document.getElementById('key-openweather').value = '';
+          document.getElementById('key-openai').value = '';
+          document.getElementById('key-homeassistant').value = '';
+          document.getElementById('key-tmdb').value = '';
+          return true;
+        } else {
+          console.error('Failed to save config:', result.error);
+          return false;
+        }
+      } catch (error) {
+        console.error('Error saving API keys:', error);
+        return false;
+      }
+    }
+
     function openSettings() {
       const overlay = document.getElementById('settings-overlay');
       overlay.classList.add('visible');
       populateSettingsForm(currentSettings);
+      loadConfigForSettings();
       document.addEventListener('keydown', handleSettingsEscape);
     }
 
@@ -1702,11 +1818,16 @@
       const haPanelsList = document.getElementById('ha-panels-list');
       haPanelsList.innerHTML = Object.entries(haPanels).map(([id, panel]) => {
         const entitiesHtml = (panel.entities || []).map((e, idx) =>
-          `<div class="ha-entity-row">
-            <span class="entity-name">${e.displayName}</span>
-            <span class="entity-id">${e.entityId}</span>
+          `<div class="ha-entity-row" data-entity-edit="${id}-${idx}">
+            <div class="entity-info">
+              <span class="entity-name">${e.displayName}</span>
+              <span class="entity-id">${e.entityId}</span>
+            </div>
             <span class="entity-type">${e.type}</span>
-            <button class="icon-btn small" onclick="removeHaEntity('${id}', ${idx})" title="Remove">×</button>
+            <div class="entity-actions">
+              <button class="icon-btn small" onclick="editHaEntity('${id}', ${idx})" title="Edit">✎</button>
+              <button class="icon-btn small" onclick="removeHaEntity('${id}', ${idx})" title="Remove">×</button>
+            </div>
           </div>`
         ).join('');
 
@@ -1733,6 +1854,9 @@
     }
 
     async function saveSettings() {
+      // Save API keys first (they're in a separate config file)
+      await saveApiKeys();
+
       const newSettings = {
         version: 2,
         panels: {},
@@ -2035,6 +2159,71 @@
       populateSettingsForm(currentSettings);
     }
 
+    function editHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities || !panel.entities[entityIndex]) return;
+
+      const entity = panel.entities[entityIndex];
+      const row = document.querySelector(`[data-entity-edit="${panelId}-${entityIndex}"]`);
+      if (!row) return;
+
+      row.innerHTML = `
+        <div class="entity-edit-form">
+          <div class="edit-row">
+            <label>Name</label>
+            <input type="text" id="edit-name-${panelId}-${entityIndex}" value="${entity.displayName || ''}" placeholder="Display Name">
+          </div>
+          <div class="edit-row">
+            <label>Entity ID</label>
+            <input type="text" id="edit-id-${panelId}-${entityIndex}" value="${entity.entityId || ''}" placeholder="sensor.example">
+          </div>
+          <div class="edit-row">
+            <label>Type</label>
+            <select id="edit-type-${panelId}-${entityIndex}">
+              <option value="sensor" ${entity.type === 'sensor' ? 'selected' : ''}>sensor</option>
+              <option value="toggle" ${entity.type === 'toggle' ? 'selected' : ''}>toggle</option>
+              <option value="climate" ${entity.type === 'climate' ? 'selected' : ''}>climate</option>
+              <option value="lock" ${entity.type === 'lock' ? 'selected' : ''}>lock</option>
+              <option value="door" ${entity.type === 'door' ? 'selected' : ''}>door</option>
+              <option value="light" ${entity.type === 'light' ? 'selected' : ''}>light</option>
+            </select>
+          </div>
+          <div class="edit-row">
+            <label>Unit</label>
+            <input type="text" id="edit-unit-${panelId}-${entityIndex}" value="${entity.unit || ''}" placeholder="°C, %, etc">
+          </div>
+          <div class="edit-actions">
+            <button class="settings-btn-small" onclick="saveHaEntity('${panelId}', ${entityIndex})">Save</button>
+            <button class="settings-btn-small secondary" onclick="cancelEditHaEntity()">Cancel</button>
+          </div>
+        </div>
+      `;
+      row.classList.add('editing');
+      document.getElementById(`edit-name-${panelId}-${entityIndex}`).focus();
+    }
+
+    function saveHaEntity(panelId, entityIndex) {
+      const panel = currentSettings?.homeAssistant?.panels?.[panelId];
+      if (!panel || !panel.entities || !panel.entities[entityIndex]) return;
+
+      const name = document.getElementById(`edit-name-${panelId}-${entityIndex}`).value.trim();
+      const entityId = document.getElementById(`edit-id-${panelId}-${entityIndex}`).value.trim();
+      const type = document.getElementById(`edit-type-${panelId}-${entityIndex}`).value;
+      const unit = document.getElementById(`edit-unit-${panelId}-${entityIndex}`).value.trim();
+
+      if (!name || !entityId) {
+        alert('Name and Entity ID are required');
+        return;
+      }
+
+      panel.entities[entityIndex] = { entityId, displayName: name, type, unit: unit || undefined };
+      populateSettingsForm(currentSettings);
+    }
+
+    function cancelEditHaEntity() {
+      populateSettingsForm(currentSettings);
+    }
+
     // Initialize
     async function init() {
       await loadSettings();
@@ -2073,6 +2262,7 @@
       <div class="settings-body">
         <div class="settings-tabs">
           <button class="settings-tab active" data-tab="panels" onclick="switchSettingsTab('panels')">Panels</button>
+          <button class="settings-tab" data-tab="api-keys" onclick="switchSettingsTab('api-keys')">API Keys</button>
           <button class="settings-tab" data-tab="refresh" onclick="switchSettingsTab('refresh')">Refresh</button>
           <button class="settings-tab" data-tab="ai-prompts" onclick="switchSettingsTab('ai-prompts')">AI Prompts</button>
           <button class="settings-tab" data-tab="home-assistant" onclick="switchSettingsTab('home-assistant')">Home Assistant</button>
@@ -2087,6 +2277,67 @@
               <p class="settings-description">Toggle which panels appear on your dashboard.</p>
               <div class="settings-toggle-list" id="panel-toggles">
                 <!-- Generated by JS -->
+              </div>
+            </div>
+          </div>
+          <!-- API Keys Tab -->
+          <div class="settings-pane" id="settings-pane-api-keys">
+            <div class="settings-section">
+              <h3>API Keys</h3>
+              <p class="settings-description">Configure API keys for external services. Keys are stored securely on the server.</p>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>OpenWeatherMap</label>
+                  <span class="api-key-status" id="status-openweather">Not configured</span>
+                </div>
+                <p class="api-key-help">Weather forecasts. <a href="https://openweathermap.org/api" target="_blank">Get a free API key</a></p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-openweather" class="settings-input" placeholder="Enter API key">
+                  <button class="settings-btn-secondary small" onclick="testApiKey('openweather')">Test</button>
+                </div>
+              </div>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>OpenAI</label>
+                  <span class="api-key-status" id="status-openai">Not configured</span>
+                </div>
+                <p class="api-key-help">AI-powered daily summaries. <a href="https://platform.openai.com/api-keys" target="_blank">Get an API key</a></p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-openai" class="settings-input" placeholder="Enter API key">
+                  <button class="settings-btn-secondary small" onclick="testApiKey('openai')">Test</button>
+                </div>
+              </div>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>Home Assistant</label>
+                  <span class="api-key-status" id="status-homeassistant">Not configured</span>
+                </div>
+                <p class="api-key-help">Smart home control. Create a long-lived access token in HA settings.</p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-homeassistant" class="settings-input" placeholder="Enter long-lived access token">
+                  <button class="settings-btn-secondary small" onclick="testApiKey('homeassistant')">Test</button>
+                </div>
+              </div>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>TMDB</label>
+                  <span class="api-key-status" id="status-tmdb">Not configured</span>
+                </div>
+                <p class="api-key-help">TV show metadata. <a href="https://www.themoviedb.org/settings/api" target="_blank">Get a free API key</a></p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-tmdb" class="settings-input" placeholder="Enter API key">
+                  <button class="settings-btn-secondary small" onclick="testApiKey('tmdb')">Test</button>
+                </div>
+              </div>
+
+              <div class="settings-form-group" style="margin-top: 1.5rem;">
+                <label for="config-name">Display Name</label>
+                <p class="api-key-help">Used in greetings and AI summaries.</p>
+                <input type="text" id="config-name" class="settings-input" placeholder="Your name">
               </div>
             </div>
           </div>

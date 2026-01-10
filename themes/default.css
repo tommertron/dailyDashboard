@@ -2005,33 +2005,52 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.25rem 0;
+  padding: 0.5rem;
   font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+}
+
+.entity-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .ha-entity-row:not(:last-child) {
   border-bottom: 1px solid var(--border-light);
 }
 
+.entity-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .entity-name {
   font-weight: 500;
   color: var(--text-primary);
-  flex: 1;
+  display: block;
 }
 
 .entity-id {
   color: var(--text-muted);
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .entity-type {
   background: var(--primary);
   color: white;
-  padding: 0.1rem 0.4rem;
+  padding: 0.15rem 0.4rem;
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .no-entities {
@@ -2040,9 +2059,171 @@ body {
   margin: 0;
 }
 
+/* Inline entity edit form */
+.ha-entity-row.editing {
+  background: var(--bg-secondary, #f5f5f5);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+.entity-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-row label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  width: 65px;
+  flex-shrink: 0;
+}
+
+.edit-row input,
+.edit-row select {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+}
+
+.edit-row input:focus,
+.edit-row select:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  justify-content: flex-end;
+}
+
+.settings-btn-small {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.settings-btn-small:hover {
+  filter: brightness(1.1);
+}
+
+.settings-btn-small.secondary {
+  background: var(--bg-tertiary, #e0e0e0);
+  color: var(--text-primary);
+}
+
+/* Mobile HA settings */
+@media (max-width: 600px) {
+  .ha-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .ha-panel-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .icon-btn.small {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  .ha-entity-row {
+    padding: 0.75rem 0.5rem;
+  }
+  .settings-btn-secondary.small {
+    width: 100%;
+    padding: 0.75rem;
+  }
+}
+
 .settings-btn-secondary.small {
   padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
+}
+
+/* API Keys settings */
+.api-key-item {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.api-key-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.api-key-header label {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.api-key-help {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem 0;
+}
+
+.api-key-help a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.api-key-help a:hover {
+  text-decoration: underline;
+}
+
+.api-key-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.api-key-status.configured {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+.api-key-status.error {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.api-key-status.testing {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+}
+
+.api-key-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.api-key-input-row input {
+  flex: 1;
 }
 
 /* Editor Modals (Persona/Template editors) */

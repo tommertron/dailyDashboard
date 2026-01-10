@@ -25,47 +25,163 @@ DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(DIRECTORY, 'settings.json')
 
 def get_default_settings():
-    """Return default settings structure."""
+    """Return default settings structure for new installs."""
     return {
-        "version": 1,
+        "version": 2,
         "panels": {
+            # ON by default - universal features that work out of the box
             "weather": {"visible": True},
             "schedule": {"visible": True},
             "tasks": {"visible": True},
-            "shed": {"visible": True},
-            "home": {"visible": True},
-            "piStatus": {"visible": True},
             "bills": {"visible": True},
             "readLater": {"visible": True},
-            "tvShows": {"visible": True},
-            "anybox": {"visible": True}
+            "wisdom": {"visible": True},
+            # OFF by default - require specific setup
+            "piStatus": {"visible": False},   # Requires Pi Monitor setup
+            "shed": {"visible": False},       # Requires Home Assistant
+            "home": {"visible": False},       # Requires Home Assistant
+            "tvShows": {"visible": False},    # Requires Channels DVR
+            "anybox": {"visible": False}      # Requires Anybox app + shortcut
         },
         "homeAssistant": {
-            "url": "http://172.17.0.1:8123",
-            "entities": {
-                "ecobee": "climate.my_ecobee",
-                "backDoorLock": "lock.back_door_lock",
-                "shedDoorSensor": "binary_sensor.shed_door_sensor",
-                "garageDoorSensor": "binary_sensor.contact_sensor"
-            }
+            "url": "",
+            "panels": {}
         },
         "apiUrls": {
-            "channelsDvr": "http://100.127.232.39:8089",
-            "piMonitor": "http://100.125.128.51:5001"
+            "channelsDvr": "",
+            "piMonitor": ""
         },
         "refreshIntervals": {
             "autoRefresh": 300000
+        },
+        "refreshCommands": {
+            "ssh": {
+                "host": "",
+                "user": "",
+                "timeout": 30
+            },
+            "shortcuts": {
+                "tasks": {"enabled": False, "shortcutName": "", "description": "Sync tasks from Things app"},
+                "bills": {"enabled": False, "shortcutName": "", "description": "Fetch upcoming bills"},
+                "calendar": {"enabled": False, "shortcutName": "", "description": "Sync calendar events"},
+                "anybox": {"enabled": False, "shortcutName": "", "description": "Export links from Anybox"},
+                "sequel": {"enabled": False, "shortcutName": "", "description": "Fetch upcoming TV episodes"},
+                "goodlinks": {"enabled": False, "shortcutName": "", "description": "Export read later articles"}
+            }
+        },
+        "aiPrompts": {
+            "activePersona": "default",
+            "activeTemplate": "default",
+            "personas": {
+                "default": {
+                    "name": "Friendly Assistant",
+                    "description": "Helpful and concise daily briefings",
+                    "systemPrompt": "You are a friendly assistant delivering daily briefings. Be concise, helpful, and highlight important items that need attention."
+                }
+            },
+            "templates": {
+                "default": {
+                    "name": "Daily Briefing",
+                    "description": "Standard daily summary format",
+                    "introPrompt": "Based on the following data from my dashboard for {date}, give me a friendly 2-3 sentence summary highlighting what's important today.\n\nDashboard Data:\n{data}\n\n{rules}"
+                }
+            },
+            "rules": "Focus on: weather conditions, upcoming calendar events, pending tasks, and any items needing attention. Keep it concise - 2-3 sentences max."
         },
         "theme": {
             "preference": "default"
         }
     }
 
+
+def migrate_settings(settings):
+    """Migrate settings from older versions to the current version."""
+    version = settings.get('version', 1)
+    migrated = False
+
+    if version < 2:
+        # Migrate v1 to v2
+        settings['version'] = 2
+        migrated = True
+
+        # Add wisdom panel if missing
+        if 'wisdom' not in settings.get('panels', {}):
+            settings.setdefault('panels', {})['wisdom'] = {"visible": True}
+
+        # Convert old flat homeAssistant.entities to panels structure
+        ha_config = settings.get('homeAssistant', {})
+        old_entities = ha_config.get('entities', {})
+
+        if old_entities and 'panels' not in ha_config:
+            # Create a 'home' panel from the old entity structure
+            entities_list = []
+            if old_entities.get('ecobee'):
+                entities_list.append({
+                    "entityId": old_entities['ecobee'],
+                    "displayName": "Thermostat",
+                    "type": "climate"
+                })
+            if old_entities.get('backDoorLock'):
+                entities_list.append({
+                    "entityId": old_entities['backDoorLock'],
+                    "displayName": "Back Door Lock",
+                    "type": "lock"
+                })
+            if old_entities.get('shedDoorSensor'):
+                entities_list.append({
+                    "entityId": old_entities['shedDoorSensor'],
+                    "displayName": "Shed Door",
+                    "type": "door"
+                })
+            if old_entities.get('garageDoorSensor'):
+                entities_list.append({
+                    "entityId": old_entities['garageDoorSensor'],
+                    "displayName": "Garage Door",
+                    "type": "door"
+                })
+
+            ha_config['panels'] = {
+                'home': {
+                    'name': 'Home',
+                    'visible': True,
+                    'entities': entities_list,
+                    'scenes': []
+                }
+            }
+            # Remove old entities key
+            if 'entities' in ha_config:
+                del ha_config['entities']
+
+        # Ensure panels structure exists even if no old entities
+        if 'panels' not in ha_config:
+            ha_config['panels'] = {}
+
+        settings['homeAssistant'] = ha_config
+
+        # Add refreshCommands if missing
+        if 'refreshCommands' not in settings:
+            settings['refreshCommands'] = {
+                "ssh": {"host": "", "user": "", "timeout": 30},
+                "shortcuts": {}
+            }
+
+        # Add aiPrompts if missing
+        if 'aiPrompts' not in settings:
+            settings['aiPrompts'] = get_default_settings()['aiPrompts']
+
+    return settings, migrated
+
 def load_settings():
-    """Load settings from settings.json or return defaults."""
+    """Load settings from settings.json, migrate if needed, or return defaults."""
     try:
         with open(SETTINGS_FILE, 'r') as f:
-            return json.load(f)
+            settings = json.load(f)
+        # Migrate if needed
+        settings, migrated = migrate_settings(settings)
+        if migrated:
+            save_settings(settings)
+            print(f"Settings migrated to version {settings.get('version')}")
+        return settings
     except (FileNotFoundError, json.JSONDecodeError):
         return get_default_settings()
 
@@ -74,13 +190,25 @@ def save_settings(settings):
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f, indent=2)
 
+CONFIG_FILE = os.path.join(DIRECTORY, 'config.json')
+
 def load_config():
-    config_path = os.path.join(DIRECTORY, 'config.json')
     try:
-        with open(config_path, 'r') as f:
+        with open(CONFIG_FILE, 'r') as f:
             return json.load(f)
     except Exception:
         return {}
+
+def save_config(config):
+    """Save config to config.json."""
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+def mask_key(key):
+    """Return masked version of API key for display (shows last 4 chars)."""
+    if not key or len(key) < 8:
+        return ''
+    return '••••••••' + key[-4:]
 
 def ha_request(method, endpoint, data=None):
     """Make a request to Home Assistant API."""
@@ -436,9 +564,33 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'public, max-age=300')
         super().end_headers()
 
+    def send_json_response(self, status_code, data):
+        """Send a JSON response with the given status code."""
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
     def do_GET(self):
+        # Config and API key management
+        if self.path == '/api/config':
+            self.get_config()
+        # Connection tests
+        elif self.path == '/api/test/openweather':
+            self.test_openweather()
+        elif self.path == '/api/test/openai':
+            self.test_openai()
+        elif self.path == '/api/test/homeassistant':
+            self.test_homeassistant()
+        elif self.path == '/api/test/tmdb':
+            self.test_tmdb()
+        # Weather proxy (security - don't expose API key to frontend)
+        elif self.path.startswith('/api/weather?'):
+            self.get_weather_proxy()
+        elif self.path.startswith('/api/forecast?'):
+            self.get_forecast_proxy()
         # Generic HA panel endpoint: /api/home-assistant/panel/{panelId}
-        if self.path.startswith('/api/home-assistant/panel/'):
+        elif self.path.startswith('/api/home-assistant/panel/'):
             panel_id = self.path.split('/api/home-assistant/panel/')[1]
             self.get_ha_panel_status(panel_id)
         # Backward compatibility for old endpoints
@@ -577,6 +729,205 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
+    # =========================================================================
+    # Config and API Key Management
+    # =========================================================================
+
+    def get_config(self):
+        """Get config with masked API keys for frontend display."""
+        try:
+            config = load_config()
+            # Return safe keys in full, mask sensitive keys
+            safe_config = {
+                'name': config.get('name', ''),
+                'hasOpenWeatherKey': bool(config.get('openWeatherApiKey')),
+                'hasOpenaiKey': bool(config.get('openaiApiKey')),
+                'hasHomeAssistantKey': bool(config.get('homeAssistantApiKey')),
+                'hasTmdbKey': bool(config.get('tmdbApiKey')),
+                'homeAssistantUrl': config.get('homeAssistantUrl', ''),
+                # Masked versions for display
+                'openWeatherApiKeyMasked': mask_key(config.get('openWeatherApiKey', '')),
+                'openaiApiKeyMasked': mask_key(config.get('openaiApiKey', '')),
+                'homeAssistantApiKeyMasked': mask_key(config.get('homeAssistantApiKey', '')),
+                'tmdbApiKeyMasked': mask_key(config.get('tmdbApiKey', '')),
+            }
+            self.send_json_response(200, {'success': True, 'config': safe_config})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def post_config(self):
+        """Update config values (individual key updates)."""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            updates = json.loads(post_data.decode('utf-8'))
+
+            config = load_config()
+
+            # Only update provided keys (don't require all keys)
+            allowed_keys = ['name', 'openWeatherApiKey', 'openaiApiKey',
+                           'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey']
+
+            for key in allowed_keys:
+                if key in updates and updates[key]:  # Only update if value provided
+                    config[key] = updates[key]
+
+            save_config(config)
+            self.send_json_response(200, {'success': True, 'message': 'Config updated'})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    # =========================================================================
+    # Connection Test Endpoints
+    # =========================================================================
+
+    def test_openweather(self):
+        """Test OpenWeatherMap API key."""
+        try:
+            config = load_config()
+            key = config.get('openWeatherApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
+                return
+
+            # Test with a simple weather request (Toronto coordinates)
+            url = f"https://api.openweathermap.org/data/2.5/weather?lat=43.65&lon=-79.38&appid={key}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.send_json_response(401, {'success': False, 'error': 'Invalid API key'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def test_openai(self):
+        """Test OpenAI API key."""
+        try:
+            config = load_config()
+            key = config.get('openaiApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
+                return
+
+            url = "https://api.openai.com/v1/models"
+            req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}'})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.send_json_response(401, {'success': False, 'error': 'Invalid API key'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def test_homeassistant(self):
+        """Test Home Assistant API connection."""
+        try:
+            config = load_config()
+            ha_url = config.get('homeAssistantUrl')
+            ha_key = config.get('homeAssistantApiKey')
+
+            if not ha_url:
+                self.send_json_response(400, {'success': False, 'error': 'No Home Assistant URL configured'})
+                return
+            if not ha_key:
+                self.send_json_response(400, {'success': False, 'error': 'No Home Assistant token configured'})
+                return
+
+            url = f"{ha_url}/api/"
+            req = urllib.request.Request(url, headers={'Authorization': f'Bearer {ha_key}'})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.send_json_response(401, {'success': False, 'error': 'Invalid token'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def test_tmdb(self):
+        """Test TMDB API key."""
+        try:
+            config = load_config()
+            key = config.get('tmdbApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
+                return
+
+            url = f"https://api.themoviedb.org/3/configuration?api_key={key}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.send_json_response(401, {'success': False, 'error': 'Invalid API key'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    # =========================================================================
+    # Weather Proxy (security - keeps API key server-side)
+    # =========================================================================
+
+    def get_weather_proxy(self):
+        """Proxy weather requests through backend to hide API key."""
+        try:
+            # Parse query parameters
+            query = urllib.parse.urlparse(self.path).query
+            params = urllib.parse.parse_qs(query)
+            lat = params.get('lat', [None])[0]
+            lon = params.get('lon', [None])[0]
+
+            if not lat or not lon:
+                self.send_json_response(400, {'success': False, 'error': 'Missing lat/lon parameters'})
+                return
+
+            config = load_config()
+            key = config.get('openWeatherApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'Weather API key not configured'})
+                return
+
+            url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={key}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                self.send_json_response(200, data)
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def get_forecast_proxy(self):
+        """Proxy forecast requests through backend to hide API key."""
+        try:
+            query = urllib.parse.urlparse(self.path).query
+            params = urllib.parse.parse_qs(query)
+            lat = params.get('lat', [None])[0]
+            lon = params.get('lon', [None])[0]
+
+            if not lat or not lon:
+                self.send_json_response(400, {'success': False, 'error': 'Missing lat/lon parameters'})
+                return
+
+            config = load_config()
+            key = config.get('openWeatherApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'Weather API key not configured'})
+                return
+
+            url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&units=metric&appid={key}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                self.send_json_response(200, data)
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
     def post_settings(self):
         """Save updated settings."""
         try:
@@ -595,8 +946,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
     def do_POST(self):
+        # Config management
+        if self.path == '/api/config':
+            self.post_config()
         # Generic refresh endpoint: /api/refresh/{shortcutId}
-        if self.path.startswith('/api/refresh/'):
+        elif self.path.startswith('/api/refresh/'):
             shortcut_id = self.path.split('/api/refresh/')[1]
             self.run_refresh_shortcut(shortcut_id)
         # Backward compatibility: map old endpoints to new system
