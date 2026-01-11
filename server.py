@@ -594,6 +594,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.test_openai()
         elif self.path == '/api/test/anthropic':
             self.test_anthropic()
+        elif self.path == '/api/test/gemini':
+            self.test_gemini()
         elif self.path == '/api/test/homeassistant':
             self.test_homeassistant()
         elif self.path == '/api/test/tmdb':
@@ -757,6 +759,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'hasOpenWeatherKey': bool(config.get('openWeatherApiKey')),
                 'hasOpenaiKey': bool(config.get('openaiApiKey')),
                 'hasAnthropicKey': bool(config.get('anthropicApiKey')),
+                'hasGeminiKey': bool(config.get('geminiApiKey')),
                 'hasHomeAssistantKey': bool(config.get('homeAssistantApiKey')),
                 'hasTmdbKey': bool(config.get('tmdbApiKey')),
                 'homeAssistantUrl': config.get('homeAssistantUrl', ''),
@@ -764,6 +767,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'openWeatherApiKeyMasked': mask_key(config.get('openWeatherApiKey', '')),
                 'openaiApiKeyMasked': mask_key(config.get('openaiApiKey', '')),
                 'anthropicApiKeyMasked': mask_key(config.get('anthropicApiKey', '')),
+                'geminiApiKeyMasked': mask_key(config.get('geminiApiKey', '')),
                 'homeAssistantApiKeyMasked': mask_key(config.get('homeAssistantApiKey', '')),
                 'tmdbApiKeyMasked': mask_key(config.get('tmdbApiKey', '')),
             }
@@ -782,7 +786,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
             # Only update provided keys (don't require all keys)
             allowed_keys = ['name', 'openWeatherApiKey', 'openaiApiKey', 'anthropicApiKey',
-                           'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey']
+                           'geminiApiKey', 'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey']
 
             for key in allowed_keys:
                 if key in updates and updates[key]:  # Only update if value provided
@@ -871,6 +875,35 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 self.send_json_response(401, {'success': False, 'error': 'Invalid API key'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def test_gemini(self):
+        """Test Google Gemini API key."""
+        try:
+            config = load_config()
+            key = config.get('geminiApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
+                return
+
+            # Test by calling the Gemini API
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+            data = json.dumps({
+                "contents": [{"parts": [{"text": "Hi"}]}]
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers={
+                'content-type': 'application/json'
+            })
+            with urllib.request.urlopen(req, timeout=15) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 400:
+                self.send_json_response(400, {'success': False, 'error': 'Invalid API key'})
+            elif e.code == 403:
+                self.send_json_response(403, {'success': False, 'error': 'API key not authorized'})
             else:
                 self.send_json_response(e.code, {'success': False, 'error': str(e)})
         except Exception as e:

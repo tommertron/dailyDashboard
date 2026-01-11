@@ -2348,6 +2348,8 @@
 
       updateKeyStatus('openweather', config.hasOpenWeatherKey, config.openWeatherApiKeyMasked);
       updateKeyStatus('openai', config.hasOpenaiKey, config.openaiApiKeyMasked);
+      updateKeyStatus('anthropic', config.hasAnthropicKey, config.anthropicApiKeyMasked);
+      updateKeyStatus('gemini', config.hasGeminiKey, config.geminiApiKeyMasked);
       updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
       updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
     }
@@ -2398,12 +2400,16 @@
       const name = document.getElementById('config-name').value;
       const openweatherKey = document.getElementById('key-openweather').value;
       const openaiKey = document.getElementById('key-openai').value;
+      const anthropicKey = document.getElementById('key-anthropic').value;
+      const geminiKey = document.getElementById('key-gemini').value;
       const haKey = document.getElementById('key-homeassistant').value;
       const tmdbKey = document.getElementById('key-tmdb').value;
 
       if (name) updates.name = name;
       if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
       if (openaiKey) updates.openaiApiKey = openaiKey;
+      if (anthropicKey) updates.anthropicApiKey = anthropicKey;
+      if (geminiKey) updates.geminiApiKey = geminiKey;
       if (haKey) updates.homeAssistantApiKey = haKey;
       if (tmdbKey) updates.tmdbApiKey = tmdbKey;
 
@@ -2420,6 +2426,8 @@
         if (result.success) {
           document.getElementById('key-openweather').value = '';
           document.getElementById('key-openai').value = '';
+          document.getElementById('key-anthropic').value = '';
+          document.getElementById('key-gemini').value = '';
           document.getElementById('key-homeassistant').value = '';
           document.getElementById('key-tmdb').value = '';
           return true;
@@ -2963,6 +2971,28 @@
             <div class="lcars-api-key-input-row">
               <input type="password" id="key-openai" class="lcars-input" placeholder="Enter API key">
               <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('openai')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>ANTHROPIC (CLAUDE)</label>
+              <span class="lcars-api-key-status" id="status-anthropic">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-anthropic" class="lcars-input" placeholder="Enter API key">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('anthropic')">TEST</button>
+            </div>
+          </div>
+
+          <div class="lcars-api-key-item">
+            <div class="lcars-api-key-header">
+              <label>GOOGLE GEMINI</label>
+              <span class="lcars-api-key-status" id="status-gemini">NOT CONFIGURED</span>
+            </div>
+            <div class="lcars-api-key-input-row">
+              <input type="password" id="key-gemini" class="lcars-input" placeholder="Enter API key">
+              <button class="lcars-btn-secondary small" onclick="playSound('audio1'); testApiKey('gemini')">TEST</button>
             </div>
           </div>
 
