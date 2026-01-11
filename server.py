@@ -86,7 +86,19 @@ def get_default_settings():
                     "introPrompt": "Based on the following data from my dashboard for {date}, give me a friendly 2-3 sentence summary highlighting what's important today.\n\nDashboard Data:\n{data}\n\n{rules}"
                 }
             },
-            "rules": "Focus on: weather conditions, upcoming calendar events, pending tasks, and any items needing attention. Keep it concise - 2-3 sentences max."
+            "rules": {
+                "default": """Include in your summary:
+- Current weather (temperature, conditions)
+- Tomorrow's weather forecast (high/low temps, conditions)
+- Calendar events for today and tomorrow (use the "relative_day" field)
+- Pending tasks that need attention
+- If there are interesting saved links, briefly mention one worth checking out
+- Any upcoming bills due in the next 7 days
+
+Keep it concise - 2-3 sentences max. Write in second person ("You have...", "Your day...").
+
+Add your own custom rules here for smart home devices, routines, or other personal automations."""
+            }
         },
         "theme": {
             "preference": "default"
