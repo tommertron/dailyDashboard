@@ -434,6 +434,45 @@ def call_anthropic(api_key, model, system_prompt, prompt):
         return None
 
 
+def call_gemini(api_key, model, system_prompt, prompt):
+    """Call Google Gemini API to generate a summary."""
+    # Gemini uses system instructions differently - we combine them with the prompt
+    full_prompt = f"{system_prompt}\n\n{prompt}"
+
+    request_body = json.dumps({
+        "contents": [{"parts": [{"text": full_prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": 300,
+            "temperature": 0.7
+        }
+    }).encode('utf-8')
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    req = Request(
+        url,
+        data=request_body,
+        headers={
+            'Content-Type': 'application/json'
+        }
+    )
+
+    try:
+        with urlopen(req, timeout=30) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            # Gemini returns candidates array with content parts
+            return result['candidates'][0]['content']['parts'][0]['text']
+    except HTTPError as e:
+        error_body = e.read().decode('utf-8') if e.fp else ''
+        print(f"Gemini API error: {e.code} - {error_body}")
+        return None
+    except URLError as e:
+        print(f"Network error: {e.reason}")
+        return None
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        print(f"Error parsing response: {e}")
+        return None
+
+
 def call_ai(config, ai_settings, daily_data):
     """Call the configured AI provider to generate a summary."""
     provider = ai_settings.get('provider', 'openai') if ai_settings else 'openai'
@@ -448,6 +487,13 @@ def call_ai(config, ai_settings, daily_data):
             return None
         print(f"Using Anthropic ({model})")
         return call_anthropic(api_key, model, system_prompt, prompt)
+    elif provider == 'gemini':
+        api_key = config.get('geminiApiKey')
+        if not api_key:
+            print("Error: Gemini API key not configured")
+            return None
+        print(f"Using Gemini ({model})")
+        return call_gemini(api_key, model, system_prompt, prompt)
     else:
         api_key = config.get('openaiApiKey')
         if not api_key:
@@ -482,6 +528,9 @@ def main():
     # Check for appropriate API key based on provider
     if provider == 'anthropic' and not config.get('anthropicApiKey'):
         print("Error: Anthropic API key not found in config.json")
+        return 1
+    elif provider == 'gemini' and not config.get('geminiApiKey'):
+        print("Error: Gemini API key not found in config.json")
         return 1
     elif provider == 'openai' and not config.get('openaiApiKey'):
         print("Error: OpenAI API key not found in config.json")

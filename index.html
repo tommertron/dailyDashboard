@@ -1582,6 +1582,7 @@
       updateKeyStatus('openweather', config.hasOpenWeatherKey, config.openWeatherApiKeyMasked);
       updateKeyStatus('openai', config.hasOpenaiKey, config.openaiApiKeyMasked);
       updateKeyStatus('anthropic', config.hasAnthropicKey, config.anthropicApiKeyMasked);
+      updateKeyStatus('gemini', config.hasGeminiKey, config.geminiApiKeyMasked);
       updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
       updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
     }
@@ -1631,6 +1632,7 @@
       const openweatherKey = document.getElementById('key-openweather').value;
       const openaiKey = document.getElementById('key-openai').value;
       const anthropicKey = document.getElementById('key-anthropic').value;
+      const geminiKey = document.getElementById('key-gemini').value;
       const haKey = document.getElementById('key-homeassistant').value;
       const tmdbKey = document.getElementById('key-tmdb').value;
 
@@ -1638,6 +1640,7 @@
       if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
       if (openaiKey) updates.openaiApiKey = openaiKey;
       if (anthropicKey) updates.anthropicApiKey = anthropicKey;
+      if (geminiKey) updates.geminiApiKey = geminiKey;
       if (haKey) updates.homeAssistantApiKey = haKey;
       if (tmdbKey) updates.tmdbApiKey = tmdbKey;
 
@@ -1656,6 +1659,7 @@
           document.getElementById('key-openweather').value = '';
           document.getElementById('key-openai').value = '';
           document.getElementById('key-anthropic').value = '';
+          document.getElementById('key-gemini').value = '';
           document.getElementById('key-homeassistant').value = '';
           document.getElementById('key-tmdb').value = '';
           return true;
@@ -1790,7 +1794,7 @@
       const provider = aiPrompts.provider || 'openai';
       const model = aiPrompts.model || 'gpt-4o-mini';
       document.getElementById('ai-provider').value = provider;
-      updateModelOptions(model);
+      updateModelSuggestions(model);
 
       // Populate personas list
       const personasList = document.getElementById('personas-list');
@@ -2079,23 +2083,38 @@ Add your own custom rules here for smart home devices, routines, or other person
         { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Fast & Cheap)' },
         { id: 'gpt-4o', name: 'GPT-4o (Balanced)' },
         { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
-        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo (Legacy)' }
+        { id: 'o1-mini', name: 'o1 Mini (Reasoning)' },
+        { id: 'o1', name: 'o1 (Advanced Reasoning)' }
       ],
       anthropic: [
         { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku (Fast & Cheap)' },
-        { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet (Balanced)' },
-        { id: 'claude-3-opus-latest', name: 'Claude 3 Opus (Most Capable)' }
+        { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4 (Balanced)' },
+        { id: 'claude-opus-4-20250514', name: 'Claude Opus 4 (Most Capable)' }
+      ],
+      gemini: [
+        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Fast & Cheap)' },
+        { id: 'gemini-2.0-flash-thinking-exp', name: 'Gemini 2.0 Flash Thinking (Reasoning)' },
+        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Balanced)' }
       ]
     };
 
-    function updateModelOptions(selectedModel = null) {
+    function updateModelSuggestions(currentValue = null) {
       const provider = document.getElementById('ai-provider').value;
-      const modelSelect = document.getElementById('ai-model');
+      const modelInput = document.getElementById('ai-model');
+      const datalist = document.getElementById('model-suggestions');
       const models = aiModels[provider] || [];
 
-      modelSelect.innerHTML = models.map(m =>
-        `<option value="${m.id}" ${m.id === selectedModel ? 'selected' : ''}>${m.name}</option>`
+      // Populate datalist with suggestions
+      datalist.innerHTML = models.map(m =>
+        `<option value="${m.id}">${m.name}</option>`
       ).join('');
+
+      // Set default model if no current value or switching providers
+      if (!currentValue || !models.some(m => m.id === currentValue)) {
+        modelInput.value = models.length > 0 ? models[0].id : '';
+      } else {
+        modelInput.value = currentValue;
+      }
     }
 
     // AI Prompt Management Functions - Template Editor
@@ -2584,6 +2603,18 @@ Add your own custom rules here for smart home devices, routines, or other person
 
               <div class="api-key-item">
                 <div class="api-key-header">
+                  <label>Google Gemini</label>
+                  <span class="api-key-status" id="status-gemini">Not configured</span>
+                </div>
+                <p class="api-key-help">Google's AI models. <a href="https://aistudio.google.com/app/apikey" target="_blank">Get an API key</a></p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-gemini" class="settings-input" placeholder="Enter API key">
+                  <button class="settings-btn-secondary small" onclick="testApiKey('gemini')">Test</button>
+                </div>
+              </div>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
                   <label>Home Assistant</label>
                   <span class="api-key-status" id="status-homeassistant">Not configured</span>
                 </div>
@@ -2646,16 +2677,19 @@ Add your own custom rules here for smart home devices, routines, or other person
               <p class="settings-description">Choose which AI service to use for generating summaries.</p>
               <div class="settings-form-group">
                 <label for="ai-provider">Provider</label>
-                <select id="ai-provider" class="settings-select" onchange="updateModelOptions()">
+                <select id="ai-provider" class="settings-select" onchange="updateModelSuggestions()">
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="gemini">Google Gemini</option>
                 </select>
               </div>
               <div class="settings-form-group">
                 <label for="ai-model">Model</label>
-                <select id="ai-model" class="settings-select">
+                <input type="text" id="ai-model" class="settings-input" list="model-suggestions" placeholder="e.g. gpt-4o-mini">
+                <datalist id="model-suggestions">
                   <!-- Populated by JS based on provider -->
-                </select>
+                </datalist>
+                <p class="settings-hint">Type any model name or select from suggestions. New models can be used as soon as they're released.</p>
               </div>
               <p class="settings-hint" id="model-hint">Make sure you have the corresponding API key configured in the API Keys tab.</p>
             </div>
