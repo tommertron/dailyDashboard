@@ -144,9 +144,11 @@ def load_ai_settings():
 
     persona = personas.get(active_persona, {})
     template = templates.get(active_template, {})
-    rule_text = rules.get('default', '')
+    rule_text = rules.get('default', '') if isinstance(rules, dict) else rules
 
     return {
+        'provider': ai_prompts.get('provider', 'openai'),
+        'model': ai_prompts.get('model', 'gpt-4o-mini'),
         'persona_name': persona.get('name', 'AI Assistant'),
         'system_prompt': persona.get('systemPrompt', ''),
         'intro_prompt': template.get('introPrompt', ''),
@@ -331,25 +333,19 @@ def get_tomorrow_forecast(forecast_data):
         'description': midday_forecast['weather'][0]['description']
     }
 
-def call_openai(api_key, daily_data):
-    """Call OpenAI API to generate a summary."""
+def build_prompt(daily_data, ai_settings):
+    """Build the prompt from AI settings."""
     today = datetime.now().strftime("%A, %B %d, %Y")
 
-    # Load AI settings from settings.json
-    ai_settings = load_ai_settings()
-
     if ai_settings and ai_settings.get('intro_prompt') and ai_settings.get('system_prompt'):
-        # Use configurable prompts from settings
         intro_prompt = ai_settings['intro_prompt']
         rules = ai_settings['rules']
         system_prompt = ai_settings['system_prompt']
 
-        # Replace placeholders in intro prompt
         prompt = intro_prompt.replace('{date}', today)
         prompt = prompt.replace('{data}', json.dumps(daily_data, indent=2))
         prompt = prompt.replace('{rules}', rules)
     else:
-        # Fallback to hardcoded default prompt if settings not available
         prompt = f"""Based on the following data from my dashboard for {today}, give me a friendly 2-3 sentence summary.
 
 Dashboard Data:
@@ -358,11 +354,15 @@ Dashboard Data:
 IMPORTANT: Do NOT start with any greeting like "Good morning" or "Good afternoon" - the dashboard already shows a greeting. Just dive straight into the briefing.
 
 Write in second person ("You have...", "Your day..."). Keep it concise - 2-3 sentences max."""
-
         system_prompt = "You are a helpful assistant providing daily briefings."
 
+    return system_prompt, prompt
+
+
+def call_openai(api_key, model, system_prompt, prompt):
+    """Call OpenAI API to generate a summary."""
     request_body = json.dumps({
-        "model": "gpt-4o-mini",
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
@@ -395,6 +395,67 @@ Write in second person ("You have...", "Your day..."). Keep it concise - 2-3 sen
         print(f"Error parsing response: {e}")
         return None
 
+
+def call_anthropic(api_key, model, system_prompt, prompt):
+    """Call Anthropic API to generate a summary."""
+    request_body = json.dumps({
+        "model": model,
+        "max_tokens": 300,
+        "system": system_prompt,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }).encode('utf-8')
+
+    req = Request(
+        'https://api.anthropic.com/v1/messages',
+        data=request_body,
+        headers={
+            'Content-Type': 'application/json',
+            'x-api-key': api_key,
+            'anthropic-version': '2023-06-01'
+        }
+    )
+
+    try:
+        with urlopen(req, timeout=30) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            # Anthropic returns content as an array of content blocks
+            return result['content'][0]['text']
+    except HTTPError as e:
+        error_body = e.read().decode('utf-8') if e.fp else ''
+        print(f"Anthropic API error: {e.code} - {error_body}")
+        return None
+    except URLError as e:
+        print(f"Network error: {e.reason}")
+        return None
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        print(f"Error parsing response: {e}")
+        return None
+
+
+def call_ai(config, ai_settings, daily_data):
+    """Call the configured AI provider to generate a summary."""
+    provider = ai_settings.get('provider', 'openai') if ai_settings else 'openai'
+    model = ai_settings.get('model', 'gpt-4o-mini') if ai_settings else 'gpt-4o-mini'
+
+    system_prompt, prompt = build_prompt(daily_data, ai_settings)
+
+    if provider == 'anthropic':
+        api_key = config.get('anthropicApiKey')
+        if not api_key:
+            print("Error: Anthropic API key not configured")
+            return None
+        print(f"Using Anthropic ({model})")
+        return call_anthropic(api_key, model, system_prompt, prompt)
+    else:
+        api_key = config.get('openaiApiKey')
+        if not api_key:
+            print("Error: OpenAI API key not configured")
+            return None
+        print(f"Using OpenAI ({model})")
+        return call_openai(api_key, model, system_prompt, prompt)
+
 def save_summary(summary):
     """Save the summary to a JSON file."""
     filepath = os.path.join(DIRECTORY, 'daily-summary.json')
@@ -411,7 +472,18 @@ def main():
     print("Generating daily summary...")
 
     config = load_config()
-    if not config or 'openaiApiKey' not in config:
+    if not config:
+        print("Error: config.json not found")
+        return 1
+
+    ai_settings = load_ai_settings()
+    provider = ai_settings.get('provider', 'openai') if ai_settings else 'openai'
+
+    # Check for appropriate API key based on provider
+    if provider == 'anthropic' and not config.get('anthropicApiKey'):
+        print("Error: Anthropic API key not found in config.json")
+        return 1
+    elif provider == 'openai' and not config.get('openaiApiKey'):
         print("Error: OpenAI API key not found in config.json")
         return 1
 
@@ -503,7 +575,7 @@ def main():
           f"backup: {'yes' if 'backup' in daily_data else 'no'}, "
           f"read_later: {len(daily_data.get('read_later', []))}")
 
-    summary = call_openai(config['openaiApiKey'], daily_data)
+    summary = call_ai(config, ai_settings, daily_data)
 
     if summary:
         save_summary(summary)
