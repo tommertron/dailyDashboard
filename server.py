@@ -1170,6 +1170,7 @@ if __name__ == '__main__':
     cache_thread.start()
     print(f"Cache refresh thread started (TTL: {CACHE_TTL}s)")
 
-    with http.server.HTTPServer(('', PORT), DashboardHandler) as httpd:
+    # Use ThreadingHTTPServer for concurrent request handling
+    with http.server.ThreadingHTTPServer(('', PORT), DashboardHandler) as httpd:
         print(f'Dashboard server running at http://localhost:{PORT}')
         httpd.serve_forever()
