@@ -592,6 +592,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.test_openweather()
         elif self.path == '/api/test/openai':
             self.test_openai()
+        elif self.path == '/api/test/anthropic':
+            self.test_anthropic()
         elif self.path == '/api/test/homeassistant':
             self.test_homeassistant()
         elif self.path == '/api/test/tmdb':
@@ -754,12 +756,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'name': config.get('name', ''),
                 'hasOpenWeatherKey': bool(config.get('openWeatherApiKey')),
                 'hasOpenaiKey': bool(config.get('openaiApiKey')),
+                'hasAnthropicKey': bool(config.get('anthropicApiKey')),
                 'hasHomeAssistantKey': bool(config.get('homeAssistantApiKey')),
                 'hasTmdbKey': bool(config.get('tmdbApiKey')),
                 'homeAssistantUrl': config.get('homeAssistantUrl', ''),
                 # Masked versions for display
                 'openWeatherApiKeyMasked': mask_key(config.get('openWeatherApiKey', '')),
                 'openaiApiKeyMasked': mask_key(config.get('openaiApiKey', '')),
+                'anthropicApiKeyMasked': mask_key(config.get('anthropicApiKey', '')),
                 'homeAssistantApiKeyMasked': mask_key(config.get('homeAssistantApiKey', '')),
                 'tmdbApiKeyMasked': mask_key(config.get('tmdbApiKey', '')),
             }
@@ -777,7 +781,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             config = load_config()
 
             # Only update provided keys (don't require all keys)
-            allowed_keys = ['name', 'openWeatherApiKey', 'openaiApiKey',
+            allowed_keys = ['name', 'openWeatherApiKey', 'openaiApiKey', 'anthropicApiKey',
                            'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey']
 
             for key in allowed_keys:
@@ -832,6 +836,37 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             url = "https://api.openai.com/v1/models"
             req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}'})
             with urllib.request.urlopen(req, timeout=10) as response:
+                self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.send_json_response(401, {'success': False, 'error': 'Invalid API key'})
+            else:
+                self.send_json_response(e.code, {'success': False, 'error': str(e)})
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def test_anthropic(self):
+        """Test Anthropic API key."""
+        try:
+            config = load_config()
+            key = config.get('anthropicApiKey')
+            if not key:
+                self.send_json_response(400, {'success': False, 'error': 'No API key configured'})
+                return
+
+            # Test by calling the models endpoint
+            url = "https://api.anthropic.com/v1/messages"
+            data = json.dumps({
+                "model": "claude-3-5-haiku-latest",
+                "max_tokens": 10,
+                "messages": [{"role": "user", "content": "Hi"}]
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers={
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            })
+            with urllib.request.urlopen(req, timeout=15) as response:
                 self.send_json_response(200, {'success': True, 'message': 'Connection successful'})
         except urllib.error.HTTPError as e:
             if e.code == 401:
