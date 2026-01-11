@@ -989,7 +989,8 @@ body {
   margin-top: 0;
 }
 
-.calendar-day-label.tomorrow {
+.calendar-day-label.tomorrow,
+.calendar-day-label.upcoming {
   color: var(--text-secondary);
   border-top: 1px solid var(--border-light);
   padding-top: 0.5rem;

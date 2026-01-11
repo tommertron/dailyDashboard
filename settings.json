@@ -134,7 +134,7 @@
         "description": "Fetch upcoming bills"
       },
       "calendar": {
-        "enabled": false,
+        "enabled": true,
         "shortcutName": "daily calendar",
         "description": "Sync calendar events"
       },

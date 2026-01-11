@@ -178,6 +178,26 @@ def gather_daily_data():
             events = [json.loads(line) for line in calendar_data['events'].split('\n') if line.strip()]
             # Filter out Focus Time events
             events = [e for e in events if e.get('title') != 'Focus Time']
+            # Add relative day info to help AI with date context
+            today = now.date()
+            for event in events:
+                start_str = event.get('start', '')
+                try:
+                    # Parse date like "Jan 12, 2026 at 12:00 AM"
+                    event_date = datetime.strptime(start_str.split(' at ')[0], '%b %d, %Y').date()
+                    days_diff = (event_date - today).days
+                    if days_diff == 0:
+                        event['relative_day'] = 'today'
+                    elif days_diff == 1:
+                        event['relative_day'] = 'tomorrow'
+                    elif days_diff == 2:
+                        event['relative_day'] = 'in 2 days'
+                    elif days_diff < 7:
+                        event['relative_day'] = f'in {days_diff} days'
+                    else:
+                        event['relative_day'] = f'on {event_date.strftime("%A, %b %d")}'
+                except (ValueError, IndexError):
+                    pass
             data['calendar_events'] = events
         except json.JSONDecodeError:
             data['calendar_events'] = []
