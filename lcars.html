@@ -1528,15 +1528,17 @@
 
     function parseEventDate(dateStr) {
       const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(.+)$/);
-      if (!match) return { time: dateStr, isToday: true, isTomorrow: false };
+      if (!match) return { time: dateStr, isToday: true, isTomorrow: false, daysAway: 0, eventDate: new Date() };
       const [, month, day, year, time] = match;
       const eventDate = new Date(`${month} ${day}, ${year}`);
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const isToday = eventDate.toDateString() === today.toDateString();
       const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
-      return { time, isToday, isTomorrow };
+      const daysAway = Math.floor((eventDate - today) / (1000 * 60 * 60 * 24));
+      return { time, isToday, isTomorrow, daysAway, eventDate };
     }
 
     function renderCalendar(events) {
@@ -1545,31 +1547,42 @@
         container.innerHTML = '<div class="panel-empty">No upcoming events</div>';
         return;
       }
-      const todayEvents = events.filter(e => parseEventDate(e.start).isToday);
-      const tomorrowEvents = events.filter(e => parseEventDate(e.start).isTomorrow);
+      const parsedEvents = events.map(e => ({ ...e, ...parseEventDate(e.start) }));
+      const todayEvents = parsedEvents.filter(e => e.isToday);
+      const tomorrowEvents = parsedEvents.filter(e => e.isTomorrow);
+      const upcomingEvents = parsedEvents.filter(e => e.daysAway >= 2 && e.daysAway <= 7);
       let html = '';
       if (todayEvents.length > 0) {
         html += '<div class="calendar-day-label">Today</div>';
-        html += todayEvents.map(event => {
-          const { time } = parseEventDate(event.start);
-          return `
-            <div class="calendar-event">
-              <div class="event-time">${event.allday === 'Yes' ? 'All day' : time}</div>
-              <div class="event-details">
-                <div class="event-title">${event.title}</div>
-                <div class="event-calendar">${event.calendar}</div>
-              </div>
+        html += todayEvents.map(event => `
+          <div class="calendar-event">
+            <div class="event-time">${event.allday === 'Yes' ? 'All day' : event.time}</div>
+            <div class="event-details">
+              <div class="event-title">${event.title}</div>
+              <div class="event-calendar">${event.calendar}</div>
             </div>
-          `;
-        }).join('');
+          </div>
+        `).join('');
       }
       if (tomorrowEvents.length > 0) {
         html += '<div class="calendar-day-label tomorrow">Tomorrow</div>';
-        html += tomorrowEvents.map(event => {
-          const { time } = parseEventDate(event.start);
+        html += tomorrowEvents.map(event => `
+          <div class="calendar-event">
+            <div class="event-time">${event.allday === 'Yes' ? 'All day' : event.time}</div>
+            <div class="event-details">
+              <div class="event-title">${event.title}</div>
+              <div class="event-calendar">${event.calendar}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      if (upcomingEvents.length > 0) {
+        html += '<div class="calendar-day-label upcoming">This Week</div>';
+        html += upcomingEvents.map(event => {
+          const dayName = event.eventDate.toLocaleDateString('en-US', { weekday: 'short' });
           return `
             <div class="calendar-event">
-              <div class="event-time">${event.allday === 'Yes' ? 'All day' : time}</div>
+              <div class="event-time">${dayName}</div>
               <div class="event-details">
                 <div class="event-title">${event.title}</div>
                 <div class="event-calendar">${event.calendar}</div>
