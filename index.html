@@ -182,14 +182,19 @@
 
       <div class="panel" data-panel="bills">
         <div class="panel-header">
-          <h2 class="section-title">Bills Due</h2>
+          <h2 class="section-title">remaining</h2>
           <div class="header-actions">
             <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="x-apple-reminderkit://" class="app-link" title="Open Reminders">
+            <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+            </a>
+            <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -226,6 +231,11 @@
         <div class="panel-header">
           <h2 class="section-title">Wisdom</h2>
           <div class="header-actions">
+            <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -309,6 +319,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Custom Panels Container (dynamically populated) -->
+      <div id="custom-panels-container"></div>
     </div>
   </div>
 
@@ -385,6 +398,274 @@
       };
       return diceIcons[num] || diceIcons[1];
     }
+
+    // =========================================================================
+    // Generic Panel Renderer
+    // =========================================================================
+    const GenericPanelRenderer = {
+      // Field formatters for different data types
+      formatters: {
+        text: (value, config) => {
+          if (value == null) return '';
+          let text = String(value);
+          if (config?.maxLength && text.length > config.maxLength) {
+            text = text.substring(0, config.maxLength) + '...';
+          }
+          return text;
+        },
+        currency: (value, config) => {
+          const num = parseFloat(value) || 0;
+          const prefix = config?.prefix || '$';
+          return `${prefix}${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        },
+        date: (value, config) => {
+          if (!value) return '';
+          try {
+            const date = new Date(value);
+            if (config?.relative) {
+              const now = new Date();
+              const diffDays = Math.floor((date - now) / (1000 * 60 * 60 * 24));
+              if (diffDays === 0) return 'Today';
+              if (diffDays === 1) return 'Tomorrow';
+              if (diffDays === -1) return 'Yesterday';
+            }
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          } catch {
+            return value;
+          }
+        },
+        datetime: (value, config) => {
+          if (!value) return '';
+          try {
+            const date = new Date(value);
+            return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+          } catch {
+            return value;
+          }
+        },
+        link: (value, config) => value || '',
+        number: (value, config) => {
+          const num = parseFloat(value) || 0;
+          const prefix = config?.prefix || '';
+          const suffix = config?.suffix || '';
+          return `${prefix}${num.toLocaleString()}${suffix}`;
+        },
+        status: (value, config) => {
+          const mapping = config?.mapping?.[value] || {};
+          return { value, cssClass: mapping.class || '', icon: mapping.icon || '' };
+        },
+        boolean: (value, config) => {
+          return value ? (config?.trueDisplay || 'Yes') : (config?.falseDisplay || 'No');
+        }
+      },
+
+      // Extract data from nested JSON path (e.g., "todos" or "data.items")
+      extractData(data, dataPath) {
+        if (!dataPath) return data;
+        return dataPath.split('.').reduce((obj, key) => obj?.[key], data);
+      },
+
+      // Load data from file or API
+      async loadData(config) {
+        const { type, path, dataPath } = config.dataSource;
+        try {
+          const cacheBust = `?t=${Date.now()}`;
+          const url = type === 'api' ? path : `${path}${cacheBust}`;
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          return this.extractData(data, dataPath);
+        } catch (error) {
+          console.error(`Error loading data from ${config.dataSource.path}:`, error);
+          return null;
+        }
+      },
+
+      // Format a field value based on its type config
+      formatField(value, fieldConfig) {
+        const formatter = this.formatters[fieldConfig.type] || this.formatters.text;
+        return formatter(value, fieldConfig);
+      },
+
+      // Template: List (for tasks, bills, links, etc.)
+      renderList(container, data, config) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          container.innerHTML = `<div class="panel-empty">${config.options?.emptyMessage || 'No items'}</div>`;
+          return;
+        }
+
+        let items = config.options?.shuffle ? shuffleArray([...data]) : data;
+        if (config.options?.maxItems) {
+          items = items.slice(0, config.options.maxItems);
+        }
+
+        const primaryField = config.fields.find(f => f.display === 'primary');
+        const secondaryField = config.fields.find(f => f.display === 'secondary');
+        const linkField = config.fields.find(f => f.type === 'link');
+        const statusField = config.fields.find(f => f.type === 'status');
+
+        container.innerHTML = items.map(item => {
+          const primaryValue = primaryField ? this.formatField(item[primaryField.key], primaryField) : '';
+          const secondaryValue = secondaryField ? this.formatField(item[secondaryField.key], secondaryField) : '';
+          const linkUrl = linkField ? item[linkField.key] : null;
+          const statusValue = statusField ? this.formatField(item[statusField.key], statusField) : null;
+
+          const statusClass = statusValue?.cssClass || '';
+          const wrapper = linkUrl ? 'a' : 'div';
+          const linkAttrs = linkUrl ? `href="${linkUrl}" target="_blank" rel="noopener"` : '';
+
+          return `
+            <${wrapper} class="generic-list-item ${statusClass}" ${linkAttrs}>
+              <span class="generic-bullet"></span>
+              <div class="generic-list-content">
+                <div class="generic-field-primary">${primaryValue}</div>
+                ${secondaryValue ? `<div class="generic-field-secondary">${secondaryValue}</div>` : ''}
+              </div>
+            </${wrapper}>
+          `;
+        }).join('');
+      },
+
+      // Template: Stats (for number badges like Anybox stats)
+      renderStats(container, data, config) {
+        if (!data) {
+          container.innerHTML = `<div class="panel-empty">${config.options?.emptyMessage || 'No data'}</div>`;
+          return;
+        }
+
+        container.innerHTML = config.fields.map(field => {
+          const value = this.formatField(data[field.key], field);
+          const label = field.label || field.key;
+          const link = field.link || '';
+          const wrapper = link ? 'a' : 'div';
+          const linkAttrs = link ? `href="${link}" target="_blank"` : '';
+
+          return `
+            <${wrapper} class="generic-stat ${link ? 'generic-stat-link' : ''}" ${linkAttrs}>
+              <span class="generic-stat-value">${value}</span>
+              <span class="generic-stat-label">${label}</span>
+            </${wrapper}>
+          `;
+        }).join('');
+      },
+
+      // Template: Single Value (for wisdom quotes, etc.)
+      renderSingleValue(container, data, config) {
+        if (!data) {
+          container.innerHTML = `<div class="panel-empty">${config.options?.emptyMessage || 'No content'}</div>`;
+          return;
+        }
+
+        const primaryField = config.fields.find(f => f.display === 'primary');
+        const secondaryField = config.fields.find(f => f.display === 'secondary');
+
+        const primaryValue = primaryField ? this.formatField(data[primaryField.key], primaryField) : '';
+        const secondaryValue = secondaryField ? this.formatField(data[secondaryField.key], secondaryField) : '';
+
+        container.innerHTML = `
+          <div class="generic-single-value">
+            <blockquote class="generic-quote">${primaryValue}</blockquote>
+            ${secondaryValue ? `<cite class="generic-source">— ${secondaryValue}</cite>` : ''}
+          </div>
+        `;
+      },
+
+      // Template: Key-Value pairs
+      renderKeyValue(container, data, config) {
+        if (!data) {
+          container.innerHTML = `<div class="panel-empty">${config.options?.emptyMessage || 'No data'}</div>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="generic-kv-grid">
+            ${config.fields.map(field => {
+              const value = this.formatField(data[field.key], field);
+              const label = field.label || field.key;
+              return `
+                <div class="generic-kv-item">
+                  <span class="generic-kv-label">${label}</span>
+                  <span class="generic-kv-value">${value}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      },
+
+      // Main render entry point
+      async render(containerId, config) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+          console.error(`Container not found: ${containerId}`);
+          return;
+        }
+
+        container.innerHTML = '<div class="panel-empty">Loading...</div>';
+
+        try {
+          const data = await this.loadData(config);
+
+          switch (config.displayTemplate) {
+            case 'list':
+              this.renderList(container, data, config);
+              break;
+            case 'stats':
+              this.renderStats(container, data, config);
+              break;
+            case 'single-value':
+              this.renderSingleValue(container, data, config);
+              break;
+            case 'key-value':
+              this.renderKeyValue(container, data, config);
+              break;
+            default:
+              container.innerHTML = `<div class="panel-empty">Unknown template: ${config.displayTemplate}</div>`;
+          }
+        } catch (error) {
+          console.error(`Error rendering panel ${config.id}:`, error);
+          container.innerHTML = `<div class="panel-empty">Error loading panel</div>`;
+        }
+      }
+    };
+
+    // Built-in panel configurations for migration
+    const builtInPanelConfigs = {
+      wisdom: {
+        id: 'wisdom',
+        name: 'Wisdom',
+        dataSource: { type: 'file', path: 'wisdom.json', dataPath: null },
+        displayTemplate: 'single-value',
+        fields: [
+          { key: 'wisdom', type: 'text', display: 'primary' },
+          { key: 'source', type: 'text', display: 'secondary' }
+        ],
+        options: { emptyMessage: 'No wisdom today' }
+      },
+      tasks: {
+        id: 'tasks',
+        name: 'Tasks',
+        dataSource: { type: 'file', path: 'todos.json', dataPath: 'todos' },
+        displayTemplate: 'list',
+        fields: [
+          { key: 'title', type: 'text', display: 'primary' },
+          { key: 'status', type: 'status', display: 'badge', mapping: { 'Completed': { class: 'completed' } } }
+        ],
+        options: { emptyMessage: 'No tasks for today' }
+      },
+      readLater: {
+        id: 'readLater',
+        name: 'Read Later',
+        dataSource: { type: 'file', path: 'readlater.json', dataPath: 'links' },
+        displayTemplate: 'list',
+        fields: [
+          { key: 'title', type: 'text', display: 'primary' },
+          { key: 'url', type: 'link' },
+          { key: 'summary', type: 'text', display: 'secondary', maxLength: 100 }
+        ],
+        options: { emptyMessage: 'No articles saved', maxItems: 5 }
+      }
+    };
 
     function renderLinks(links) {
       const container = document.getElementById('links-container');
@@ -1258,59 +1539,69 @@
     function renderMoney(data) {
       const container = document.getElementById('money-container');
 
-      if (!data.success) {
+      if (data.error) {
         container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
         return;
       }
 
-      const bills = data.bills || [];
-      if (bills.length === 0) {
-        container.innerHTML = '<div class="panel-empty">No bills due</div>';
-        return;
-      }
+      const bills = data.bills_due_before_payday || [];
+      const remaining = data.spending_money_left || 0;
+      const balance = data.checking_balance || 0;
+      const totalDue = data.total_due || 0;
+      const daysLeft = data.days_until_payday;
+      const vibe = data.vibe || '';
 
-      // Parse bills and calculate total
-      let total = 0;
-      const parsedBills = bills.map(bill => {
-        const match = bill.match(/^\$?([\d,]+(?:\.\d{2})?)\s*[-–]\s*(.+)$/);
-        if (match) {
-          const amount = parseFloat(match[1].replace(',', ''));
-          total += amount;
-          return { amount, name: match[2].trim() };
-        }
-        // Try alternate format without dash
-        const match2 = bill.match(/^\$?([\d,]+(?:\.\d{2})?)\s+(.+)$/);
-        if (match2) {
-          const amount = parseFloat(match2[1].replace(',', ''));
-          total += amount;
-          return { amount, name: match2[2].trim() };
-        }
-        return { amount: 0, name: bill };
-      });
+      // Format currency
+      const formatCAD = (amt) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amt);
+
+      // Format date
+      const formatDueDate = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (date.getTime() === today.getTime()) return 'Today';
+        if (date.getTime() === tomorrow.getTime()) return 'Tomorrow';
+        return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+      };
+
+      const remainingClass = remaining < 0 ? 'negative' : remaining < 100 ? 'warning' : 'positive';
 
       container.innerHTML = `
-        ${parsedBills.map(bill => `
-          <div class="bill-item">
-            <span class="bill-name">${bill.name}</span>
-            <span class="bill-amount">$${bill.amount.toLocaleString()}</span>
-          </div>
-        `).join('')}
-        <div class="bill-total">
-          <span class="bill-total-label">Total Due</span>
-          <span class="bill-total-amount">$${total.toLocaleString()}</span>
+        <div class="remaining-hero ${remainingClass}">
+          <div class="remaining-amount">${formatCAD(remaining)}</div>
+          <div class="remaining-label">left to spend${daysLeft !== null ? ` (${daysLeft} days)` : ''}</div>
+          ${vibe ? `<div class="remaining-vibe">${vibe}</div>` : ''}
         </div>
+        <div class="remaining-balance">
+          <span>Balance: ${formatCAD(balance)}</span>
+          <span>Due: ${formatCAD(totalDue)}</span>
+        </div>
+        ${bills.length > 0 ? `
+          <div class="remaining-bills">
+            ${bills.slice(0, 5).map(bill => `
+              <div class="bill-item">
+                <span class="bill-name">${bill.name}</span>
+                <span class="bill-meta">${formatDueDate(bill.due)}</span>
+                <span class="bill-amount">${formatCAD(bill.amount)}</span>
+              </div>
+            `).join('')}
+            ${bills.length > 5 ? `<div class="bill-more">+${bills.length - 5} more</div>` : ''}
+          </div>
+        ` : '<div class="panel-empty" style="padding: 0.5rem 0;">No bills this pay period!</div>'}
       `;
     }
 
     async function loadMoney() {
       try {
-        const response = await fetch('/api/money');
+        const response = await fetch('http://100.125.128.51:8111/api/summary');
         const data = await response.json();
         renderMoney(data);
       } catch (error) {
-        console.error('Error loading money:', error);
+        console.error('Error loading remaining:', error);
         document.getElementById('money-container').innerHTML =
-          '<div class="panel-empty">Error loading bills</div>';
+          '<div class="panel-empty">remaining unavailable</div>';
       }
     }
 
@@ -1463,25 +1754,34 @@
       }
     }
 
+    async function refreshWisdom() {
+      const btn = document.getElementById('wisdom-refresh-btn');
+      btn.disabled = true;
+      btn.classList.add('spinning');
+
+      try {
+        const response = await fetch('/api/wisdom/random');
+        const data = await response.json();
+        if (data.success) {
+          renderWisdom(data);
+        }
+      } catch (error) {
+        console.error('Error refreshing wisdom:', error);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+      }
+    }
+
     async function refreshMoney() {
       const btn = document.getElementById('money-refresh-btn');
       btn.disabled = true;
       btn.style.opacity = '0.5';
 
       try {
-        const response = await fetch('/api/refresh-money', { method: 'POST' });
-        const result = await response.json();
-
-        if (result.success) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          await loadMoney();
-        } else {
-          console.error('Refresh failed:', result.error);
-          alert('Failed to refresh bills: ' + result.error);
-        }
+        await loadMoney();
       } catch (error) {
-        console.error('Error refreshing money:', error);
-        alert('Error refreshing bills');
+        console.error('Error refreshing remaining:', error);
       } finally {
         btn.disabled = false;
         btn.style.opacity = '1';
@@ -1547,13 +1847,25 @@
     function refreshAllData() {
       loadWeather();
       loadCalendar();
-      loadTodos();
+      if (currentSettings?.useGenericRenderer?.tasks) {
+        GenericPanelRenderer.render('todos-container', builtInPanelConfigs.tasks);
+      } else {
+        loadTodos();
+      }
       loadShedStatus();
       loadHomeStatus();
       loadPiStatus();
       loadMoney();
-      loadReadLater();
-      loadWisdom();
+      if (currentSettings?.useGenericRenderer?.readLater) {
+        GenericPanelRenderer.render('readlater-container', builtInPanelConfigs.readLater);
+      } else {
+        loadReadLater();
+      }
+      if (currentSettings?.useGenericRenderer?.wisdom) {
+        GenericPanelRenderer.render('wisdom-container', builtInPanelConfigs.wisdom);
+      } else {
+        loadWisdom();
+      }
       loadTvShows();
       loadAnyboxStats();
     }
@@ -1885,6 +2197,10 @@
           </div>
         `;
       }).join('');
+
+      // Populate Custom Panels tab
+      populateCustomPanelsList();
+      populateGenericRendererToggles();
     }
 
     async function saveSettings() {
@@ -1892,7 +2208,7 @@
       await saveApiKeys();
 
       const newSettings = {
-        version: 2,
+        version: 3,
         panels: {},
         homeAssistant: {
           url: document.getElementById('url-ha').value,
@@ -1916,7 +2232,7 @@
         },
         aiPrompts: {
           provider: document.getElementById('ai-provider').value,
-          model: document.getElementById('ai-model').value,
+          model: getSelectedModel(),
           activePersona: document.getElementById('active-persona').value,
           activeTemplate: document.getElementById('active-template').value,
           personas: currentSettings?.aiPrompts?.personas || {},
@@ -1927,7 +2243,14 @@
         },
         theme: {
           preference: document.querySelector('input[name="theme"]:checked')?.value || 'default'
-        }
+        },
+        // v3 fields - Generic Panel System
+        useGenericRenderer: currentSettings?.useGenericRenderer || {
+          wisdom: false,
+          tasks: false,
+          readLater: false
+        },
+        customPanels: currentSettings?.customPanels || {}
       };
 
       // Collect panel visibility
@@ -2100,21 +2423,62 @@ Add your own custom rules here for smart home devices, routines, or other person
 
     function updateModelSuggestions(currentValue = null) {
       const provider = document.getElementById('ai-provider').value;
-      const modelInput = document.getElementById('ai-model');
-      const datalist = document.getElementById('model-suggestions');
+      const radioGroup = document.getElementById('model-radio-group');
+      const customRow = document.getElementById('model-custom-row');
+      const customInput = document.getElementById('ai-model-custom');
+      const customRadio = document.getElementById('ai-model-custom-radio');
       const models = aiModels[provider] || [];
 
-      // Populate datalist with suggestions
-      datalist.innerHTML = models.map(m =>
-        `<option value="${m.id}">${m.name}</option>`
+      // Generate radio buttons for predefined models
+      radioGroup.innerHTML = models.map(m =>
+        `<label class="settings-radio">
+          <input type="radio" name="ai-model" value="${m.id}">
+          <span>${m.name}</span>
+        </label>`
       ).join('');
 
-      // Set default model if no current value or switching providers
-      if (!currentValue || !models.some(m => m.id === currentValue)) {
-        modelInput.value = models.length > 0 ? models[0].id : '';
+      // Show custom row
+      customRow.style.display = 'flex';
+
+      // Determine if currentValue matches a predefined model
+      const matchingModel = models.find(m => m.id === currentValue);
+
+      if (currentValue && matchingModel) {
+        // Select the matching predefined model
+        const radio = radioGroup.querySelector(`input[value="${currentValue}"]`);
+        if (radio) radio.checked = true;
+        customInput.value = '';
+      } else if (currentValue && !matchingModel) {
+        // Custom model - select custom radio and fill input
+        customRadio.checked = true;
+        customInput.value = currentValue;
       } else {
-        modelInput.value = currentValue;
+        // Default to first model
+        const firstRadio = radioGroup.querySelector('input[type="radio"]');
+        if (firstRadio) firstRadio.checked = true;
+        customInput.value = '';
       }
+
+      // Clear custom input when selecting a predefined model
+      radioGroup.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+          customInput.value = '';
+        });
+      });
+
+      // Select custom radio when typing in custom input
+      customInput.addEventListener('focus', () => {
+        customRadio.checked = true;
+      });
+    }
+
+    function getSelectedModel() {
+      const selected = document.querySelector('input[name="ai-model"]:checked');
+      if (!selected) return '';
+      if (selected.value === 'custom') {
+        return document.getElementById('ai-model-custom').value;
+      }
+      return selected.value;
     }
 
     // AI Prompt Management Functions - Template Editor
@@ -2325,6 +2689,265 @@ Add your own custom rules here for smart home devices, routines, or other person
       populateSettingsForm(currentSettings);
     }
 
+    // Custom Panel Editor Functions
+    let panelEditorFields = [];
+
+    function openPanelEditor(id = null) {
+      const overlay = document.getElementById('panel-editor-overlay');
+      const title = document.getElementById('panel-editor-title');
+      const idField = document.getElementById('panel-editor-id');
+      const nameField = document.getElementById('panel-editor-name');
+      const visibleField = document.getElementById('panel-editor-visible');
+      const sourceTypeField = document.getElementById('panel-editor-source-type');
+      const sourcePathField = document.getElementById('panel-editor-source-path');
+      const dataPathField = document.getElementById('panel-editor-data-path');
+      const templateField = document.getElementById('panel-editor-template');
+      const maxItemsField = document.getElementById('panel-editor-max-items');
+      const emptyMsgField = document.getElementById('panel-editor-empty-message');
+      const headerTitleField = document.getElementById('panel-editor-title-text');
+      const appLinkField = document.getElementById('panel-editor-app-link');
+
+      if (id) {
+        const panel = currentSettings?.customPanels?.[id];
+        if (!panel) return;
+        title.textContent = 'Edit Custom Panel';
+        idField.value = id;
+        nameField.value = panel.name || '';
+        visibleField.checked = panel.visible !== false;
+        sourceTypeField.value = panel.dataSource?.type || 'file';
+        sourcePathField.value = panel.dataSource?.path || '';
+        dataPathField.value = panel.dataSource?.dataPath || '';
+        templateField.value = panel.displayTemplate || 'list';
+        maxItemsField.value = panel.options?.maxItems || '';
+        emptyMsgField.value = panel.options?.emptyMessage || '';
+        headerTitleField.value = panel.header?.title || '';
+        appLinkField.value = panel.header?.appLink || '';
+        panelEditorFields = panel.fields ? [...panel.fields] : [];
+      } else {
+        title.textContent = 'New Custom Panel';
+        idField.value = '';
+        nameField.value = '';
+        visibleField.checked = true;
+        sourceTypeField.value = 'file';
+        sourcePathField.value = '';
+        dataPathField.value = '';
+        templateField.value = 'list';
+        maxItemsField.value = '';
+        emptyMsgField.value = 'No items';
+        headerTitleField.value = '';
+        appLinkField.value = '';
+        panelEditorFields = [];
+      }
+
+      renderPanelEditorFields();
+      overlay.classList.add('visible');
+    }
+
+    function closePanelEditor() {
+      document.getElementById('panel-editor-overlay').classList.remove('visible');
+      panelEditorFields = [];
+    }
+
+    function closePanelEditorOnOverlay(event) {
+      if (event.target.classList.contains('panel-editor-overlay')) {
+        closePanelEditor();
+      }
+    }
+
+    function renderPanelEditorFields() {
+      const container = document.getElementById('panel-editor-fields');
+      if (!container) return;
+
+      if (panelEditorFields.length === 0) {
+        container.innerHTML = '<p class="field-empty">No fields defined. Add fields to map data to display.</p>';
+        return;
+      }
+
+      container.innerHTML = panelEditorFields.map((field, index) => `
+        <div class="field-editor-item" data-field-index="${index}">
+          <div class="field-editor-row">
+            <div class="field-input-group">
+              <label>Key</label>
+              <input type="text" value="${field.key || ''}" placeholder="JSON key"
+                onchange="updatePanelField(${index}, 'key', this.value)">
+            </div>
+            <div class="field-input-group">
+              <label>Type</label>
+              <select onchange="updatePanelField(${index}, 'type', this.value)">
+                <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text</option>
+                <option value="currency" ${field.type === 'currency' ? 'selected' : ''}>Currency</option>
+                <option value="date" ${field.type === 'date' ? 'selected' : ''}>Date</option>
+                <option value="datetime" ${field.type === 'datetime' ? 'selected' : ''}>DateTime</option>
+                <option value="link" ${field.type === 'link' ? 'selected' : ''}>Link</option>
+                <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+                <option value="status" ${field.type === 'status' ? 'selected' : ''}>Status</option>
+                <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+              </select>
+            </div>
+            <div class="field-input-group">
+              <label>Display</label>
+              <select onchange="updatePanelField(${index}, 'display', this.value)">
+                <option value="primary" ${field.display === 'primary' ? 'selected' : ''}>Primary</option>
+                <option value="secondary" ${field.display === 'secondary' ? 'selected' : ''}>Secondary</option>
+                <option value="clickable" ${field.display === 'clickable' ? 'selected' : ''}>Clickable</option>
+                <option value="badge" ${field.display === 'badge' ? 'selected' : ''}>Badge</option>
+              </select>
+            </div>
+            <button class="settings-btn-small danger" onclick="removePanelField(${index})" title="Remove field">&times;</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addPanelField() {
+      panelEditorFields.push({
+        key: '',
+        type: 'text',
+        display: 'primary'
+      });
+      renderPanelEditorFields();
+    }
+
+    function removePanelField(index) {
+      panelEditorFields.splice(index, 1);
+      renderPanelEditorFields();
+    }
+
+    function updatePanelField(index, property, value) {
+      if (panelEditorFields[index]) {
+        panelEditorFields[index][property] = value;
+      }
+    }
+
+    function savePanelEditor() {
+      const id = document.getElementById('panel-editor-id').value;
+      const name = document.getElementById('panel-editor-name').value.trim();
+      const visible = document.getElementById('panel-editor-visible').checked;
+      const sourceType = document.getElementById('panel-editor-source-type').value;
+      const sourcePath = document.getElementById('panel-editor-source-path').value.trim();
+      const dataPath = document.getElementById('panel-editor-data-path').value.trim();
+      const template = document.getElementById('panel-editor-template').value;
+      const maxItems = document.getElementById('panel-editor-max-items').value;
+      const emptyMsg = document.getElementById('panel-editor-empty-message').value.trim();
+      const headerTitle = document.getElementById('panel-editor-title-text').value.trim();
+      const appLink = document.getElementById('panel-editor-app-link').value.trim();
+
+      if (!name) { alert('Please enter a panel name'); return; }
+      if (!sourcePath) { alert('Please enter a data source path'); return; }
+
+      if (!currentSettings.customPanels) currentSettings.customPanels = {};
+
+      const newId = id || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (!id && currentSettings.customPanels[newId]) {
+        alert('A panel with this ID already exists');
+        return;
+      }
+
+      // Build the panel config
+      const panelConfig = {
+        id: newId,
+        name: name,
+        visible: visible,
+        dataSource: {
+          type: sourceType,
+          path: sourcePath,
+          dataPath: dataPath || null
+        },
+        displayTemplate: template,
+        fields: panelEditorFields.filter(f => f.key), // Only include fields with keys
+        options: {
+          maxItems: maxItems ? parseInt(maxItems) : null,
+          emptyMessage: emptyMsg || 'No items'
+        }
+      };
+
+      // Add header if title is set
+      if (headerTitle) {
+        panelConfig.header = {
+          title: headerTitle,
+          appLink: appLink || null
+        };
+      }
+
+      currentSettings.customPanels[newId] = panelConfig;
+      populateCustomPanelsList();
+      closePanelEditor();
+    }
+
+    function editCustomPanel(id) {
+      openPanelEditor(id);
+    }
+
+    function deleteCustomPanel(id) {
+      const panel = currentSettings?.customPanels?.[id];
+      if (!panel) return;
+      if (!confirm(`Delete custom panel "${panel.name}"?`)) return;
+
+      delete currentSettings.customPanels[id];
+      populateCustomPanelsList();
+    }
+
+    function populateCustomPanelsList() {
+      const container = document.getElementById('custom-panels-list');
+      if (!container) return;
+
+      const panels = currentSettings?.customPanels || {};
+      const panelIds = Object.keys(panels);
+
+      if (panelIds.length === 0) {
+        container.innerHTML = '<p class="no-panels">No custom panels. Click "Add Custom Panel" to create one.</p>';
+        return;
+      }
+
+      container.innerHTML = panelIds.map(id => {
+        const panel = panels[id];
+        return `
+          <div class="custom-panel-item">
+            <div class="panel-item-info">
+              <span class="panel-item-name">${panel.name || id}</span>
+              <span class="panel-item-meta">${panel.displayTemplate} • ${panel.dataSource?.path || 'no source'}</span>
+            </div>
+            <div class="panel-item-actions">
+              <button class="settings-btn-small" onclick="editCustomPanel('${id}')">Edit</button>
+              <button class="settings-btn-small danger" onclick="deleteCustomPanel('${id}')">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function populateGenericRendererToggles() {
+      const container = document.getElementById('generic-renderer-toggles');
+      if (!container) return;
+
+      const toggles = currentSettings?.useGenericRenderer || {};
+      const builtInPanels = [
+        { id: 'wisdom', name: 'Wisdom', description: 'Daily wisdom quotes' },
+        { id: 'tasks', name: 'Tasks', description: 'Things to-do list' },
+        { id: 'readLater', name: 'Read Later', description: 'GoodLinks articles' }
+      ];
+
+      container.innerHTML = builtInPanels.map(panel => `
+        <div class="renderer-toggle-item">
+          <label class="toggle-label">
+            <input type="checkbox"
+              data-renderer-toggle="${panel.id}"
+              ${toggles[panel.id] ? 'checked' : ''}
+              onchange="updateRendererToggle('${panel.id}', this.checked)">
+            <span class="toggle-name">${panel.name}</span>
+            <span class="toggle-desc">${panel.description}</span>
+          </label>
+        </div>
+      `).join('');
+    }
+
+    function updateRendererToggle(panelId, enabled) {
+      if (!currentSettings.useGenericRenderer) {
+        currentSettings.useGenericRenderer = {};
+      }
+      currentSettings.useGenericRenderer[panelId] = enabled;
+    }
+
     // Onboarding Wizard
     let onboardingState = {
       currentStep: 1,
@@ -2511,7 +3134,12 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadAiSummary();
       loadWeather();
       loadCalendar();
-      loadTodos();
+      // Use generic renderer for tasks panel if enabled
+      if (currentSettings?.useGenericRenderer?.tasks) {
+        GenericPanelRenderer.render('todos-container', builtInPanelConfigs.tasks);
+      } else {
+        loadTodos();
+      }
       loadLinks();
       loadAnyboxStats();
       loadStarredLinks();
@@ -2519,10 +3147,63 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadHomeStatus();
       loadPiStatus();
       loadMoney();
-      loadReadLater();
-      loadWisdom();
+      // Use generic renderer for read later panel if enabled
+      if (currentSettings?.useGenericRenderer?.readLater) {
+        GenericPanelRenderer.render('readlater-container', builtInPanelConfigs.readLater);
+      } else {
+        loadReadLater();
+      }
+      // Use generic renderer for wisdom panel if enabled
+      if (currentSettings?.useGenericRenderer?.wisdom) {
+        GenericPanelRenderer.render('wisdom-container', builtInPanelConfigs.wisdom);
+      } else {
+        loadWisdom();
+      }
       loadTvShows();
+
+      // Load any custom panels defined in settings
+      loadCustomPanels();
     }
+
+    // Load and render custom panels from settings
+    async function loadCustomPanels() {
+      const customPanels = currentSettings?.customPanels || {};
+      const container = document.getElementById('custom-panels-container');
+      if (!container) return;
+
+      // Clear existing custom panels
+      container.innerHTML = '';
+
+      for (const [id, config] of Object.entries(customPanels)) {
+        if (config.visible !== false) {
+          const containerId = `custom-${id}-container`;
+
+          // Inject panel HTML
+          const panelHtml = `
+            <div class="panel custom-panel" data-panel="custom-${id}">
+              <div class="panel-header">
+                <h2 class="section-title">${config.header?.title || config.name || id}</h2>
+                ${config.header?.appLink ? `
+                  <a href="${config.header.appLink}" class="app-link" title="${config.header.appLinkTitle || 'Open App'}">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                ` : ''}
+              </div>
+              <div class="panel-body" id="${containerId}">
+                <div class="panel-empty">Loading...</div>
+              </div>
+            </div>
+          `;
+          container.insertAdjacentHTML('beforeend', panelHtml);
+
+          // Render the panel content
+          await GenericPanelRenderer.render(containerId, config);
+        }
+      }
+    }
+
     init();
   </script>
 
@@ -2540,6 +3221,7 @@ Add your own custom rules here for smart home devices, routines, or other person
           <button class="settings-tab" data-tab="refresh" onclick="switchSettingsTab('refresh')">Refresh</button>
           <button class="settings-tab" data-tab="ai-prompts" onclick="switchSettingsTab('ai-prompts')">AI Prompts</button>
           <button class="settings-tab" data-tab="home-assistant" onclick="switchSettingsTab('home-assistant')">Home Assistant</button>
+          <button class="settings-tab" data-tab="custom-panels" onclick="switchSettingsTab('custom-panels')">Custom Panels</button>
           <button class="settings-tab" data-tab="api-urls" onclick="switchSettingsTab('api-urls')">API URLs</button>
           <button class="settings-tab" data-tab="preferences" onclick="switchSettingsTab('preferences')">Preferences</button>
         </div>
@@ -2684,12 +3366,18 @@ Add your own custom rules here for smart home devices, routines, or other person
                 </select>
               </div>
               <div class="settings-form-group">
-                <label for="ai-model">Model</label>
-                <input type="text" id="ai-model" class="settings-input" list="model-suggestions" placeholder="e.g. gpt-4o-mini">
-                <datalist id="model-suggestions">
+                <label>Model</label>
+                <div class="model-radio-group" id="model-radio-group">
                   <!-- Populated by JS based on provider -->
-                </datalist>
-                <p class="settings-hint">Type any model name or select from suggestions. New models can be used as soon as they're released.</p>
+                </div>
+                <div class="model-custom-row" id="model-custom-row" style="display: none;">
+                  <label class="settings-radio">
+                    <input type="radio" name="ai-model" id="ai-model-custom-radio" value="custom">
+                    <span>Custom:</span>
+                  </label>
+                  <input type="text" id="ai-model-custom" class="settings-input" placeholder="e.g. gpt-4o-mini" style="flex: 1; margin-left: 0.5rem;">
+                </div>
+                <p class="settings-hint">Select a model or enter a custom model name for new/experimental models.</p>
               </div>
               <p class="settings-hint" id="model-hint">Make sure you have the corresponding API key configured in the API Keys tab.</p>
             </div>
@@ -2745,6 +3433,24 @@ Add your own custom rules here for smart home devices, routines, or other person
                 <!-- Generated by JS -->
               </div>
               <button class="settings-btn-secondary" onclick="addHaPanel()" style="margin-top: 0.75rem;">+ Add Panel</button>
+            </div>
+          </div>
+          <!-- Custom Panels Tab -->
+          <div class="settings-pane" id="settings-pane-custom-panels">
+            <div class="settings-section">
+              <h3>Custom Panels</h3>
+              <p class="settings-description">Create custom panels that display data from JSON files or API endpoints.</p>
+              <div class="custom-panel-list" id="custom-panels-list">
+                <!-- Generated by JS -->
+              </div>
+              <button class="settings-btn-secondary" onclick="openPanelEditor()" style="margin-top: 0.75rem;">+ Add Custom Panel</button>
+            </div>
+            <div class="settings-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light);">
+              <h3>Built-in Panel Migration</h3>
+              <p class="settings-description">Use the generic renderer for built-in panels (experimental).</p>
+              <div class="settings-toggle-list" id="generic-renderer-toggles">
+                <!-- Generated by JS -->
+              </div>
             </div>
           </div>
           <!-- API URLs Tab -->
@@ -2861,6 +3567,99 @@ Add your own custom rules here for smart home devices, routines, or other person
       <div class="editor-footer">
         <button class="settings-btn-secondary" onclick="closeTemplateEditor()">Cancel</button>
         <button class="settings-btn-primary" onclick="saveTemplateEditor()">Save Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Editor Modal -->
+  <div class="panel-editor-overlay" id="panel-editor-overlay" onclick="closePanelEditorOnOverlay(event)">
+    <div class="panel-editor">
+      <div class="panel-editor-header">
+        <h3 id="panel-editor-title">New Custom Panel</h3>
+        <button class="settings-close-btn" onclick="closePanelEditor()">&times;</button>
+      </div>
+      <div class="panel-editor-body">
+        <input type="hidden" id="panel-editor-id">
+
+        <div class="panel-editor-section">
+          <h4>Basic Info</h4>
+          <div class="settings-form-group">
+            <label for="panel-editor-name">Panel Name</label>
+            <input type="text" id="panel-editor-name" class="settings-input" placeholder="e.g., My Links">
+          </div>
+          <div class="settings-form-group">
+            <label>
+              <input type="checkbox" id="panel-editor-visible" checked>
+              Visible on dashboard
+            </label>
+          </div>
+        </div>
+
+        <div class="panel-editor-section">
+          <h4>Data Source</h4>
+          <div class="settings-form-group">
+            <label for="panel-editor-source-type">Source Type</label>
+            <select id="panel-editor-source-type" class="settings-select" onchange="updatePanelEditorSourceUI()">
+              <option value="file">JSON File</option>
+              <option value="api">API Endpoint</option>
+            </select>
+          </div>
+          <div class="settings-form-group">
+            <label for="panel-editor-source-path">Path</label>
+            <input type="text" id="panel-editor-source-path" class="settings-input" placeholder="e.g., mydata.json or /api/data">
+          </div>
+          <div class="settings-form-group">
+            <label for="panel-editor-data-path">Data Path (optional)</label>
+            <input type="text" id="panel-editor-data-path" class="settings-input" placeholder="e.g., items or data.links">
+            <p class="settings-hint">JSON path to the array of items (leave empty if root is the data)</p>
+          </div>
+        </div>
+
+        <div class="panel-editor-section">
+          <h4>Display</h4>
+          <div class="settings-form-group">
+            <label for="panel-editor-template">Display Template</label>
+            <select id="panel-editor-template" class="settings-select">
+              <option value="list">List (items with title/subtitle)</option>
+              <option value="stats">Stats (number badges)</option>
+              <option value="single-value">Single Value (quote/text)</option>
+              <option value="key-value">Key-Value Pairs</option>
+            </select>
+          </div>
+          <div class="settings-form-group">
+            <label for="panel-editor-max-items">Max Items</label>
+            <input type="number" id="panel-editor-max-items" class="settings-input" placeholder="10" min="1" max="50">
+          </div>
+          <div class="settings-form-group">
+            <label for="panel-editor-empty-message">Empty Message</label>
+            <input type="text" id="panel-editor-empty-message" class="settings-input" placeholder="No items available">
+          </div>
+        </div>
+
+        <div class="panel-editor-section">
+          <h4>Fields</h4>
+          <p class="settings-hint">Define which JSON fields to display and how to format them.</p>
+          <div class="field-editor-list" id="panel-editor-fields">
+            <!-- Generated by JS -->
+          </div>
+          <button class="settings-btn-secondary small" onclick="addPanelField()" style="margin-top: 0.5rem;">+ Add Field</button>
+        </div>
+
+        <div class="panel-editor-section">
+          <h4>Header</h4>
+          <div class="settings-form-group">
+            <label for="panel-editor-title-text">Title</label>
+            <input type="text" id="panel-editor-title-text" class="settings-input" placeholder="Panel Title">
+          </div>
+          <div class="settings-form-group">
+            <label for="panel-editor-app-link">App Link (optional)</label>
+            <input type="text" id="panel-editor-app-link" class="settings-input" placeholder="e.g., myapp:// or https://...">
+          </div>
+        </div>
+      </div>
+      <div class="panel-editor-footer">
+        <button class="settings-btn-secondary" onclick="closePanelEditor()">Cancel</button>
+        <button class="settings-btn-primary" onclick="savePanelEditor()">Save Panel</button>
       </div>
     </div>
   </div>
