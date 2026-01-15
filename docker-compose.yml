@@ -27,6 +27,7 @@ services:
       - ./anyboxStats.json:/app/anyboxStats.json
       - ./readlater.json:/app/readlater.json
       - ./wisdom.json:/app/wisdom.json
+      - ./wisdom:/app/wisdom:ro
       - ./settings.json:/app/settings.json
       # Backup status from backupJobs
       - /mnt/ssd/backupJobs/backup_status.json:/mnt/ssd/backupJobs/backup_status.json:ro
