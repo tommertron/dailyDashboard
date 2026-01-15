@@ -361,15 +361,30 @@ Write in second person ("You have...", "Your day..."). Keep it concise - 2-3 sen
 
 def call_openai(api_key, model, system_prompt, prompt):
     """Call OpenAI API to generate a summary."""
-    request_body = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 300,
-        "temperature": 0.7
-    }).encode('utf-8')
+    # o1 models don't support system messages, temperature, or max_tokens
+    is_reasoning_model = model.startswith('o1')
+
+    if is_reasoning_model:
+        # For o1 models: combine system prompt with user message, use max_completion_tokens
+        # o1 uses reasoning tokens internally, so we need a larger limit (reasoning + output)
+        combined_prompt = f"{system_prompt}\n\n{prompt}"
+        request_body = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "user", "content": combined_prompt}
+            ],
+            "max_completion_tokens": 4000
+        }).encode('utf-8')
+    else:
+        request_body = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 300,
+            "temperature": 0.7
+        }).encode('utf-8')
 
     req = Request(
         'https://api.openai.com/v1/chat/completions',
@@ -381,7 +396,7 @@ def call_openai(api_key, model, system_prompt, prompt):
     )
 
     try:
-        with urlopen(req, timeout=30) as response:
+        with urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode('utf-8'))
             return result['choices'][0]['message']['content']
     except HTTPError as e:

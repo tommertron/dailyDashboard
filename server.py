@@ -27,7 +27,7 @@ SETTINGS_FILE = os.path.join(DIRECTORY, 'settings.json')
 def get_default_settings():
     """Return default settings structure for new installs."""
     return {
-        "version": 2,
+        "version": 3,
         "panels": {
             # ON by default - universal features that work out of the box
             "weather": {"visible": True},
@@ -102,7 +102,13 @@ Add your own custom rules here for smart home devices, routines, or other person
         },
         "theme": {
             "preference": "default"
-        }
+        },
+        "useGenericRenderer": {
+            "wisdom": False,
+            "tasks": False,
+            "readLater": False
+        },
+        "customPanels": {}
     }
 
 
@@ -180,6 +186,23 @@ def migrate_settings(settings):
         # Add aiPrompts if missing
         if 'aiPrompts' not in settings:
             settings['aiPrompts'] = get_default_settings()['aiPrompts']
+
+    # Migrate v2 to v3 - add generic panel system fields
+    if version < 3:
+        settings['version'] = 3
+        migrated = True
+
+        # Add useGenericRenderer if missing
+        if 'useGenericRenderer' not in settings:
+            settings['useGenericRenderer'] = {
+                "wisdom": False,
+                "tasks": False,
+                "readLater": False
+            }
+
+        # Add customPanels if missing
+        if 'customPanels' not in settings:
+            settings['customPanels'] = {}
 
     return settings, migrated
 
@@ -622,6 +645,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_tv_shows()
         elif self.path == '/api/settings':
             self.get_settings()
+        elif self.path == '/api/wisdom/random':
+            self.get_random_wisdom()
         else:
             super().do_GET()
 
@@ -744,6 +769,58 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def get_random_wisdom(self):
+        """Get a random wisdom quote."""
+        try:
+            import re
+            import random
+            wisdom_file = os.path.join(DIRECTORY, 'wisdom', 'wisdom.md')
+            wisdoms = []
+
+            with open(wisdom_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Define sections and their sources
+            sections = [
+                ('## The Wisdom So Far', '## Kevin Kelly', "Merlin Mann's Wisdom Project"),
+                ('## Kevin Kelly', '## Works Cited', "Kevin Kelly's Excellent Advice for Living"),
+            ]
+
+            for start_header, end_header, source in sections:
+                start_match = re.search(re.escape(start_header) + r'.*?\n', content)
+                if not start_match:
+                    continue
+
+                end_match = re.search(re.escape(end_header), content)
+                if end_match:
+                    section_content = content[start_match.end():end_match.start()]
+                else:
+                    section_content = content[start_match.end():]
+
+                for line in section_content.split('\n'):
+                    line = line.strip()
+                    if line.startswith('- '):
+                        wisdom = line[2:].strip()
+                        if len(wisdom) > 10:
+                            wisdom = re.sub(r'\*\*(.+?)\*\*', r'\1', wisdom)
+                            wisdom = re.sub(r'\*(.+?)\*', r'\1', wisdom)
+                            wisdom = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', wisdom)
+                            wisdoms.append({'text': wisdom, 'source': source})
+
+            if not wisdoms:
+                self.send_json_response(404, {'success': False, 'error': 'No wisdoms found'})
+                return
+
+            selected = random.choice(wisdoms)
+            self.send_json_response(200, {
+                'success': True,
+                'wisdom': selected['text'],
+                'source': selected['source'],
+                'total_wisdoms': len(wisdoms)
+            })
+        except Exception as e:
+            self.send_json_response(500, {'success': False, 'error': str(e)})
 
     # =========================================================================
     # Config and API Key Management
@@ -1215,11 +1292,22 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             importlib.reload(generate_summary)
 
             config = generate_summary.load_config()
-            if not config or 'openaiApiKey' not in config:
-                raise Exception('OpenAI API key not found in config')
+            if not config:
+                raise Exception('config.json not found')
+
+            ai_settings = generate_summary.load_ai_settings()
+            provider = ai_settings.get('provider', 'openai') if ai_settings else 'openai'
+
+            # Check for appropriate API key based on provider
+            if provider == 'anthropic' and not config.get('anthropicApiKey'):
+                raise Exception('Anthropic API key not configured')
+            elif provider == 'gemini' and not config.get('geminiApiKey'):
+                raise Exception('Gemini API key not configured')
+            elif provider == 'openai' and not config.get('openaiApiKey'):
+                raise Exception('OpenAI API key not configured')
 
             daily_data = generate_summary.gather_daily_data()
-            summary = generate_summary.call_openai(config['openaiApiKey'], daily_data)
+            summary = generate_summary.call_ai(config, ai_settings, daily_data)
 
             if summary:
                 generate_summary.save_summary(summary)
@@ -1233,7 +1321,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                     'generated_at': summary_data['generated_at']
                 }).encode())
             else:
-                raise Exception('Failed to generate summary from OpenAI')
+                raise Exception(f'Failed to generate summary from {provider}')
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
