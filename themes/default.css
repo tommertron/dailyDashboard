@@ -1096,6 +1096,10 @@ body {
   display: none;
 }
 
+#smart-schedule-timeline.force-hidden {
+  display: none !important;
+}
+
 .smart-schedule-header {
   font-size: 0.7rem;
   font-weight: 600;

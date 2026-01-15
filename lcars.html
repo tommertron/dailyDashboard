@@ -2662,6 +2662,8 @@
     const panelNames = {
       weather: 'WEATHER',
       schedule: 'SCHEDULE',
+      smartSchedule: 'SMART SCHEDULE TIMELINE',
+      calendarList: 'CALENDAR LIST',
       tasks: 'TASKS',
       shed: 'SHED',
       home: 'HOME',
@@ -2690,9 +2692,25 @@
       // Apply panel visibility
       if (settings.panels) {
         Object.entries(settings.panels).forEach(([panelId, config]) => {
+          // Handle main panels (data-panel attributes)
           const panel = document.querySelector(`[data-panel="${panelId}"]`);
           if (panel) {
             panel.style.display = config.visible ? '' : 'none';
+          }
+
+          // Handle sub-components (smartSchedule and calendarList)
+          if (panelId === 'smartSchedule') {
+            const smartScheduleEl = document.getElementById('smart-schedule-timeline');
+            if (smartScheduleEl) {
+              smartScheduleEl.style.display = config.visible ? 'block' : 'none';
+            }
+          }
+
+          if (panelId === 'calendarList') {
+            const calendarListEl = document.getElementById('calendar-container');
+            if (calendarListEl) {
+              calendarListEl.style.display = config.visible ? '' : 'none';
+            }
           }
         });
       }
