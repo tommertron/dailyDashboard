@@ -91,8 +91,13 @@
             </a>
           </div>
         </div>
-        <div class="panel-body" id="calendar-container">
-          <div class="panel-empty">Loading...</div>
+        <div class="panel-body">
+          <!-- Smart Schedule Timeline -->
+          <div id="smart-schedule-timeline"></div>
+          <!-- Regular Calendar List -->
+          <div id="calendar-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
         </div>
       </div>
 
@@ -978,12 +983,140 @@
           .map(line => JSON.parse(line))
           .filter(event => event.title !== 'Focus Time');
 
+        renderSmartSchedule(events);
         renderCalendar(events);
       } catch (error) {
         console.error('Error loading calendar:', error);
         document.getElementById('calendar-container').innerHTML =
           '<div class="empty-state">Error loading calendar. Make sure calendar.json exists.</div>';
       }
+    }
+
+    function parseFullEventTime(dateStr) {
+      // Parse "Jan 15, 2026 at 9:00 AM" format into a full Date object
+      const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(.+)$/);
+      if (!match) return null;
+
+      const [, month, day, year, time] = match;
+      const dateString = `${month} ${day}, ${year} ${time}`;
+      return new Date(dateString);
+    }
+
+    function formatDuration(startDate, endDate) {
+      const diffMs = endDate - startDate;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+
+      if (hours === 0) return `${mins}m`;
+      if (mins === 0) return `${hours}h`;
+      return `${hours}h ${mins}m`;
+    }
+
+    function getCalendarClass(calendarName) {
+      const name = calendarName.toLowerCase();
+      if (name.includes('work') || name.includes('microsoft')) return 'work';
+      if (name.includes('personal')) return 'personal';
+      if (name.includes('family')) return 'family';
+      if (name.includes('meeting')) return 'meeting';
+      return 'default';
+    }
+
+    function renderSmartSchedule(events) {
+      const container = document.getElementById('smart-schedule-timeline');
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // Parse all events with full date/time
+      const parsedEvents = events.map(e => {
+        const startDate = parseFullEventTime(e.start);
+        const endDate = parseFullEventTime(e.end);
+        return { ...e, startDate, endDate };
+      }).filter(e => e.startDate && e.endDate);
+
+      let relevantEvents;
+      let headerText;
+
+      // After 9 PM, show tomorrow's events
+      if (currentHour >= 21) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const dayAfterTomorrow = new Date(tomorrow);
+        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+        relevantEvents = parsedEvents.filter(e =>
+          e.startDate >= tomorrow && e.startDate < dayAfterTomorrow
+        );
+        headerText = "Tomorrow's Schedule";
+      } else {
+        // Show today's remaining events (events that haven't ended yet)
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+
+        relevantEvents = parsedEvents.filter(e =>
+          e.endDate > now && e.startDate >= todayStart && e.startDate < todayEnd
+        );
+        headerText = "Today's Schedule";
+      }
+
+      // Sort by start time
+      relevantEvents.sort((a, b) => a.startDate - b.startDate);
+
+      // If no relevant events, hide the timeline
+      if (relevantEvents.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+
+      // Build timeline HTML
+      let html = `<div class="smart-schedule-header">${headerText}</div>`;
+      html += '<div class="timeline-container">';
+
+      relevantEvents.forEach(event => {
+        const startTime = event.startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        const calendarClass = getCalendarClass(event.calendar);
+        const duration = formatDuration(event.startDate, event.endDate);
+
+        if (event.allday === 'Yes') {
+          html += `
+            <div class="timeline-event">
+              <div class="timeline-time">All day</div>
+              <div class="timeline-event-bar ${calendarClass}">
+                <div class="timeline-event-title">${event.title}</div>
+                <div class="timeline-event-meta">
+                  <span class="timeline-event-calendar">${event.calendar}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="timeline-event">
+              <div class="timeline-time">${startTime}</div>
+              <div class="timeline-event-bar ${calendarClass}">
+                <div class="timeline-event-title">${event.title}</div>
+                <div class="timeline-event-meta">
+                  <span class="timeline-event-calendar">${event.calendar}</span>
+                  <span class="timeline-event-duration">${duration}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
     }
 
     async function loadConfig() {
