@@ -30,6 +30,7 @@
       <div class="greeting">
         <h1 id="greeting-text">Good Morning!</h1>
         <p class="ai-summary-inline" id="ai-summary-text">Loading your daily summary...</p>
+        <div class="header-starred-links" id="header-starred-links"></div>
       </div>
       <div class="header-right">
         <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
@@ -60,21 +61,119 @@
       </div>
     </header>
 
-    <div class="three-column-grid">
-      <div class="panel" data-panel="weather">
-        <div class="panel-header">
-          <h2 class="section-title">Weather</h2>
-          <a href="weather://" class="app-link" title="Open Weather">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </a>
+    <!-- Dense top row: Wisdom/Remaining | Smart Schedule | Weather/Tasks -->
+    <div class="dense-top-row">
+      <div class="stacked-column">
+        <div class="panel wisdom-panel" data-panel="wisdom">
+          <div class="panel-header">
+            <h2 class="section-title">Wisdom</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="wisdom-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
         </div>
-        <div class="panel-body" id="weather-container">
-          <div class="panel-empty">Loading...</div>
+
+        <div class="panel" data-panel="bills">
+          <div class="panel-header">
+            <h2 class="section-title">Remaining</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              </a>
+              <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="money-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
         </div>
       </div>
 
+      <div class="panel" data-panel="smartSchedule">
+        <div class="panel-header">
+          <h2 class="section-title">Smart Schedule</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="smart-schedule-timeline">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stacked-column">
+        <div class="panel" data-panel="weather">
+          <div class="panel-header">
+            <h2 class="section-title">Weather</h2>
+            <a href="weather://" class="app-link" title="Open Weather">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </a>
+          </div>
+          <div class="panel-body" id="weather-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="tasks">
+          <div class="panel-header">
+            <h2 class="section-title">Tasks</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Things" id="todos-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="things:///show?id=today" class="app-link" title="Open Things">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="todos-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="three-column-grid">
       <div class="panel" data-panel="schedule">
         <div class="panel-header">
           <h2 class="section-title">Schedule</h2>
@@ -92,33 +191,9 @@
           </div>
         </div>
         <div class="panel-body">
-          <!-- Smart Schedule Timeline -->
-          <div id="smart-schedule-timeline"></div>
-          <!-- Regular Calendar List -->
           <div id="calendar-container">
             <div class="panel-empty">Loading...</div>
           </div>
-        </div>
-      </div>
-
-      <div class="panel" data-panel="tasks">
-        <div class="panel-header">
-          <h2 class="section-title">Tasks</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Things" id="todos-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="things:///show?id=today" class="app-link" title="Open Things">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body" id="todos-container">
-          <div class="panel-empty">Loading...</div>
         </div>
       </div>
 
@@ -185,74 +260,6 @@
         </div>
       </div>
 
-      <div class="panel" data-panel="bills">
-        <div class="panel-header">
-          <h2 class="section-title">remaining</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-            </a>
-            <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body" id="money-container">
-          <div class="panel-empty">Loading...</div>
-        </div>
-      </div>
-
-      <div class="panel" data-panel="readLater">
-        <div class="panel-header">
-          <h2 class="section-title">Read Later</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('goodlinks')" title="Refresh from GoodLinks" id="readlater-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="goodlinks://" class="app-link" title="Open GoodLinks">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body" id="readlater-container">
-          <div class="panel-empty">Loading...</div>
-        </div>
-      </div>
-
-      <div class="panel wisdom-panel" data-panel="wisdom">
-        <div class="panel-header">
-          <h2 class="section-title">Wisdom</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body" id="wisdom-container">
-          <div class="panel-empty">Loading...</div>
-        </div>
-      </div>
-
       <div class="panel tv-panel" data-panel="tvShows">
         <div class="panel-header">
           <h2 class="section-title">TV Shows and Movies</h2>
@@ -279,11 +286,11 @@
         </div>
       </div>
 
-      <div class="panel links-panel" data-panel="anybox">
+      <div class="panel links-panel" data-panel="links">
         <div class="panel-header">
-          <h2 class="section-title">Anybox</h2>
+          <h2 class="section-title">Links</h2>
           <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('anybox')" title="Refresh from Anybox" id="anybox-refresh-btn">
+            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -291,6 +298,11 @@
             <a href="anybox://" class="app-link" title="Open Anybox">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </a>
+            <a href="goodlinks://" class="app-link" title="Open GoodLinks">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </a>
           </div>
@@ -311,14 +323,14 @@
             </a>
           </div>
           <div class="anybox-section">
-            <a href="anybox://show?id=starred" class="anybox-section-title-link"><h3 class="anybox-section-title">Starred</h3></a>
-            <div id="starred-links-container">
+            <h3 class="anybox-section-title">Random Links</h3>
+            <div id="links-container">
               <div class="panel-empty">Loading...</div>
             </div>
           </div>
           <div class="anybox-section">
-            <h3 class="anybox-section-title">Random Links</h3>
-            <div id="links-container">
+            <a href="goodlinks://" class="anybox-section-title-link"><h3 class="anybox-section-title">Read Later</h3></a>
+            <div id="readlater-container">
               <div class="panel-empty">Loading...</div>
             </div>
           </div>
@@ -732,26 +744,22 @@
     }
 
     function renderStarredLinks(links) {
-      const container = document.getElementById('starred-links-container');
-
-      if (!links || links.length === 0) {
-        container.innerHTML = '<div class="panel-empty">No starred links</div>';
-        return;
+      // Render in header (compact horizontal format)
+      const headerContainer = document.getElementById('header-starred-links');
+      if (headerContainer) {
+        if (!links || links.length === 0) {
+          headerContainer.innerHTML = '';
+        } else {
+          headerContainer.innerHTML = `
+            <span class="starred-label">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </span>
+            ${links.map(link => `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="starred-link-chip" title="${link.comment || link.title || 'Untitled'}">${link.title || 'Untitled'}</a>`).join('')}
+          `;
+        }
       }
-
-      container.innerHTML = links.map(link => `
-        <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="anybox-link-item">
-          <span class="anybox-link-icon star-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-          </span>
-          <div class="anybox-link-text">
-            <div class="anybox-link-title">${link.title || 'Untitled'}</div>
-            ${link.comment ? `<div class="anybox-link-comment">${link.comment}</div>` : `<div class="anybox-link-domain">${extractDomain(link.url)}</div>`}
-          </div>
-        </a>
-      `).join('');
     }
 
     async function loadStarredLinks() {
@@ -841,6 +849,49 @@
       }
     }
 
+    // Refresh combined Links panel (Anybox + GoodLinks)
+    async function refreshLinks() {
+      const btn = document.getElementById('links-refresh-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+      }
+
+      try {
+        // Refresh both Anybox and GoodLinks in parallel
+        const [anyboxResult, goodlinksResult] = await Promise.all([
+          fetch('/api/refresh/anybox', { method: 'POST' }).then(r => r.json()),
+          fetch('/api/refresh/goodlinks', { method: 'POST' }).then(r => r.json())
+        ]);
+
+        // Wait for files to sync
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Reload all links data
+        await Promise.all([
+          loadLinks(),
+          loadAnyboxStats(),
+          loadStarredLinks(),
+          loadReadLater()
+        ]);
+
+        if (!anyboxResult.success) {
+          console.error('Anybox refresh failed:', anyboxResult.error);
+        }
+        if (!goodlinksResult.success) {
+          console.error('GoodLinks refresh failed:', goodlinksResult.error);
+        }
+      } catch (error) {
+        console.error('Error refreshing links:', error);
+        alert('Error refreshing links');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
+      }
+    }
+
     // Generic panel refresh function that uses the configurable shortcuts
     async function refreshPanel(panelType) {
       // Map panel types to button IDs and reload functions
@@ -848,9 +899,9 @@
         tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos(true) },
         bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
         calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
-        anybox: { btnId: 'anybox-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
+        anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
         sequel: { btnId: 'tv-refresh-btn', reload: () => loadTvShows() },
-        goodlinks: { btnId: 'readlater-refresh-btn', reload: () => loadReadLater() }
+        goodlinks: { btnId: 'links-refresh-btn', reload: () => loadReadLater() }
       };
 
       const config = panelConfig[panelType];
@@ -994,12 +1045,19 @@
 
     function parseFullEventTime(dateStr) {
       // Parse "Jan 15, 2026 at 9:00 AM" format into a full Date object
-      const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(.+)$/);
+      const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(\d+):(\d+)\s*(AM|PM)$/i);
       if (!match) return null;
 
-      const [, month, day, year, time] = match;
-      const dateString = `${month} ${day}, ${year} ${time}`;
-      return new Date(dateString);
+      const [, monthStr, day, year, hour, minute, ampm] = match;
+      const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+      const monthNum = months[monthStr.toLowerCase()];
+      if (monthNum === undefined) return null;
+
+      let hour24 = parseInt(hour, 10);
+      if (ampm.toUpperCase() === 'PM' && hour24 !== 12) hour24 += 12;
+      if (ampm.toUpperCase() === 'AM' && hour24 === 12) hour24 = 0;
+
+      return new Date(parseInt(year, 10), monthNum, parseInt(day, 10), hour24, parseInt(minute, 10), 0);
     }
 
     function formatDuration(startDate, endDate) {
@@ -1035,7 +1093,7 @@
       }).filter(e => e.startDate && e.endDate);
 
       let relevantEvents;
-      let headerText;
+      let emptyMessage;
 
       // After 9 PM, show tomorrow's events
       if (currentHour >= 21) {
@@ -1048,36 +1106,93 @@
         relevantEvents = parsedEvents.filter(e =>
           e.startDate >= tomorrow && e.startDate < dayAfterTomorrow
         );
-        headerText = "Tomorrow's Schedule";
+        emptyMessage = "No events tomorrow";
       } else {
-        // Show today's remaining events (events that haven't ended yet)
         const todayStart = new Date(now);
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date(todayStart);
         todayEnd.setDate(todayEnd.getDate() + 1);
+        const fifteenMinsAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-        relevantEvents = parsedEvents.filter(e =>
-          e.endDate > now && e.startDate >= todayStart && e.startDate < todayEnd
-        );
-        headerText = "Today's Schedule";
+        // Include events that either start soon/recently OR are still in progress
+        relevantEvents = parsedEvents.filter(e => {
+          if (e.startDate < todayStart || e.startDate >= todayEnd) return false;
+          // Event starts in the future or recently
+          if (e.startDate >= fifteenMinsAgo) return true;
+          // Event started earlier but is still in progress (hasn't ended yet)
+          const eventEnd = e.endDate > e.startDate ? e.endDate : new Date(e.startDate.getTime() + 30 * 60000);
+          return eventEnd > now;
+        });
+        emptyMessage = "No more events today";
       }
 
       // Sort by start time
       relevantEvents.sort((a, b) => a.startDate - b.startDate);
 
-      // If no relevant events, hide the timeline
+      // Remove duplicates (same title and same start time)
+      const seen = new Set();
+      relevantEvents = relevantEvents.filter(e => {
+        const key = `${e.title}|${e.startDate.getTime()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // If no relevant events, show empty state
       if (relevantEvents.length === 0) {
-        container.classList.add('hidden');
+        container.innerHTML = `<div class="panel-empty">${emptyMessage}</div>`;
         return;
       }
 
-      container.classList.remove('hidden');
+      // Detect overlaps - mark events that conflict with others
+      const getEndTime = (e) => e.endDate > e.startDate ? e.endDate : new Date(e.startDate.getTime() + 30 * 60000); // Assume 30min if no duration
+      relevantEvents.forEach((event, i) => {
+        event.hasConflict = false;
+        const eventEnd = getEndTime(event);
+        for (let j = 0; j < relevantEvents.length; j++) {
+          if (i === j) continue;
+          const other = relevantEvents[j];
+          const otherEnd = getEndTime(other);
+          // Check if events overlap (start before other ends AND end after other starts)
+          if (event.startDate < otherEnd && eventEnd > other.startDate) {
+            event.hasConflict = true;
+            break;
+          }
+        }
+      });
+
+      // Show gaps if there's more than one event
+      const showGaps = relevantEvents.length > 1;
+      console.log('Smart Schedule Debug:', { eventCount: relevantEvents.length, showGaps, events: relevantEvents.map(e => ({ title: e.title, start: e.startDate, end: e.endDate })) });
 
       // Build timeline HTML
-      let html = `<div class="smart-schedule-header">${headerText}</div>`;
-      html += '<div class="timeline-container">';
+      let html = '<div class="timeline-container">';
 
-      relevantEvents.forEach(event => {
+      relevantEvents.forEach((event, index) => {
+        // Show gaps between events
+        if (showGaps && index > 0) {
+          // Find the latest end time among ALL previous events (handles overlapping events)
+          let latestPrevEnd = getEndTime(relevantEvents[0]);
+          for (let i = 1; i < index; i++) {
+            const endTime = getEndTime(relevantEvents[i]);
+            if (endTime > latestPrevEnd) latestPrevEnd = endTime;
+          }
+          const gapMinutes = (event.startDate - latestPrevEnd) / (1000 * 60);
+
+          // Show gap if > 30 minutes
+          if (gapMinutes > 30) {
+            const gapHeight = Math.min(Math.max(gapMinutes / 60 * 20, 15), 50); // 15-50px based on duration
+            const gapText = gapMinutes >= 60
+              ? `${Math.floor(gapMinutes / 60)}h ${gapMinutes % 60 > 0 ? Math.round(gapMinutes % 60) + 'm' : ''} free`
+              : `${Math.round(gapMinutes)}m free`;
+            html += `
+              <div class="timeline-gap" style="height: ${gapHeight}px;">
+                <span class="timeline-gap-text">${gapText}</span>
+              </div>
+            `;
+          }
+        }
+
         const startTime = event.startDate.toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
@@ -1085,11 +1200,19 @@
         });
 
         const calendarClass = getCalendarClass(event.calendar);
-        const duration = formatDuration(event.startDate, event.endDate);
+        const conflictClass = event.hasConflict ? 'conflict' : '';
+
+        // Calculate duration and height for timed events
+        const eventEnd = getEndTime(event);
+        const durationMins = (eventEnd - event.startDate) / (1000 * 60);
+        const duration = formatDuration(event.startDate, eventEnd);
+        // Scale height: base 40px, +8px per 30min beyond first 30min, max 100px
+        const extraHeight = Math.max(0, (durationMins - 30) / 30) * 8;
+        const eventHeight = Math.min(40 + extraHeight, 100);
 
         if (event.allday === 'Yes') {
           html += `
-            <div class="timeline-event">
+            <div class="timeline-event ${conflictClass}">
               <div class="timeline-time">All day</div>
               <div class="timeline-event-bar ${calendarClass}">
                 <div class="timeline-event-title">${event.title}</div>
@@ -1101,9 +1224,10 @@
           `;
         } else {
           html += `
-            <div class="timeline-event">
+            <div class="timeline-event ${conflictClass}">
               <div class="timeline-time">${startTime}</div>
-              <div class="timeline-event-bar ${calendarClass}">
+              <div class="timeline-event-bar ${calendarClass}" style="min-height: ${eventHeight}px;">
+                ${event.hasConflict ? '<span class="conflict-badge">CONFLICT</span>' : ''}
                 <div class="timeline-event-title">${event.title}</div>
                 <div class="timeline-event-meta">
                   <span class="timeline-event-calendar">${event.calendar}</span>
@@ -1928,18 +2052,16 @@
 
     const panelNames = {
       weather: 'Weather',
+      smartSchedule: 'Smart Schedule',
       schedule: 'Schedule',
-      smartSchedule: 'Smart Schedule Timeline',
-      calendarList: 'Calendar List',
       tasks: 'Tasks',
       shed: 'Shed',
       home: 'Home',
       piStatus: 'Pi Status',
       bills: 'Bills Due',
-      readLater: 'Read Later',
       wisdom: 'Wisdom',
       tvShows: 'TV Shows',
-      anybox: 'Anybox'
+      links: 'Links'
     };
 
     async function loadSettings() {
@@ -1963,25 +2085,6 @@
           const panel = document.querySelector(`[data-panel="${panelId}"]`);
           if (panel) {
             panel.style.display = config.visible ? '' : 'none';
-          }
-
-          // Handle sub-components (smartSchedule and calendarList)
-          if (panelId === 'smartSchedule') {
-            const smartScheduleEl = document.getElementById('smart-schedule-timeline');
-            if (smartScheduleEl) {
-              if (config.visible) {
-                smartScheduleEl.classList.remove('force-hidden');
-              } else {
-                smartScheduleEl.classList.add('force-hidden');
-              }
-            }
-          }
-
-          if (panelId === 'calendarList') {
-            const calendarListEl = document.getElementById('calendar-container');
-            if (calendarListEl) {
-              calendarListEl.style.display = config.visible ? '' : 'none';
-            }
           }
         });
       }
@@ -2217,9 +2320,9 @@
         tasks: 'Tasks (Things)',
         bills: 'Bills (Money)',
         calendar: 'Calendar',
-        anybox: 'Anybox Links',
+        anybox: 'Links: Anybox',
         sequel: 'TV Shows (Sequel)',
-        goodlinks: 'Read Later (GoodLinks)'
+        goodlinks: 'Links: Read Later'
       };
       shortcutsContainer.innerHTML = Object.entries(shortcutLabels).map(([id, label]) => {
         const shortcut = shortcuts[id] || {};
@@ -3079,7 +3182,7 @@ Add your own custom rules here for smart home devices, routines, or other person
       const builtInPanels = [
         { id: 'wisdom', name: 'Wisdom', description: 'Daily wisdom quotes' },
         { id: 'tasks', name: 'Tasks', description: 'Things to-do list' },
-        { id: 'readLater', name: 'Read Later', description: 'GoodLinks articles' }
+        { id: 'links', name: 'Links', description: 'Anybox + GoodLinks' }
       ];
 
       container.innerHTML = builtInPanels.map(panel => `
@@ -3212,7 +3315,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         }
 
         // Update panel visibility in settings
-        const allPanels = ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater', 'tvShows', 'anybox', 'piStatus', 'shed', 'home'];
+        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'links', 'piStatus', 'shed', 'home'];
         allPanels.forEach(panel => {
           if (currentSettings.panels[panel]) {
             currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
@@ -3889,16 +3992,12 @@ Add your own custom rules here for smart home devices, routines, or other person
             <span>Wisdom</span>
           </label>
           <label class="onboarding-panel-option">
-            <input type="checkbox" class="onboarding-panel-check" value="readLater" checked>
-            <span>Read Later</span>
-          </label>
-          <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="tvShows">
             <span>TV Shows</span>
           </label>
           <label class="onboarding-panel-option">
-            <input type="checkbox" class="onboarding-panel-check" value="anybox">
-            <span>Anybox</span>
+            <input type="checkbox" class="onboarding-panel-check" value="links" checked>
+            <span>Links</span>
           </label>
         </div>
       </div>

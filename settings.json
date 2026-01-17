@@ -4,8 +4,11 @@
     "weather": {
       "visible": true
     },
-    "schedule": {
+    "smartSchedule": {
       "visible": true
+    },
+    "schedule": {
+      "visible": false
     },
     "tasks": {
       "visible": true
@@ -22,16 +25,13 @@
     "bills": {
       "visible": true
     },
-    "readLater": {
-      "visible": true
-    },
     "wisdom": {
       "visible": true
     },
     "tvShows": {
       "visible": true
     },
-    "anybox": {
+    "links": {
       "visible": true
     }
   },
@@ -157,7 +157,7 @@
   },
   "aiPrompts": {
     "provider": "openai",
-    "model": "gpt-4o",
+    "model": "gpt-4-turbo",
     "activePersona": "merlin-mann",
     "activeTemplate": "default",
     "personas": {
