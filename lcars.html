@@ -1009,6 +1009,9 @@
                   </svg>
                 </a>
               </div>
+              <!-- Smart Schedule Timeline -->
+              <div id="smart-schedule-timeline"></div>
+              <!-- Regular Calendar List -->
               <div id="calendar-container">
                 <div class="panel-empty">Loading...</div>
               </div>
@@ -1845,11 +1848,150 @@
           .filter(line => line.trim())
           .map(line => JSON.parse(line))
           .filter(event => event.title !== 'Focus Time');
+        renderSmartSchedule(events);
         renderCalendar(events);
       } catch (error) {
         console.error('Error loading calendar:', error);
         document.getElementById('calendar-container').innerHTML = '<div class="panel-empty">Error loading calendar</div>';
       }
+    }
+
+    function parseFullEventTime(dateStr) {
+      // Parse "Jan 15, 2026 at 9:00 AM" format into a full Date object
+      const match = dateStr.match(/^(\w+)\s+(\d+),\s+(\d+)\s+at\s+(.+)$/);
+      if (!match) return null;
+
+      const [, month, day, year, time] = match;
+      const dateString = `${month} ${day}, ${year} ${time}`;
+      return new Date(dateString);
+    }
+
+    function formatDuration(startDate, endDate) {
+      const diffMs = endDate - startDate;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+
+      if (hours === 0) return `${mins}m`;
+      if (mins === 0) return `${hours}h`;
+      return `${hours}h ${mins}m`;
+    }
+
+    function getCalendarClass(calendarName) {
+      const name = calendarName.toLowerCase();
+      if (name.includes('work') || name.includes('microsoft')) return 'work';
+      if (name.includes('personal')) return 'personal';
+      if (name.includes('family')) return 'family';
+      if (name.includes('meeting')) return 'meeting';
+      return 'default';
+    }
+
+    function renderSmartSchedule(events) {
+      const container = document.getElementById('smart-schedule-timeline');
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // Parse all events with full date/time
+      const parsedEvents = events.map(e => {
+        const startDate = parseFullEventTime(e.start);
+        const endDate = parseFullEventTime(e.end);
+        return { ...e, startDate, endDate };
+      }).filter(e => e.startDate && e.endDate);
+
+      let relevantEvents;
+      let headerText;
+
+      // After 9 PM, show tomorrow's events
+      if (currentHour >= 21) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const dayAfterTomorrow = new Date(tomorrow);
+        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+        relevantEvents = parsedEvents.filter(e =>
+          e.startDate >= tomorrow && e.startDate < dayAfterTomorrow
+        );
+        headerText = "Tomorrow's Schedule";
+      } else {
+        // Show today's remaining events (events that haven't ended yet)
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+
+        relevantEvents = parsedEvents.filter(e =>
+          e.endDate > now && e.startDate >= todayStart && e.startDate < todayEnd
+        );
+        headerText = "Today's Schedule";
+      }
+
+      // Sort by start time
+      relevantEvents.sort((a, b) => a.startDate - b.startDate);
+
+      // If no relevant events, hide the timeline
+      if (relevantEvents.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      container.style.marginBottom = '1rem';
+
+      // Color schemes for LCARS theme
+      const colorSchemes = {
+        work: { bg: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)', color: '#fff' },
+        personal: { bg: 'linear-gradient(135deg, #9b59b6 0%, #7d3c98 100%)', color: '#fff' },
+        family: { bg: 'linear-gradient(135deg, #e67e22 0%, #d35400 100%)', color: '#fff' },
+        meeting: { bg: 'linear-gradient(135deg, #16a085 0%, #138d75 100%)', color: '#fff' },
+        default: { bg: 'linear-gradient(135deg, #ff9900 0%, #cc7700 100%)', color: '#000' }
+      };
+
+      // Build timeline HTML
+      let html = `<div style="font-size: 0.7rem; font-weight: 600; color: #99ccff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; padding-bottom: 0.25rem; border-bottom: 2px solid #99ccff;">${headerText}</div>`;
+      html += '<div style="display: flex; flex-direction: column; gap: 0;">';
+
+      relevantEvents.forEach(event => {
+        const startTime = event.startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        const calendarClass = getCalendarClass(event.calendar);
+        const colors = colorSchemes[calendarClass] || colorSchemes.default;
+        const duration = formatDuration(event.startDate, event.endDate);
+
+        if (event.allday === 'Yes') {
+          html += `
+            <div style="display: flex; align-items: stretch; position: relative; margin-bottom: 0.35rem; min-height: 32px;">
+              <div style="min-width: 55px; max-width: 55px; font-size: 0.75rem; font-weight: 600; color: #ffcc99; padding-right: 0.5rem; display: flex; align-items: flex-start; padding-top: 0.25rem;">All day</div>
+              <div style="flex: 1; background: ${colors.bg}; border-radius: 6px; padding: 0.4rem 0.6rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; justify-content: center; min-height: 32px;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: ${colors.color}; line-height: 1.3; margin-bottom: 0.15rem;">${event.title}</div>
+                <div style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.85); display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="text-transform: uppercase; font-weight: 500; letter-spacing: 0.02em;">${event.calendar}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          html += `
+            <div style="display: flex; align-items: stretch; position: relative; margin-bottom: 0.35rem; min-height: 32px;">
+              <div style="min-width: 55px; max-width: 55px; font-size: 0.75rem; font-weight: 600; color: #ffcc99; padding-right: 0.5rem; display: flex; align-items: flex-start; padding-top: 0.25rem;">${startTime}</div>
+              <div style="flex: 1; background: ${colors.bg}; border-radius: 6px; padding: 0.4rem 0.6rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; justify-content: center; min-height: 32px;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: ${colors.color}; line-height: 1.3; margin-bottom: 0.15rem;">${event.title}</div>
+                <div style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.85); display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="text-transform: uppercase; font-weight: 500; letter-spacing: 0.02em;">${event.calendar}</span>
+                  <span style="opacity: 0.8;">${duration}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
     }
 
     async function loadConfig() {
@@ -2520,6 +2662,8 @@
     const panelNames = {
       weather: 'WEATHER',
       schedule: 'SCHEDULE',
+      smartSchedule: 'SMART SCHEDULE TIMELINE',
+      calendarList: 'CALENDAR LIST',
       tasks: 'TASKS',
       shed: 'SHED',
       home: 'HOME',
@@ -2548,9 +2692,25 @@
       // Apply panel visibility
       if (settings.panels) {
         Object.entries(settings.panels).forEach(([panelId, config]) => {
+          // Handle main panels (data-panel attributes)
           const panel = document.querySelector(`[data-panel="${panelId}"]`);
           if (panel) {
             panel.style.display = config.visible ? '' : 'none';
+          }
+
+          // Handle sub-components (smartSchedule and calendarList)
+          if (panelId === 'smartSchedule') {
+            const smartScheduleEl = document.getElementById('smart-schedule-timeline');
+            if (smartScheduleEl) {
+              smartScheduleEl.style.display = config.visible ? 'block' : 'none';
+            }
+          }
+
+          if (panelId === 'calendarList') {
+            const calendarListEl = document.getElementById('calendar-container');
+            if (calendarListEl) {
+              calendarListEl.style.display = config.visible ? '' : 'none';
+            }
           }
         });
       }
