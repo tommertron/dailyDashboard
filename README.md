@@ -2,8 +2,6 @@
 
 A customizable personal dashboard that displays your daily information at a glance — weather, calendar, tasks, and more. Designed to run locally and be fed data from any source you choose.
 
-![Daily Dashboard](Daily%20Dashboard.png)
-
 ![Dashboard with Weather, Schedule, and Tasks](Screenshot%20-%20Daily%20Dashboard%20Weather%20Schedule%20Tasks.png)
 
 ## Quick Install
