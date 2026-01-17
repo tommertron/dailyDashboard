@@ -2,8 +2,6 @@
 
 A customizable personal dashboard that displays your daily information at a glance — weather, calendar, tasks, and more. Designed to run locally and be fed data from any source you choose.
 
-![Dashboard with Weather, Schedule, and Tasks](Screenshot%20-%20Daily%20Dashboard%20Weather%20Schedule%20Tasks.png)
-
 ![Afternoon Dashboard Weather and Tasks](Screenshot%20-%20Afternoon%20Dashboard%20Weather%20and%20Tasks.png)
 
 ![Home Shed Pi Status Dashboard](Screenshot%20-%20Home%20Shed%20Pi%20Status%20Dashboard.png)
