@@ -61,80 +61,8 @@
       </div>
     </header>
 
-    <!-- Dense top row: Wisdom/Remaining | Smart Schedule | Weather/Tasks -->
+    <!-- Dense top row: Weather/Tasks | Smart Schedule | Remaining/Wisdom -->
     <div class="dense-top-row">
-      <div class="stacked-column">
-        <div class="panel wisdom-panel" data-panel="wisdom">
-          <div class="panel-header">
-            <h2 class="section-title">Wisdom</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="wisdom-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-
-        <div class="panel" data-panel="bills">
-          <div class="panel-header">
-            <h2 class="section-title">Remaining</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-              </a>
-              <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="money-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel" data-panel="smartSchedule">
-        <div class="panel-header">
-          <h2 class="section-title">Smart Schedule</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div id="smart-schedule-timeline">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-      </div>
-
       <div class="stacked-column">
         <div class="panel" data-panel="weather">
           <div class="panel-header">
@@ -167,6 +95,78 @@
             </div>
           </div>
           <div class="panel-body" id="todos-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="smartSchedule">
+        <div class="panel-header">
+          <h2 class="section-title">Smart Schedule</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="smart-schedule-timeline">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stacked-column">
+        <div class="panel" data-panel="bills">
+          <div class="panel-header">
+            <h2 class="section-title">Remaining</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              </a>
+              <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="money-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+
+        <div class="panel wisdom-panel" data-panel="wisdom">
+          <div class="panel-header">
+            <h2 class="section-title">Wisdom</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="wisdom-container">
             <div class="panel-empty">Loading...</div>
           </div>
         </div>
@@ -260,11 +260,11 @@
         </div>
       </div>
 
-      <div class="panel tv-panel" data-panel="tvShows">
+      <div class="panel tv-panel" data-panel="entertainment">
         <div class="panel-header">
-          <h2 class="section-title">TV Shows and Movies</h2>
+          <h2 class="section-title">Entertainment</h2>
           <div class="header-actions tv-header-links">
-            <button class="icon-btn" onclick="refreshPanel('sequel')" title="Refresh from Sequel" id="tv-refresh-btn">
+            <button class="icon-btn" onclick="refreshPanel('entertainment')" title="Refresh Entertainment" id="entertainment-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
@@ -281,7 +281,7 @@
             </a>
           </div>
         </div>
-        <div class="panel-body" id="tv-shows-container">
+        <div class="panel-body" id="entertainment-container">
           <div class="panel-empty">Loading...</div>
         </div>
       </div>
@@ -900,7 +900,7 @@
         bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
         calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
         anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
-        sequel: { btnId: 'tv-refresh-btn', reload: () => loadTvShows() },
+        entertainment: { btnId: 'entertainment-refresh-btn', reload: () => loadEntertainment() },
         goodlinks: { btnId: 'links-refresh-btn', reload: () => loadReadLater() }
       };
 
@@ -917,7 +917,11 @@
       }
 
       try {
-        const response = await fetch(`/api/refresh/${panelType}`, { method: 'POST' });
+        // Use dedicated endpoint for entertainment/new-releases
+        const endpoint = panelType === 'entertainment'
+          ? '/api/refresh-new-releases'
+          : `/api/refresh/${panelType}`;
+        const response = await fetch(endpoint, { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {
@@ -1094,19 +1098,25 @@
 
       let relevantEvents;
       let emptyMessage;
+      let showingTomorrow = false;
 
-      // After 9 PM, show tomorrow's events
-      if (currentHour >= 21) {
+      // Helper to get tomorrow's events
+      const getTomorrowEvents = () => {
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
         const dayAfterTomorrow = new Date(tomorrow);
         dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
-
-        relevantEvents = parsedEvents.filter(e =>
+        return parsedEvents.filter(e =>
           e.startDate >= tomorrow && e.startDate < dayAfterTomorrow
         );
+      };
+
+      // After 9 PM, show tomorrow's events
+      if (currentHour >= 21) {
+        relevantEvents = getTomorrowEvents();
         emptyMessage = "No events tomorrow";
+        showingTomorrow = true;
       } else {
         const todayStart = new Date(now);
         todayStart.setHours(0, 0, 0, 0);
@@ -1123,7 +1133,15 @@
           const eventEnd = e.endDate > e.startDate ? e.endDate : new Date(e.startDate.getTime() + 30 * 60000);
           return eventEnd > now;
         });
-        emptyMessage = "No more events today";
+
+        // After 5 PM, if no more events today, peek ahead to tomorrow
+        if (relevantEvents.length === 0 && currentHour >= 17) {
+          relevantEvents = getTomorrowEvents();
+          emptyMessage = "No events tomorrow";
+          showingTomorrow = true;
+        } else {
+          emptyMessage = "No more events today";
+        }
       }
 
       // Sort by start time
@@ -1148,10 +1166,14 @@
       const getEndTime = (e) => e.endDate > e.startDate ? e.endDate : new Date(e.startDate.getTime() + 30 * 60000); // Assume 30min if no duration
       relevantEvents.forEach((event, i) => {
         event.hasConflict = false;
+        // Skip conflict detection for all-day events
+        if (event.allday === 'Yes') return;
         const eventEnd = getEndTime(event);
         for (let j = 0; j < relevantEvents.length; j++) {
           if (i === j) continue;
           const other = relevantEvents[j];
+          // Skip all-day events when checking for conflicts
+          if (other.allday === 'Yes') continue;
           const otherEnd = getEndTime(other);
           // Check if events overlap (start before other ends AND end after other starts)
           if (event.startDate < otherEnd && eventEnd > other.startDate) {
@@ -1166,7 +1188,11 @@
       console.log('Smart Schedule Debug:', { eventCount: relevantEvents.length, showGaps, events: relevantEvents.map(e => ({ title: e.title, start: e.startDate, end: e.endDate })) });
 
       // Build timeline HTML
-      let html = '<div class="timeline-container">';
+      let html = '';
+      if (showingTomorrow) {
+        html += '<div class="tomorrow-label">Tomorrow</div>';
+      }
+      html += '<div class="timeline-container">';
 
       relevantEvents.forEach((event, index) => {
         // Show gaps between events
@@ -1735,7 +1761,7 @@
       let hcClass = hcStatus === 'up' ? 'stat-ok' : hcStatus === 'grace' ? 'stat-warn' : 'stat-alert';
       let backupHcClass = backupHcStatus === 'up' ? 'stat-ok' : backupHcStatus === 'grace' ? 'stat-warn' : 'stat-alert';
 
-      const recentPowerEvents = outages.slice(0, 2);
+      const recentPowerEvents = outages.slice(-2).reverse();
 
       container.innerHTML = `
         <div class="pi-stats-grid pi-stats-5col">
@@ -1838,7 +1864,12 @@
         ${bills.length > 0 ? `
           <div class="remaining-bills">
             ${bills.slice(0, 5).map(bill => `
-              <div class="bill-item">
+              <div class="bill-item" data-bill-id="${bill.id}">
+                <button class="bill-check" onclick="payBill(${bill.id})" title="Mark as paid">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
                 <span class="bill-name">${bill.name}</span>
                 <span class="bill-meta">${formatDueDate(bill.due)}</span>
                 <span class="bill-amount">${formatCAD(bill.amount)}</span>
@@ -1859,6 +1890,41 @@
         console.error('Error loading remaining:', error);
         document.getElementById('money-container').innerHTML =
           '<div class="panel-empty">remaining unavailable</div>';
+      }
+    }
+
+    async function payBill(billId) {
+      const billItem = document.querySelector(`.bill-item[data-bill-id="${billId}"]`);
+      const checkBtn = billItem?.querySelector('.bill-check');
+
+      if (checkBtn) {
+        checkBtn.disabled = true;
+        checkBtn.classList.add('paying');
+      }
+
+      try {
+        const response = await fetch(`http://100.125.128.51:8111/api/bills/${billId}/pay`, {
+          method: 'POST'
+        });
+
+        if (response.ok) {
+          if (billItem) {
+            billItem.classList.add('paid');
+            setTimeout(() => loadMoney(), 500);
+          }
+        } else {
+          console.error('Failed to pay bill');
+          if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.classList.remove('paying');
+          }
+        }
+      } catch (error) {
+        console.error('Error paying bill:', error);
+        if (checkBtn) {
+          checkBtn.disabled = false;
+          checkBtn.classList.remove('paying');
+        }
       }
     }
 
@@ -1895,53 +1961,191 @@
       `;
     }
 
-    function renderTvShows(shows, disk) {
-      const container = document.getElementById('tv-shows-container');
+    function renderProviderIcons(watchProviders) {
+      if (!watchProviders) return '';
+      // Get flatrate (subscription) providers, dedupe by name (skip "with Ads" variants)
+      const providers = (watchProviders.flatrate || [])
+        .filter(p => !p.provider_name.includes('with Ads'))
+        .slice(0, 3); // Max 3 icons
+      if (providers.length === 0) return '';
 
-      let html = renderStorage(disk);
+      return `<div class="provider-icons">${providers.map(p =>
+        `<img class="provider-icon" src="https://image.tmdb.org/t/p/w45${p.logo_path}" alt="${p.provider_name}" title="${p.provider_name}">`
+      ).join('')}</div>`;
+    }
 
-      if (!shows || shows.length === 0) {
-        container.innerHTML = html + '<div class="panel-empty">No shows to watch</div>';
-        return;
+    function renderMediaItem(item, type) {
+      let poster = '';
+      let title = '';
+      let meta = '';
+      let badge = '';
+      let providers = '';
+      let link = '';
+
+      if (type === 'dvr') {
+        poster = item.poster || '';
+        title = item.title;
+        const episodeCode = item.season ? `S${item.season}E${item.episode || '?'}` : '';
+        meta = episodeCode ? `${episodeCode}${item.episode_title ? ' - ' + item.episode_title : ''}` : (item.episode_title || '');
+        badge = '<span class="tv-show-source channels">DVR</span>';
+        link = item.channels_url || (item.recording_id ? `channels://play/recording/${item.recording_id}` : 'channels://');
+      } else if (type === 'tv' || type === 'coming_soon') {
+        poster = item.show?.poster_url || '';
+        title = item.show?.title || item.title || 'Unknown';
+        const episodeCode = item.season?.number ? `S${item.season.number}E${item.episode?.number || '?'}` : '';
+        meta = episodeCode ? `${episodeCode}${item.episode?.title ? ' - ' + item.episode.title : ''}` : (item.episode?.title || '');
+        // For coming soon items, append the release date
+        if (type === 'coming_soon' && item.release_date) {
+          const releaseDate = new Date(item.release_date);
+          const dateStr = releaseDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          badge = `<span class="tv-show-source coming-soon">${dateStr}</span>`;
+        } else {
+          badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
+        }
+        providers = renderProviderIcons(item.watch_providers);
+        if (item.on_channels) link = 'channels://';
+      } else if (type === 'movie' || type === 'coming_soon_movie') {
+        poster = item.poster_url || '';
+        title = item.title;
+        meta = item.overview ? item.overview.substring(0, 100) + (item.overview.length > 100 ? '...' : '') : '';
+        // For coming soon movies, show the release date
+        if (type === 'coming_soon_movie' && item.release_date) {
+          const releaseDate = new Date(item.release_date);
+          const dateStr = releaseDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          badge = `<span class="tv-show-source coming-soon">${dateStr}</span>`;
+        } else {
+          badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
+        }
+        providers = renderProviderIcons(item.watch_providers);
+        if (item.on_channels) link = 'channels://';
+      } else if (type === 'game') {
+        poster = item.poster_url || item.cover_url || '';
+        title = item.title || item.name;
+        meta = item.platform || '';
+      } else if (type === 'book') {
+        poster = item.poster_url || item.cover_url || '';
+        title = item.title;
+        meta = item.author || '';
+      } else if (type === 'fox_theatre') {
+        poster = item.poster_url || '';
+        title = item.title;
+        // Format showtimes as meta
+        const showtimes = item.showtimes || [];
+        if (showtimes.length > 0) {
+          meta = showtimes.slice(0, 3).map(s => `${s.date} ${s.time}`).join(' • ');
+        }
+        badge = '<span class="tv-show-source fox-theatre">Fox Theatre</span>';
+        link = item.url || 'https://www.foxtheatre.ca';
       }
 
-      html += shows.map(show => {
-        let episodeCode = '';
-        if (show.season && show.episodeNumber) {
-          episodeCode = `S${show.season}E${show.episodeNumber}`;
-        }
+      const content = `
+        <div class="tv-show-item${link ? ' clickable' : ''}">
+          ${poster ? `<img class="tv-show-poster" src="${poster}" alt="${title}" onerror="this.style.display='none'">` : ''}
+          <div class="tv-show-info">
+            <div class="tv-show-title">${title}</div>
+            ${meta ? `<div class="tv-show-meta"><span class="tv-show-episode-title">${meta}</span></div>` : ''}
+          </div>
+          <div class="tv-show-badges">
+            ${providers}
+            ${badge}
+          </div>
+        </div>
+      `;
 
-        return `
-          <div class="tv-show-item">
-            ${show.poster ? `<img class="tv-show-poster" src="${show.poster}" alt="${show.title}" onerror="this.style.display='none'">` : ''}
-            <div class="tv-show-info">
-              <div class="tv-show-title">${show.title}</div>
-              ${(episodeCode || show.episodeTitle) ? `<div class="tv-show-meta">${episodeCode ? `<span class="tv-show-episode">${episodeCode}</span>` : ''}${show.episodeTitle ? `<span class="tv-show-episode-title">${episodeCode ? ' - ' : ''}${show.episodeTitle}</span>` : ''}</div>` : ''}
-              ${show.releaseDate ? `<div class="tv-show-date">${show.releaseDate}</div>` : ''}
-              ${show.description ? `<div class="tv-show-description">${show.description}</div>` : ''}
-            </div>
-            <span class="tv-show-source ${show.source}">${show.source === 'channels' ? 'DVR' : 'Sequel'}</span>
+      return link ? `<a href="${link}" class="tv-show-link">${content}</a>` : content;
+    }
+
+    function renderEntertainmentSection(title, items, type) {
+      if (!items || items.length === 0) return '';
+      return `
+        <div class="entertainment-section">
+          <h3 class="entertainment-section-title">${title}</h3>
+          ${items.map(item => renderMediaItem(item, type)).join('')}
+        </div>
+      `;
+    }
+
+    function renderEntertainment(data, disk) {
+      const container = document.getElementById('entertainment-container');
+      let html = renderStorage(disk);
+
+      // Build Watching section (DVR + Up Next + New Episodes)
+      const watchingItems = [];
+      (data.channels_recent || []).forEach(item => watchingItems.push(renderMediaItem(item, 'dvr')));
+      (data.up_next || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
+      (data.new_episodes || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
+
+      if (watchingItems.length > 0) {
+        html += `
+          <div class="entertainment-section">
+            <h3 class="entertainment-section-title">Watching</h3>
+            ${watchingItems.join('')}
           </div>
         `;
-      }).join('');
+      }
+
+      html += renderEntertainmentSection('Movies', data.movies, 'movie');
+      html += renderEntertainmentSection('Games', data.games, 'game');
+      html += renderEntertainmentSection('Reading', data.books, 'book');
+
+      // Coming Soon section - combine episodes and movies
+      const comingSoonItems = [];
+      (data.coming_soon?.episodes || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon')));
+      (data.coming_soon?.movies || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon_movie')));
+      if (comingSoonItems.length > 0) {
+        html += `
+          <div class="entertainment-section">
+            <h3 class="entertainment-section-title">Coming Soon</h3>
+            ${comingSoonItems.join('')}
+          </div>
+        `;
+      }
+
+      // Fox Theatre section - movies on your list playing at Fox Theatre
+      if (data.fox_theatre && data.fox_theatre.length > 0) {
+        html += `
+          <div class="entertainment-section">
+            <h3 class="entertainment-section-title">
+              <a href="https://www.foxtheatre.ca" target="_blank" style="color: inherit; text-decoration: none;">
+                At Fox Theatre 🦊
+              </a>
+            </h3>
+            ${data.fox_theatre.map(item => renderMediaItem(item, 'fox_theatre')).join('')}
+          </div>
+        `;
+      }
+
+      // Check if everything is empty
+      const hasComingSoon = data.coming_soon?.episodes?.length || data.coming_soon?.movies?.length;
+      const hasFoxTheatre = data.fox_theatre?.length;
+      if (!watchingItems.length && !data.movies?.length && !data.games?.length && !data.books?.length && !hasComingSoon && !hasFoxTheatre) {
+        html += '<div class="panel-empty">Nothing new to watch</div>';
+      }
 
       container.innerHTML = html;
     }
 
-    async function loadTvShows() {
+    async function loadEntertainment() {
       try {
-        const response = await fetch('/api/tv/shows');
-        const data = await response.json();
-        if (data.success) {
-          renderTvShows(data.shows, data.disk);
-        } else {
-          document.getElementById('tv-shows-container').innerHTML =
-            `<div class="panel-empty">Error: ${data.error}</div>`;
+        // Fetch both new_releases.json and disk info in parallel
+        const [releasesResponse, diskResponse] = await Promise.all([
+          fetch('new_releases.json'),
+          fetch('/api/tv/shows').catch(() => null)
+        ]);
+
+        const data = await releasesResponse.json();
+        let disk = null;
+
+        if (diskResponse) {
+          const diskData = await diskResponse.json();
+          disk = diskData.disk;
         }
+
+        renderEntertainment(data, disk);
       } catch (error) {
-        console.error('Error loading TV shows:', error);
-        document.getElementById('tv-shows-container').innerHTML =
-          '<div class="panel-empty">Error loading TV shows</div>';
+        console.error('Error loading entertainment:', error);
+        document.getElementById('entertainment-container').innerHTML =
+          '<div class="panel-empty">Error loading entertainment</div>';
       }
     }
 
@@ -2060,7 +2264,7 @@
       piStatus: 'Pi Status',
       bills: 'Bills Due',
       wisdom: 'Wisdom',
-      tvShows: 'TV Shows',
+      entertainment: 'Entertainment',
       links: 'Links'
     };
 
@@ -2124,7 +2328,7 @@
       } else {
         loadWisdom();
       }
-      loadTvShows();
+      loadEntertainment();
       loadAnyboxStats();
     }
 
@@ -2321,7 +2525,7 @@
         bills: 'Bills (Money)',
         calendar: 'Calendar',
         anybox: 'Links: Anybox',
-        sequel: 'TV Shows (Sequel)',
+        entertainment: 'Entertainment',
         goodlinks: 'Links: Read Later'
       };
       shortcutsContainer.innerHTML = Object.entries(shortcutLabels).map(([id, label]) => {
@@ -3315,7 +3519,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         }
 
         // Update panel visibility in settings
-        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'links', 'piStatus', 'shed', 'home'];
+        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'entertainment', 'links', 'piStatus', 'shed', 'home'];
         allPanels.forEach(panel => {
           if (currentSettings.panels[panel]) {
             currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
@@ -3417,7 +3621,7 @@ Add your own custom rules here for smart home devices, routines, or other person
       } else {
         loadWisdom();
       }
-      loadTvShows();
+      loadEntertainment();
 
       // Load any custom panels defined in settings
       loadCustomPanels();
@@ -3992,8 +4196,8 @@ Add your own custom rules here for smart home devices, routines, or other person
             <span>Wisdom</span>
           </label>
           <label class="onboarding-panel-option">
-            <input type="checkbox" class="onboarding-panel-check" value="tvShows">
-            <span>TV Shows</span>
+            <input type="checkbox" class="onboarding-panel-check" value="entertainment">
+            <span>Entertainment</span>
           </label>
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="links" checked>

@@ -942,6 +942,59 @@ body {
   border-bottom: none;
 }
 
+.bill-item.paid {
+  opacity: 0.5;
+  transform: translateX(10px);
+  transition: all 0.3s ease;
+}
+
+.bill-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-medium);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.bill-check svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  color: var(--text-primary);
+  transition: opacity 0.2s ease;
+}
+
+.bill-check:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.bill-check:hover svg {
+  opacity: 0.5;
+}
+
+.bill-check.paying {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.bill-check.paying svg {
+  opacity: 1;
+  color: white;
+}
+
+.bill-check:disabled {
+  cursor: not-allowed;
+}
+
 .bill-amount {
   font-weight: 600;
   color: var(--status-danger-text);
@@ -1043,7 +1096,7 @@ body {
 
 .remaining-bills .bill-item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -1212,6 +1265,19 @@ body {
   margin-bottom: 0.75rem;
   padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border-light);
+}
+
+.tomorrow-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .timeline-container {
@@ -1578,15 +1644,34 @@ body {
 }
 
 /* TV shows */
+.tv-show-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.tv-show-link:hover .tv-show-item {
+  background: var(--bg-secondary);
+  margin: 0 -0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
 .tv-show-item {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s ease;
 }
 
-.tv-show-item:last-child {
+.tv-show-item.clickable {
+  cursor: pointer;
+}
+
+.tv-show-item:last-child,
+.tv-show-link:last-child .tv-show-item {
   border-bottom: none;
 }
 
@@ -1672,6 +1757,56 @@ body {
 .tv-show-source.sequel {
   background: #fce7f3;
   color: #be185d;
+}
+
+.tv-show-source.coming-soon {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tv-show-source.fox-theatre {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.tv-show-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.provider-icons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.provider-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* Entertainment sections */
+.entertainment-section {
+  margin-bottom: 1rem;
+}
+
+.entertainment-section:last-child {
+  margin-bottom: 0;
+}
+
+.entertainment-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tv-header-links {
