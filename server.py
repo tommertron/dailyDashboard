@@ -8,7 +8,7 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PORT = 8000
@@ -484,6 +484,624 @@ def fetch_pi_status_data():
     }
 
 
+def fetch_heater_runtime():
+    """Fetch how long the shed heater has been running in heat mode for today and yesterday."""
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return {'today': 0, 'yesterday': 0}
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    def get_runtime_for_period(start_time, end_time):
+        """Calculate runtime in seconds for a given period."""
+        try:
+            # Format as ISO 8601
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.shed_thermostat&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return 0
+
+            history = data[0]
+            total_seconds = 0
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state != 'heat':
+                    continue
+
+                # Parse the timestamp
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                # Parse ISO format timestamp
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)  # Make naive for comparison
+
+                # Find when this state ended (next state change or end of period)
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = end_time
+                else:
+                    # Last state - if still in heat, count until end_time or now
+                    state_end = min(end_time, now)
+
+                # Clamp to period boundaries
+                state_start = max(state_start, start_time)
+                state_end = min(state_end, end_time)
+
+                if state_end > state_start:
+                    total_seconds += (state_end - state_start).total_seconds()
+
+            return int(total_seconds)
+
+        except Exception as e:
+            print(f"Error fetching heater runtime: {e}")
+            return 0
+
+    today_runtime = get_runtime_for_period(today_start, now)
+    yesterday_runtime = get_runtime_for_period(yesterday_start, today_start)
+
+    return {'today': today_runtime, 'yesterday': yesterday_runtime}
+
+
+HEATER_HISTORY_FILE = 'heater_history.json'
+
+def load_heater_history_cache():
+    """Load cached heater history from file."""
+    try:
+        with open(HEATER_HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_heater_history_cache(cache):
+    """Save heater history cache to file."""
+    try:
+        with open(HEATER_HISTORY_FILE, 'w') as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        print(f"Error saving heater history cache: {e}")
+
+def fetch_heater_history(days=30):
+    """Fetch heater runtime history for the past N days, plus outdoor temperature.
+    Uses local cache for historical data, only fetches recent days from HA."""
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return {'success': False, 'error': 'Home Assistant not configured'}
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = today_start.strftime('%Y-%m-%d')
+
+    # Load existing cache
+    cache = load_heater_history_cache()
+    history_data = []
+
+    def get_runtime_for_day(day_start, day_end):
+        """Calculate runtime in seconds for a given day. Returns (seconds, was_enabled)."""
+        try:
+            start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.shed_thermostat&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return 0, False
+
+            history = data[0]
+            total_seconds = 0
+            was_enabled = False  # Track if thermostat was ever in 'heat' mode
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state == 'heat':
+                    was_enabled = True
+                if state != 'heat':
+                    continue
+
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)
+
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = day_end
+                else:
+                    state_end = min(day_end, now)
+
+                state_start = max(state_start, day_start)
+                state_end = min(state_end, day_end)
+
+                if state_end > state_start:
+                    total_seconds += (state_end - state_start).total_seconds()
+
+            return int(total_seconds), was_enabled
+
+        except Exception as e:
+            print(f"Error fetching heater runtime for {day_start.date()}: {e}")
+            return 0, False
+
+    def get_wfh_status_for_day(day_start, day_end):
+        """Check if WFH toggle was on for majority of the day."""
+        try:
+            start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=input_boolean.working_from_home&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return False
+
+            history = data[0]
+            on_seconds = 0
+            total_seconds = (min(day_end, now) - day_start).total_seconds()
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state != 'on':
+                    continue
+
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)
+
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = min(day_end, now)
+                else:
+                    state_end = min(day_end, now)
+
+                state_start = max(state_start, day_start)
+                state_end = min(state_end, day_end)
+
+                if state_end > state_start:
+                    on_seconds += (state_end - state_start).total_seconds()
+
+            # Consider WFH if toggle was on for more than 4 hours
+            return on_seconds > 4 * 3600
+
+        except Exception as e:
+            print(f"Error fetching WFH status for {day_start.date()}: {e}")
+            return False
+
+    def get_outdoor_temp_for_day(day_start, day_end):
+        """Get average outdoor temperature for a day from weather sensor."""
+        try:
+            start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            # Try common outdoor temperature entity IDs
+            outdoor_entities = [
+                'sensor.openweathermap_temperature',
+                'sensor.outdoor_temperature',
+                'weather.home',
+            ]
+
+            for entity_id in outdoor_entities:
+                try:
+                    url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id={entity_id}&minimal_response"
+                    headers = {
+                        'Authorization': f'Bearer {ha_key}',
+                        'Content-Type': 'application/json',
+                    }
+
+                    req = urllib.request.Request(url, headers=headers, method='GET')
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        data = json.loads(response.read().decode('utf-8'))
+
+                    if data and len(data) > 0 and len(data[0]) > 0:
+                        temps = []
+                        for state in data[0]:
+                            try:
+                                # For weather entity, temp is in attributes
+                                if entity_id.startswith('weather.'):
+                                    temp = state.get('attributes', {}).get('temperature')
+                                else:
+                                    temp = float(state.get('state', 0))
+                                if temp and -50 < temp < 60:  # Sanity check
+                                    temps.append(temp)
+                            except (ValueError, TypeError):
+                                continue
+
+                        if temps:
+                            return round(sum(temps) / len(temps), 1)
+                except Exception:
+                    continue
+
+            return None
+
+        except Exception as e:
+            print(f"Error fetching outdoor temp for {day_start.date()}: {e}")
+            return None
+
+    # Determine date range: use cache's earliest date or N days ago
+    if cache:
+        earliest_cached = min(cache.keys())
+        earliest_date = datetime.strptime(earliest_cached, '%Y-%m-%d')
+        # Use whichever is earlier: cache start or N days ago
+        start_date = min(earliest_date, today_start - timedelta(days=days - 1))
+    else:
+        start_date = today_start - timedelta(days=days - 1)
+
+    # Fetch data for each day from start_date to today
+    # Only fetch from HA if not in cache or if it's today
+    current_date = start_date
+    while current_date <= today_start:
+        day_start = current_date
+        day_end = day_start + timedelta(days=1)
+        date_str = day_start.strftime('%Y-%m-%d')
+
+        # Check if we have cached data for this day (and it's not today)
+        if date_str in cache and date_str != today_str:
+            # Use cached data
+            history_data.append(cache[date_str])
+            current_date += timedelta(days=1)
+            continue
+
+        # For today, end at current time
+        if date_str == today_str:
+            day_end = now
+
+        # Fetch fresh data from HA
+        runtime_seconds, thermostat_enabled = get_runtime_for_day(day_start, day_end)
+        outdoor_temp = get_outdoor_temp_for_day(day_start, day_end)
+        is_wfh = get_wfh_status_for_day(day_start, day_end)
+        weekday = day_start.weekday()  # 0=Monday, 6=Sunday
+
+        day_data = {
+            'date': date_str,
+            'day_label': day_start.strftime('%b %d'),
+            'day_of_week': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekday],
+            'is_weekend': weekday >= 5,
+            'is_wfh': is_wfh,
+            'thermostat_enabled': thermostat_enabled,
+            'runtime_hours': round(runtime_seconds / 3600, 2),
+            'runtime_seconds': runtime_seconds,
+            'outdoor_temp': outdoor_temp
+        }
+
+        history_data.append(day_data)
+
+        # Cache completed days (not today, since it's still accumulating)
+        if date_str != today_str:
+            cache[date_str] = day_data
+
+        current_date += timedelta(days=1)
+
+    # Save updated cache
+    save_heater_history_cache(cache)
+
+    return {
+        'success': True,
+        'days': history_data,
+        'generated_at': now.isoformat()
+    }
+
+
+# Home heater tracking (Ecobee)
+HOME_HEATER_HISTORY_FILE = 'home_heater_history.json'
+
+def load_home_heater_history_cache():
+    """Load cached home heater history from file."""
+    try:
+        with open(HOME_HEATER_HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_home_heater_history_cache(cache):
+    """Save home heater history cache to file."""
+    try:
+        with open(HOME_HEATER_HISTORY_FILE, 'w') as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        print(f"Error saving home heater history cache: {e}")
+
+def fetch_home_heater_runtime():
+    """Fetch home heater runtime for today and yesterday."""
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return {'today': 0, 'yesterday': 0}
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    def get_runtime(start, end):
+        try:
+            start_str = start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return 0
+
+            history = data[0]
+            total_seconds = 0
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state != 'heat':
+                    continue
+
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)
+
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = end
+                else:
+                    state_end = min(end, now)
+
+                state_start = max(state_start, start)
+                state_end = min(state_end, end)
+
+                if state_end > state_start:
+                    total_seconds += (state_end - state_start).total_seconds()
+
+            return int(total_seconds)
+
+        except Exception as e:
+            print(f"Error fetching home heater runtime: {e}")
+            return 0
+
+    today_runtime = get_runtime(today_start, now)
+    yesterday_runtime = get_runtime(yesterday_start, today_start)
+
+    return {'today': today_runtime, 'yesterday': yesterday_runtime}
+
+
+def fetch_home_heater_history(days=30):
+    """Fetch home heater runtime history for the past N days, plus outdoor temperature.
+    Uses local cache for historical data, only fetches recent days from HA."""
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return {'success': False, 'error': 'Home Assistant not configured'}
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_str = today_start.strftime('%Y-%m-%d')
+
+    cache = load_home_heater_history_cache()
+    history_data = []
+
+    def get_runtime_for_day(day_start, day_end):
+        """Calculate runtime in seconds for a given day. Returns (seconds, was_enabled)."""
+        try:
+            start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return 0, False
+
+            history = data[0]
+            total_seconds = 0
+            was_enabled = False
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state == 'heat':
+                    was_enabled = True
+                if state != 'heat':
+                    continue
+
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)
+
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = day_end
+                else:
+                    state_end = min(day_end, now)
+
+                state_start = max(state_start, day_start)
+                state_end = min(state_end, day_end)
+
+                if state_end > state_start:
+                    total_seconds += (state_end - state_start).total_seconds()
+
+            return int(total_seconds), was_enabled
+
+        except Exception as e:
+            print(f"Error fetching home heater runtime for {day_start.date()}: {e}")
+            return 0, False
+
+    def get_outdoor_temp_for_day(day_start, day_end):
+        """Get average outdoor temperature for a day."""
+        try:
+            start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            outdoor_entities = [
+                'sensor.openweathermap_temperature',
+                'sensor.outdoor_temperature',
+                'weather.home',
+            ]
+
+            for entity_id in outdoor_entities:
+                try:
+                    url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id={entity_id}&minimal_response"
+                    headers = {
+                        'Authorization': f'Bearer {ha_key}',
+                        'Content-Type': 'application/json',
+                    }
+
+                    req = urllib.request.Request(url, headers=headers, method='GET')
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        data = json.loads(response.read().decode('utf-8'))
+
+                    if data and len(data) > 0 and len(data[0]) > 0:
+                        temps = []
+                        for state in data[0]:
+                            try:
+                                if entity_id.startswith('weather.'):
+                                    temp = state.get('attributes', {}).get('temperature')
+                                else:
+                                    temp = float(state.get('state', 0))
+                                if temp and -50 < temp < 60:
+                                    temps.append(temp)
+                            except (ValueError, TypeError):
+                                continue
+
+                        if temps:
+                            return round(sum(temps) / len(temps), 1)
+                except Exception:
+                    continue
+
+            return None
+
+        except Exception as e:
+            print(f"Error fetching outdoor temp for {day_start.date()}: {e}")
+            return None
+
+    # Determine date range
+    if cache:
+        earliest_cached = min(cache.keys())
+        earliest_date = datetime.strptime(earliest_cached, '%Y-%m-%d')
+        start_date = min(earliest_date, today_start - timedelta(days=days - 1))
+    else:
+        start_date = today_start - timedelta(days=days - 1)
+
+    current_date = start_date
+    while current_date <= today_start:
+        day_start = current_date
+        day_end = day_start + timedelta(days=1)
+        date_str = day_start.strftime('%Y-%m-%d')
+
+        if date_str in cache and date_str != today_str:
+            history_data.append(cache[date_str])
+            current_date += timedelta(days=1)
+            continue
+
+        if date_str == today_str:
+            day_end = now
+
+        runtime_seconds, thermostat_enabled = get_runtime_for_day(day_start, day_end)
+        outdoor_temp = get_outdoor_temp_for_day(day_start, day_end)
+        weekday = day_start.weekday()
+
+        day_data = {
+            'date': date_str,
+            'day_label': day_start.strftime('%b %d'),
+            'day_of_week': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekday],
+            'is_weekend': weekday >= 5,
+            'thermostat_enabled': thermostat_enabled,
+            'runtime_hours': round(runtime_seconds / 3600, 2),
+            'runtime_seconds': runtime_seconds,
+            'outdoor_temp': outdoor_temp
+        }
+
+        history_data.append(day_data)
+
+        if date_str != today_str:
+            cache[date_str] = day_data
+
+        current_date += timedelta(days=1)
+
+    save_home_heater_history_cache(cache)
+
+    return {
+        'success': True,
+        'days': history_data,
+        'generated_at': now.isoformat()
+    }
+
+
 def fetch_ha_panel_data(panel_id):
     """Fetch Home Assistant states for a panel."""
     settings = load_settings()
@@ -514,7 +1132,17 @@ def fetch_ha_panel_data(panel_id):
                 print(f"Error fetching HA entity {entity}: {e}")
                 states[entity] = None
 
-    return {'success': True, 'panel': panel_config, 'states': states}
+    result = {'success': True, 'panel': panel_config, 'states': states}
+
+    # For shed panel, include heater runtime data
+    if panel_id == 'shed':
+        result['heater_runtime'] = fetch_heater_runtime()
+
+    # For home panel, include home heater runtime data
+    if panel_id == 'home':
+        result['heater_runtime'] = fetch_home_heater_runtime()
+
+    return result
 
 
 # =============================================================================
@@ -637,7 +1265,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_ha_panel_status('shed')
         elif self.path == '/api/home-assistant/home':
             self.get_ha_panel_status('home')
-        elif self.path == '/api/pi/status':
+        elif self.path == '/api/pi/status' or self.path.startswith('/api/pi/status?'):
             self.get_pi_status()
         elif self.path == '/api/money':
             self.get_money()
@@ -647,6 +1275,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_settings()
         elif self.path == '/api/wisdom/random':
             self.get_random_wisdom()
+        elif self.path == '/api/heater-history':
+            self.get_heater_history()
+        elif self.path == '/api/home-heater-history':
+            self.get_home_heater_history()
         else:
             super().do_GET()
 
@@ -704,6 +1336,18 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def get_pi_status(self):
         """Get Pi UPS status from cache or fetch live."""
         try:
+            # Check for ?live=true to bypass cache
+            use_live = 'live=true' in self.path
+
+            if use_live:
+                # Fetch live data directly
+                data = fetch_pi_status_data()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode())
+                return
+
             with _cache_lock:
                 cached = _api_cache['pi_status']
 
@@ -770,18 +1414,85 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
+    def get_heater_history(self):
+        """Get heater runtime history for the past 30 days."""
+        try:
+            data = fetch_heater_history(days=30)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def get_home_heater_history(self):
+        """Get home heater runtime history for the past 30 days."""
+        try:
+            data = fetch_home_heater_history(days=30)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
     def get_random_wisdom(self):
-        """Get a random wisdom quote."""
+        """Get a random wisdom quote with rotation limits and history tracking."""
         try:
             import re
             import random
-            wisdom_file = os.path.join(DIRECTORY, 'wisdom', 'wisdom.md')
-            wisdoms = []
+            import hashlib
 
+            wisdom_file = os.path.join(DIRECTORY, 'wisdom', 'wisdom.md')
+            wisdom_json_file = os.path.join(DIRECTORY, 'wisdom.json')
+            history_file = os.path.join(DIRECTORY, 'wisdom_history.json')
+
+            ROTATION_HOURS = 6
+            HISTORY_DAYS = 7
+
+            # Load current wisdom and check if rotation is needed
+            current_wisdom = {}
+            if os.path.exists(wisdom_json_file):
+                with open(wisdom_json_file, 'r', encoding='utf-8') as f:
+                    current_wisdom = json.load(f)
+
+            # Check if we should rotate (6 hours since last update)
+            if current_wisdom.get('updated_at'):
+                last_update = datetime.strptime(current_wisdom['updated_at'], '%Y-%m-%d %H:%M:%S')
+                hours_since = (datetime.now() - last_update).total_seconds() / 3600
+                if hours_since < ROTATION_HOURS:
+                    # Return current wisdom without rotating
+                    self.send_json_response(200, {
+                        'success': True,
+                        'wisdom': current_wisdom.get('wisdom', ''),
+                        'source': current_wisdom.get('source', ''),
+                        'total_wisdoms': current_wisdom.get('total_wisdoms', 0),
+                        'next_rotation_hours': round(ROTATION_HOURS - hours_since, 1)
+                    })
+                    return
+
+            # Load history of shown wisdoms
+            history = []
+            if os.path.exists(history_file):
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+
+            # Clean up old history entries (older than 7 days)
+            cutoff = datetime.now().timestamp() - (HISTORY_DAYS * 24 * 3600)
+            history = [h for h in history if h.get('shown_at', 0) > cutoff]
+            shown_hashes = {h['hash'] for h in history}
+
+            # Parse wisdoms from file
+            wisdoms = []
             with open(wisdom_file, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # Define sections and their sources
             sections = [
                 ('## The Wisdom So Far', '## Kevin Kelly', "Merlin Mann's Wisdom Project"),
                 ('## Kevin Kelly', '## Works Cited', "Kevin Kelly's Excellent Advice for Living"),
@@ -803,21 +1514,59 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                     if line.startswith('- '):
                         wisdom = line[2:].strip()
                         if len(wisdom) > 10:
+                            # Clean up markdown formatting
                             wisdom = re.sub(r'\*\*(.+?)\*\*', r'\1', wisdom)
                             wisdom = re.sub(r'\*(.+?)\*', r'\1', wisdom)
                             wisdom = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', wisdom)
-                            wisdoms.append({'text': wisdom, 'source': source})
+
+                            # Strip "Related:" prefix from Merlin's wisdoms
+                            if source == "Merlin Mann's Wisdom Project":
+                                wisdom = re.sub(r'^Related\s*(?:corollary)?:\s*', '', wisdom, flags=re.IGNORECASE)
+
+                            # Create hash for deduplication
+                            wisdom_hash = hashlib.md5(wisdom.encode()).hexdigest()[:12]
+                            wisdoms.append({'text': wisdom, 'source': source, 'hash': wisdom_hash})
 
             if not wisdoms:
                 self.send_json_response(404, {'success': False, 'error': 'No wisdoms found'})
                 return
 
-            selected = random.choice(wisdoms)
+            # Filter out recently shown wisdoms
+            available = [w for w in wisdoms if w['hash'] not in shown_hashes]
+
+            # If we've shown everything, reset history
+            if not available:
+                history = []
+                available = wisdoms
+
+            selected = random.choice(available)
+
+            # Add to history
+            history.append({
+                'hash': selected['hash'],
+                'shown_at': datetime.now().timestamp()
+            })
+
+            # Save history
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f)
+
+            # Save current wisdom to wisdom.json
+            wisdom_data = {
+                'wisdom': selected['text'],
+                'source': selected['source'],
+                'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'total_wisdoms': len(wisdoms)
+            }
+            with open(wisdom_json_file, 'w', encoding='utf-8') as f:
+                json.dump(wisdom_data, f, indent=2)
+
             self.send_json_response(200, {
                 'success': True,
                 'wisdom': selected['text'],
                 'source': selected['source'],
-                'total_wisdoms': len(wisdoms)
+                'total_wisdoms': len(wisdoms),
+                'available_wisdoms': len(available)
             })
         except Exception as e:
             self.send_json_response(500, {'success': False, 'error': str(e)})
@@ -1122,12 +1871,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.run_refresh_shortcut('bills')
         elif self.path == '/api/refresh-summary':
             self.refresh_summary()
+        elif self.path == '/api/refresh-new-releases':
+            self.refresh_new_releases()
         elif self.path == '/api/home-assistant/scene/heat_shed_in_morning':
             self.activate_scene('scene.heat_shed_in_morning')
         elif self.path == '/api/home-assistant/scene/shed_unoccupied':
             self.activate_scene('scene.shed_unoccupied')
         elif self.path == '/api/home-assistant/toggle/working_from_home':
             self.toggle_input_boolean('input_boolean.working_from_home')
+        elif self.path == '/api/automation/wfh-check':
+            self.run_wfh_automation()
         elif self.path == '/api/home-assistant/lock/back_door':
             self.toggle_lock('lock.back_door_lock')
         elif self.path == '/api/home-assistant/toggle/shed_desk_lamp':
@@ -1213,6 +1966,46 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
+    def refresh_new_releases(self):
+        """Refresh new releases by running the script on Mac Mini via SSH."""
+        try:
+            settings = load_settings()
+            ssh_config = settings.get('refreshCommands', {}).get('ssh', {})
+            ssh_host = ssh_config.get('host', 'toms-mac-mini.local')
+            ssh_user = ssh_config.get('user', 'tomrobertson')
+            ssh_timeout = ssh_config.get('timeout', 30)
+
+            ssh_command = f'{ssh_user}@{ssh_host}'
+            remote_command = 'cd /Users/tomrobertson/coding/sequels && python3 new_releases.py'
+
+            result = subprocess.run(
+                ['ssh', ssh_command, remote_command],
+                capture_output=True,
+                text=True,
+                timeout=ssh_timeout
+            )
+
+            if result.returncode == 0:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'message': 'New releases refreshed'}).encode())
+            else:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': result.stderr}).encode())
+        except subprocess.TimeoutExpired:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': 'SSH timeout'}).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
     def activate_scene(self, scene_id):
         """Activate a Home Assistant scene."""
         try:
@@ -1237,6 +2030,83 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'message': f'{entity_id} toggled'}).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def set_input_boolean(self, entity_id, state):
+        """Set an input_boolean to on or off."""
+        try:
+            service = 'turn_on' if state else 'turn_off'
+            ha_request('POST', f'services/input_boolean/{service}', {'entity_id': entity_id})
+            invalidate_ha_cache()
+            return True
+        except Exception as e:
+            print(f"Error setting {entity_id} to {state}: {e}")
+            return False
+
+    def run_wfh_automation(self):
+        """Check calendar and day of week to set WFH status."""
+        try:
+            now = datetime.now()
+            today_str = now.strftime('%b %-d, %Y')  # e.g., "Feb 3, 2026"
+            weekday = now.weekday()  # 0=Monday, 6=Sunday
+
+            reasons = []
+            should_turn_off = False
+
+            # Check if Friday (4) or Sunday (6)
+            if weekday == 4:
+                should_turn_off = True
+                reasons.append("Friday")
+            elif weekday == 6:
+                should_turn_off = True
+                reasons.append("Sunday")
+
+            # Check calendar for "tom in office" or "tom office"
+            try:
+                with open('calendar.json', 'r') as f:
+                    cal_data = json.load(f)
+                events_str = cal_data.get('events', '')
+                for line in events_str.strip().split('\n'):
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                        title = event.get('title', '').lower()
+                        start = event.get('start', '')
+                        # Check if event is today and title contains "tom" and "office"
+                        if today_str in start:
+                            if 'tom' in title and 'office' in title:
+                                should_turn_off = True
+                                reasons.append(f"Calendar: {event.get('title')}")
+                                break
+                    except json.JSONDecodeError:
+                        continue
+            except Exception as e:
+                print(f"Error reading calendar: {e}")
+
+            result = {
+                'date': now.strftime('%Y-%m-%d'),
+                'day_of_week': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekday],
+                'should_turn_off_wfh': should_turn_off,
+                'reasons': reasons,
+                'action_taken': None
+            }
+
+            if should_turn_off:
+                success = self.set_input_boolean('input_boolean.working_from_home', False)
+                result['action_taken'] = 'turned_off' if success else 'failed'
+            else:
+                result['action_taken'] = 'no_change'
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, **result}).encode())
+
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
