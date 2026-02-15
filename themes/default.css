@@ -203,13 +203,13 @@ body {
   background: var(--bg-panel);
   border-radius: var(--radius-xl);
   padding: 1.5rem 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   box-shadow: var(--shadow-panel);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1.5rem;
-  overflow: hidden;
 }
 
 .greeting {
@@ -224,31 +224,115 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.ai-summary-inline {
+/* At-a-Glance bullet summary */
+.at-a-glance {
+  margin-top: 0.25rem;
+}
+
+.at-a-glance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.at-a-glance-item {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 0.1rem 0;
+}
+
+.at-a-glance-icon {
+  margin-right: 0.4rem;
+}
+
+.at-a-glance-expand {
+  background: none;
+  border: none;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.at-a-glance-expand:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.at-a-glance-full {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.at-a-glance-full p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
   line-height: 1.5;
+  margin: 0 0 0.5rem;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
-/* Header starred links */
-.header-starred-links {
+/* Tomorrow Forecast Card */
+.tomorrow-forecast {
+  border-radius: var(--radius-lg, 12px);
+  padding: 0.65rem 1.25rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tomorrow-forecast .forecast-icon {
+  font-size: 1.1rem;
+}
+
+.tomorrow-forecast .forecast-reason {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.forecast-on {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.forecast-off {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light, #e5e7eb);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Quick Links Bar */
+.quick-links-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.75rem;
 }
 
-.header-starred-links:empty {
+.quick-links-bar:empty {
   display: none;
 }
 
-.starred-label {
-  color: #fbbf24;
-  display: flex;
-  align-items: center;
+.quick-links-label {
+  color: var(--text-tertiary, var(--text-secondary));
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.25rem;
 }
 
 .starred-link-chip {
@@ -825,6 +909,17 @@ body {
 
 .pi-stats-grid.pi-stats-5col {
   grid-template-columns: repeat(5, 1fr);
+}
+
+.pi-stats-grid.shed-runtime-grid {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 0.5rem;
+}
+
+.pi-stat-secondary {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.1rem;
 }
 
 .pi-stat-box {
@@ -1968,8 +2063,8 @@ body {
     font-size: 1.4rem;
   }
 
-  .ai-summary-inline {
-    font-size: 0.9rem;
+  .at-a-glance-item {
+    font-size: 0.85rem;
   }
 
   .date-badge {
@@ -1992,16 +2087,21 @@ body {
   .header-right {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .greeting h1 {
     font-size: 1.4rem;
   }
 
-  .ai-summary-inline {
-    font-size: 0.9rem;
+  .at-a-glance-item {
+    font-size: 0.85rem;
     word-break: break-word;
     hyphens: auto;
+  }
+
+  .quick-links-bar {
+    padding: 0.25rem 0;
   }
 
   /* Text wrapping fixes for mobile */
@@ -2104,6 +2204,487 @@ body {
 
   .bill-total-amount {
     font-size: 1rem;
+  }
+}
+
+/* Settings Modal */
+/* Heater Chart Modal */
+.heater-chart-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.heater-chart-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.heater-chart-modal {
+  background: var(--bg-panel);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  width: 95%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform 0.3s;
+}
+
+.heater-chart-overlay.visible .heater-chart-modal {
+  transform: scale(1);
+}
+
+.heater-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.heater-chart-header h2 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.heater-chart-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.heater-chart-close-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.heater-chart-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.heater-chart-summary {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.heater-chart-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.heater-chart-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--status-warning-text);
+}
+
+.heater-chart-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.heater-chart-stat-secondary {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.1rem;
+}
+
+.heater-chart-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.heater-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.legend-bar {
+  width: 12px;
+  height: 12px;
+  background: var(--status-warning-bg);
+  border: 2px solid var(--status-warning-text);
+  border-radius: 2px;
+}
+
+.legend-line {
+  width: 20px;
+  height: 3px;
+  background: var(--status-info-text, #3b82f6);
+  border-radius: 2px;
+}
+
+.legend-wfh {
+  width: 10px;
+  height: 10px;
+  background: var(--status-success-text, #22c55e);
+  border-radius: 50%;
+}
+
+.legend-weekend {
+  width: 12px;
+  height: 12px;
+  background: rgba(100, 100, 150, 0.3);
+  border-radius: 2px;
+}
+
+.heater-chart {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+.heater-chart-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 300px;
+  position: relative;
+  background: linear-gradient(to top, var(--border-light) 1px, transparent 1px);
+  background-size: 100% 25%;
+}
+
+.heater-chart-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.heater-chart-bar {
+  width: 80%;
+  max-width: 30px;
+  background: linear-gradient(to top, var(--status-warning-text), var(--status-warning-bg));
+  border-radius: 3px 3px 0 0;
+  margin-top: auto;
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+
+.heater-chart-bar-container:hover .heater-chart-bar {
+  opacity: 0.8;
+}
+
+/* Weekend shading */
+.heater-chart-bar-container.weekend {
+  background: rgba(100, 100, 150, 0.15);
+  border-radius: 4px;
+}
+
+/* WFH indicator */
+.heater-chart-bar-container.wfh::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--status-success-text, #22c55e);
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.heater-chart-temp-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--status-info-text, #3b82f6);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  left: 50%;
+  z-index: 2;
+}
+
+.heater-chart-label {
+  position: absolute;
+  bottom: -32px;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.heater-chart-y-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: right;
+  width: 2rem;
+}
+
+.heater-chart-temp-axis {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--status-info-text, #3b82f6);
+  text-align: left;
+  width: 2rem;
+}
+
+.heater-chart-temp-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Thermostat Control Modal */
+.thermostat-control-modal {
+  background: var(--bg-panel);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform 0.3s;
+}
+
+.heater-chart-overlay.visible .thermostat-control-modal {
+  transform: scale(1);
+}
+
+.thermostat-control-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.thermostat-control-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.thermostat-control-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.thermostat-mode-section label,
+.thermostat-temp-section label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.thermostat-mode-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.thermostat-mode-btn {
+  flex: 1;
+  min-width: 70px;
+  padding: 1rem 0.75rem;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.thermostat-mode-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.thermostat-mode-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.thermostat-mode-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+  background: var(--bg-tertiary, var(--bg-secondary));
+}
+
+.thermostat-mode-btn.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(var(--accent-primary-rgb, 59, 130, 246), 0.3);
+}
+
+.thermostat-temp-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.thermostat-temp-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.thermostat-temp-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: white;
+}
+
+.thermostat-temp-btn:active {
+  transform: scale(0.95);
+}
+
+.thermostat-temp-value {
+  font-size: 3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  text-align: center;
+}
+
+.thermostat-temp-unit {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin-left: -0.5rem;
+}
+
+.thermostat-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.thermostat-cancel-btn,
+.thermostat-apply-btn {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.thermostat-cancel-btn {
+  border: 2px solid var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.thermostat-cancel-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.thermostat-apply-btn {
+  border: none;
+  background: #22c55e;
+  color: white;
+}
+
+.thermostat-apply-btn:hover {
+  background: #16a34a;
+}
+
+.thermostat-apply-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .heater-chart-modal {
+    width: 98%;
+    max-height: 90vh;
+  }
+
+  .heater-chart-bars {
+    height: 200px;
+  }
+
+  .heater-chart-label {
+    display: none;
+  }
+
+  .heater-chart-bar-container:nth-child(odd) .heater-chart-label {
+    display: block;
   }
 }
 
@@ -3625,6 +4206,21 @@ a.generic-list-item:hover {
 
 .settings-btn-small.danger:hover {
   background: #c0392b;
+}
+
+/* Dark mode overrides for forecast card */
+@media (prefers-color-scheme: dark) {
+  .forecast-on {
+    background: #064e3b;
+    color: #a7f3d0;
+    border-color: #065f46;
+  }
+
+  .forecast-off {
+    background: var(--bg-panel);
+    color: var(--text-secondary);
+    border-color: var(--border-light, #374151);
+  }
 }
 
 /* Custom Panels Container */

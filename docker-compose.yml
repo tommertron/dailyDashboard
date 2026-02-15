@@ -24,9 +24,15 @@ services:
       - ./untaggedLinks.txt:/app/untaggedLinks.txt
       - ./starredLinks.json:/app/starredLinks.json
       - ./sequelEpisodes.json:/app/sequelEpisodes.json
+      - ./new_releases.json:/app/new_releases.json
       - ./anyboxStats.json:/app/anyboxStats.json
       - ./readlater.json:/app/readlater.json
       - ./wisdom.json:/app/wisdom.json
+      - ./wisdom_history.json:/app/wisdom_history.json
+      - ./heater_history.json:/app/heater_history.json
+      - ./home_heater_history.json:/app/home_heater_history.json
+      - ./heater_rates.json:/app/heater_rates.json:ro
+      - ./home_heater_rates.json:/app/home_heater_rates.json:ro
       - ./wisdom:/app/wisdom:ro
       - ./settings.json:/app/settings.json
       # Backup status from backupJobs

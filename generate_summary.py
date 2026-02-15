@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from urllib.parse import quote
 
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,6 +63,78 @@ def fetch_home_state(ha_url, ha_key):
         'binary_sensor.contact_sensor',     # Garage door
     ]
     return fetch_ha_states(ha_url, ha_key, entities)
+
+
+def fetch_heater_runtime(ha_url, ha_key):
+    """Fetch how long the shed heater has been running in heat mode for today and yesterday."""
+    if not ha_url or not ha_key:
+        return None
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    def get_runtime_for_period(start_time, end_time):
+        """Calculate runtime in seconds for a given period."""
+        try:
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%S')
+
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.shed_thermostat&minimal_response"
+            req = Request(url, headers={
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            })
+            with urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return 0
+
+            history = data[0]
+            total_seconds = 0
+
+            for i, state_change in enumerate(history):
+                state = state_change.get('state')
+                if state != 'heat':
+                    continue
+
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+
+                state_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                state_start = state_start.replace(tzinfo=None)
+
+                if i + 1 < len(history):
+                    next_change = history[i + 1].get('last_changed', '')
+                    if next_change:
+                        state_end = datetime.fromisoformat(next_change.replace('Z', '+00:00'))
+                        state_end = state_end.replace(tzinfo=None)
+                    else:
+                        state_end = end_time
+                else:
+                    state_end = min(end_time, now)
+
+                state_start = max(state_start, start_time)
+                state_end = min(state_end, end_time)
+
+                if state_end > state_start:
+                    total_seconds += (state_end - state_start).total_seconds()
+
+            return int(total_seconds)
+
+        except Exception as e:
+            print(f"Error fetching heater runtime: {e}")
+            return 0
+
+    today_runtime = get_runtime_for_period(today_start, now)
+    yesterday_runtime = get_runtime_for_period(yesterday_start, today_start)
+
+    return {
+        'today_minutes': today_runtime // 60,
+        'yesterday_minutes': yesterday_runtime // 60
+    }
 
 
 PI_MONITOR_URL = "http://100.125.128.51:5001"
@@ -161,9 +234,13 @@ def gather_daily_data():
     hour = now.hour
     is_weekday = now.weekday() < 5  # Monday=0, Sunday=6
     is_workday_hours = is_weekday and hour < 16
+    tomorrow = now + timedelta(days=1)
+    tomorrow_is_workday = tomorrow.weekday() < 5
     data = {
         'current_time': now.strftime("%H:%M"),
         'day_of_week': now.strftime("%A"),
+        'tomorrow_day_of_week': tomorrow.strftime("%A"),
+        'tomorrow_is_workday': tomorrow_is_workday,
         'is_workday_hours': is_workday_hours,
         'is_evening': hour >= 17,
     }
@@ -219,15 +296,20 @@ def gather_daily_data():
         links = links_data.get('links', [])[:5]
         data['anybox_links'] = [{'title': l.get('title'), 'comment': l.get('comment')} for l in links]
 
-    # Load money/bills info
-    money_path = os.path.join(DIRECTORY, 'money.txt')
+    # Load money/bills info from Remaining API
     try:
-        with open(money_path, 'r') as f:
-            money_content = f.read().strip()
-            if money_content:
-                data['money_and_bills'] = money_content
-    except FileNotFoundError:
-        pass
+        req = Request('http://100.125.128.51:8111/api/summary')
+        with urlopen(req, timeout=10) as response:
+            remaining_data = json.loads(response.read().decode('utf-8'))
+            data['remaining'] = {
+                'spending_money_left': remaining_data.get('spending_money_left'),
+                'checking_balance': remaining_data.get('checking_balance'),
+                'total_due': remaining_data.get('total_due'),
+                'days_until_payday': remaining_data.get('days_until_payday'),
+                'bills_due_before_payday': remaining_data.get('bills_due_before_payday', [])
+            }
+    except Exception as e:
+        print(f"Error fetching Remaining data: {e}")
 
     # Load Anybox stats
     anybox_stats = load_json_file('anyboxStats.json')
@@ -599,6 +681,15 @@ def main():
                 'desk_lamp': desk_lamp.get('state'),
                 'shelf_light': shelf_light.get('state')
             }
+
+            # Add heater runtime to shed data
+            heater_runtime = fetch_heater_runtime(
+                config['homeAssistantUrl'],
+                config['homeAssistantApiKey']
+            )
+            if heater_runtime:
+                daily_data['shed']['heater_runtime_today_minutes'] = heater_runtime['today_minutes']
+                daily_data['shed']['heater_runtime_yesterday_minutes'] = heater_runtime['yesterday_minutes']
 
         # Fetch home state
         home_states = fetch_home_state(

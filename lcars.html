@@ -2242,11 +2242,13 @@
       const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
       const motionOverrideOn = motionOverride?.state === 'on';
       const thermostatState = thermostat?.state || 'unknown';
+      const thermostatTargetTemp = thermostat?.attributes?.temperature || '--';
+      const thermostatHvacAction = thermostat?.attributes?.hvac_action || 'idle';
       const deskLampOn = deskLamp?.state === 'on';
       const shelfLightOn = shelfLight?.state === 'on';
 
-      let thermostatDisplay = thermostatState === 'heat' ? 'Heat' : 'Off';
-      let thermostatClass = thermostatState === 'heat' ? 'stat-warn' : 'stat-ok';
+      let thermostatDisplay = thermostatState === 'heat' ? `Heat ${thermostatTargetTemp}°` : 'Off';
+      let thermostatClass = thermostatHvacAction === 'heating' ? 'stat-warn' : (thermostatState === 'heat' ? 'stat-ok' : 'stat-neutral');
 
       // Heater runtime
       const heaterRuntime = data.heater_runtime || {};
@@ -2259,8 +2261,8 @@
           <span class="home-temp-label">Shed Temperature</span>
         </div>
         <div class="pi-stats-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${thermostatState === 'heat' ? '🔥' : '❄️'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="playSound('audio2'); openThermostatControl('shed', 'climate.shed_thermostat', '${thermostatState}', ${thermostatTargetTemp || 18})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${thermostatHvacAction === 'heating' ? '🔥' : (thermostatState === 'heat' ? '🌡️' : '❄️')}</span>
             <span class="pi-stat-label">${thermostatDisplay}</span>
           </div>
           <div class="pi-stat-box ${motionOverrideOn ? 'stat-warn' : 'stat-ok'}" onclick="playSound('audio2'); toggleMotionOverride()" style="cursor:pointer" title="Toggle motion override">
@@ -2336,6 +2338,118 @@
     function handleHeaterChartEscape(event) {
       if (event.key === 'Escape') {
         closeHeaterChart();
+      }
+    }
+
+    // Thermostat Control Functions
+    let currentThermostatEntity = null;
+    let currentThermostatLocation = null;
+    let currentThermostatMode = 'off';
+    let currentThermostatTemp = 20;
+
+    function openThermostatControl(location, entityId, mode, temp) {
+      currentThermostatEntity = entityId;
+      currentThermostatLocation = location;
+      currentThermostatMode = mode || 'off';
+      currentThermostatTemp = temp || 20;
+
+      const overlay = document.getElementById('thermostat-control-overlay');
+      const title = document.getElementById('thermostat-control-title');
+      const tempValue = document.getElementById('thermostat-temp-value');
+      const tempSection = document.getElementById('thermostat-temp-section');
+      const modeButtons = document.getElementById('thermostat-mode-buttons');
+
+      title.textContent = location === 'shed' ? 'Shed Thermostat' : 'Home Thermostat';
+      tempValue.textContent = currentThermostatTemp;
+
+      // Different modes for shed vs home
+      const modes = location === 'shed'
+        ? [{ value: 'heat', label: 'Heat' }, { value: 'off', label: 'Off' }]
+        : [{ value: 'heat', label: 'Heat' }, { value: 'cool', label: 'Cool' }, { value: 'heat_cool', label: 'Auto' }, { value: 'off', label: 'Off' }];
+
+      modeButtons.innerHTML = modes.map(m =>
+        `<button class="thermostat-mode-btn ${currentThermostatMode === m.value ? 'active' : ''}"
+                 onclick="playSound('audio2'); selectThermostatMode('${m.value}')">${m.label}</button>`
+      ).join('');
+
+      // Show/hide temp section based on mode
+      tempSection.style.display = currentThermostatMode === 'off' ? 'none' : 'block';
+
+      overlay.classList.add('visible');
+      document.addEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControl() {
+      const overlay = document.getElementById('thermostat-control-overlay');
+      overlay.classList.remove('visible');
+      document.removeEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControlOnOverlay(event) {
+      if (event.target.id === 'thermostat-control-overlay') {
+        closeThermostatControl();
+      }
+    }
+
+    function handleThermostatEscape(event) {
+      if (event.key === 'Escape') {
+        closeThermostatControl();
+      }
+    }
+
+    function selectThermostatMode(mode) {
+      currentThermostatMode = mode;
+      const buttons = document.querySelectorAll('.thermostat-mode-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Show/hide temp section based on mode
+      const tempSection = document.getElementById('thermostat-temp-section');
+      tempSection.style.display = mode === 'off' ? 'none' : 'block';
+    }
+
+    function adjustThermostatTemp(delta) {
+      playSound('audio2');
+      currentThermostatTemp = Math.max(10, Math.min(30, currentThermostatTemp + delta));
+      document.getElementById('thermostat-temp-value').textContent = currentThermostatTemp;
+    }
+
+    async function applyThermostatSettings() {
+      playSound('audio3');
+      const applyBtn = document.querySelector('.thermostat-apply-btn');
+      applyBtn.textContent = 'Applying...';
+      applyBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/home-assistant/climate/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entity_id: currentThermostatEntity,
+            hvac_mode: currentThermostatMode,
+            temperature: currentThermostatMode !== 'off' ? currentThermostatTemp : null
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeThermostatControl();
+          // Refresh the appropriate panel
+          if (currentThermostatLocation === 'shed') {
+            setTimeout(() => loadShedStatus(), 500);
+          } else {
+            setTimeout(() => loadHomeStatus(), 500);
+          }
+        } else {
+          alert('Failed to update thermostat: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error updating thermostat:', error);
+        alert('Error updating thermostat');
+      } finally {
+        applyBtn.textContent = 'Apply';
+        applyBtn.disabled = false;
       }
     }
 
@@ -2649,8 +2763,8 @@
           <span class="home-temp-label">Inside${humidity ? ` • ${humidity}% humidity` : ''}</span>
         </div>
         <div class="pi-stats-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : '○'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="playSound('audio2'); openThermostatControl('home', 'climate.my_ecobee', '${hvacState}', ${targetTemp || 20})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : '🌡️'}</span>
             <span class="pi-stat-label">${hvacDisplay}</span>
           </div>
           <div class="pi-stat-box ${isLocked ? 'stat-ok' : 'stat-alert'}" onclick="playSound('audio2'); toggleBackDoorLock()" style="cursor:pointer" title="Click to ${isLocked ? 'unlock' : 'lock'}">
@@ -2667,7 +2781,7 @@
           </div>
         </div>
         <div class="pi-stats-grid shed-runtime-grid" onclick="playSound('audio2'); openHomeHeaterChart()" style="cursor:pointer" title="Click for history">
-          <div class="pi-stat-box stat-neutral">
+          <div class="pi-stat-box stat-info">
             <span class="pi-stat-value">${heatToday}</span>
             <span class="pi-stat-label">Heat Today</span>
           </div>
@@ -4884,6 +4998,132 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+
+    /* Thermostat Control Modal */
+    .thermostat-control-modal {
+      background: #000;
+      border: 3px solid var(--butterscotch);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.3s;
+    }
+    .heater-chart-overlay.visible .thermostat-control-modal {
+      transform: scale(1);
+    }
+    .thermostat-control-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .thermostat-mode-section label,
+    .thermostat-temp-section label {
+      display: block;
+      color: var(--butterscotch);
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      font-family: 'Antonio', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .thermostat-mode-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .thermostat-mode-btn {
+      flex: 1;
+      min-width: 70px;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--butterscotch);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--butterscotch);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Antonio', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .thermostat-mode-btn:hover {
+      background: rgba(255, 153, 0, 0.2);
+    }
+    .thermostat-mode-btn.active {
+      background: var(--butterscotch);
+      color: #000;
+    }
+    .thermostat-temp-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+    .thermostat-temp-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--butterscotch);
+      background: transparent;
+      color: var(--butterscotch);
+      font-size: 1.5rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .thermostat-temp-btn:hover {
+      background: var(--butterscotch);
+      color: #000;
+    }
+    .thermostat-temp-btn:active {
+      transform: scale(0.95);
+    }
+    .thermostat-temp-value {
+      font-size: 3rem;
+      font-weight: 600;
+      color: var(--butterscotch);
+      min-width: 80px;
+      text-align: center;
+      font-family: 'Antonio', sans-serif;
+    }
+    .thermostat-temp-unit {
+      font-size: 1.5rem;
+      color: var(--butterscotch);
+      margin-left: -0.5rem;
+      font-family: 'Antonio', sans-serif;
+    }
+    .thermostat-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 0.5rem;
+    }
+    .thermostat-apply-btn {
+      padding: 0.75rem 2rem;
+      border-radius: 10px;
+      border: none;
+      background: var(--butterscotch);
+      color: #000;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Antonio', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .thermostat-apply-btn:hover {
+      background: #ffaa33;
+    }
+    .thermostat-apply-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   </style>
 
   <!-- LCARS Onboarding Wizard -->
@@ -4983,6 +5223,36 @@
       <div class="heater-chart-body">
         <div id="home-heater-chart-container">
           <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermostat Control Modal -->
+  <div class="heater-chart-overlay" id="thermostat-control-overlay" onclick="closeThermostatControlOnOverlay(event)">
+    <div class="thermostat-control-modal">
+      <div class="heater-chart-header">
+        <h2 id="thermostat-control-title">Thermostat Control</h2>
+        <button class="heater-chart-close-btn" onclick="closeThermostatControl()">&times;</button>
+      </div>
+      <div class="thermostat-control-body">
+        <div class="thermostat-mode-section">
+          <label>Mode</label>
+          <div class="thermostat-mode-buttons" id="thermostat-mode-buttons">
+            <!-- Mode buttons populated by JS -->
+          </div>
+        </div>
+        <div class="thermostat-temp-section" id="thermostat-temp-section">
+          <label>Target Temperature</label>
+          <div class="thermostat-temp-control">
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(-0.5)">-</button>
+            <span class="thermostat-temp-value" id="thermostat-temp-value">20</span>
+            <span class="thermostat-temp-unit">°C</span>
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(0.5)">+</button>
+          </div>
+        </div>
+        <div class="thermostat-actions">
+          <button class="thermostat-apply-btn" onclick="applyThermostatSettings()">Apply</button>
         </div>
       </div>
     </div>

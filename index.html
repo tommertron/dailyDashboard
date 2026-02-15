@@ -29,23 +29,32 @@
     <header class="header">
       <div class="greeting">
         <h1 id="greeting-text">Good Morning!</h1>
-        <p class="ai-summary-inline" id="ai-summary-text">Loading your daily summary...</p>
-        <div class="header-starred-links" id="header-starred-links"></div>
+        <div class="at-a-glance" id="at-a-glance">
+          <ul class="at-a-glance-list" id="at-a-glance-list">
+            <li class="at-a-glance-item"><span class="at-a-glance-icon">&#9729;</span> Loading your daily summary...</li>
+          </ul>
+          <button class="at-a-glance-expand" id="at-a-glance-expand" style="display:none" onclick="toggleFullSummary()">Show full summary</button>
+        </div>
+        <div class="at-a-glance-full" id="at-a-glance-full" style="display:none">
+          <p id="ai-summary-full-text"></p>
+          <button class="at-a-glance-expand" onclick="toggleFullSummary()">Hide full summary</button>
+        </div>
       </div>
       <div class="header-right">
-        <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
         <div class="theme-switcher">
+          <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
           <button class="theme-btn" id="theme-default" onclick="setTheme('default')" title="Default Theme">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
               <circle cx="12" cy="12" r="5"/>
               <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
             </svg>
           </button>
-          <button class="theme-btn" id="theme-lcars" onclick="setTheme('lcars')" title="LCARS Theme">
+          <!-- LCARS theme deprecated - hidden but code preserved -->
+          <button class="theme-btn" id="theme-lcars" onclick="setTheme('lcars')" title="LCARS Theme" style="display:none">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
               <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
             </svg>
@@ -60,6 +69,12 @@
         <div class="date-badge" id="date-badge"></div>
       </div>
     </header>
+
+    <!-- Tomorrow Forecast Card -->
+    <div id="shed-heat-banner" class="tomorrow-forecast" style="display:none"></div>
+
+    <!-- Quick Links Bar -->
+    <div class="quick-links-bar" id="header-starred-links"></div>
 
     <!-- Dense top row: Weather/Tasks | Smart Schedule | Remaining/Wisdom -->
     <div class="dense-top-row">
@@ -298,6 +313,38 @@
           </div>
         </div>
         <div class="panel-body" id="movies-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel tv-panel" data-panel="books">
+        <div class="panel-header">
+          <h2 class="section-title">Books</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadBooks()" title="Refresh Books" id="books-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body" id="books-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel tv-panel" data-panel="games">
+        <div class="panel-header">
+          <h2 class="section-title">Video Games</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadGames()" title="Refresh Games" id="games-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body" id="games-container">
           <div class="panel-empty">Loading...</div>
         </div>
       </div>
@@ -760,18 +807,13 @@
     }
 
     function renderStarredLinks(links) {
-      // Render in header (compact horizontal format)
-      const headerContainer = document.getElementById('header-starred-links');
-      if (headerContainer) {
+      const container = document.getElementById('header-starred-links');
+      if (container) {
         if (!links || links.length === 0) {
-          headerContainer.innerHTML = '';
+          container.innerHTML = '';
         } else {
-          headerContainer.innerHTML = `
-            <span class="starred-label">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            </span>
+          container.innerHTML = `
+            <span class="quick-links-label">Quick Links</span>
             ${links.map(link => `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="starred-link-chip" title="${link.comment || link.title || 'Untitled'}">${link.title || 'Untitled'}</a>`).join('')}
           `;
         }
@@ -918,6 +960,8 @@
         anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
         tvShows: { btnId: 'tvshows-refresh-btn', reload: () => loadTvShows() },
         movies: { btnId: 'movies-refresh-btn', reload: () => loadMovies() },
+        books: { btnId: 'books-refresh-btn', reload: () => loadBooks() },
+        games: { btnId: 'games-refresh-btn', reload: () => loadGames() },
         goodlinks: { btnId: 'links-refresh-btn', reload: () => loadReadLater() }
       };
 
@@ -1057,6 +1101,8 @@
 
         renderSmartSchedule(events);
         renderCalendar(events);
+        window._calendarEvents = events;
+        updateShedHeatBanner();
       } catch (error) {
         console.error('Error loading calendar:', error);
         document.getElementById('calendar-container').innerHTML =
@@ -1430,39 +1476,92 @@
       renderWeather(location, weather, forecast);
     }
 
+    function parseSummaryToBullets(summaryText) {
+      if (!summaryText) return [];
+      const bullets = [];
+      const sentences = summaryText.split(/(?<=[.!?])\s+/);
+
+      // Try to extract key signals with icons
+      const calendarMatch = sentences.find(s => /\b(meeting|standup|sync|call|appointment|event)\b/i.test(s));
+      const weatherMatch = sentences.find(s => /\b(weather|temperature|degrees|rain|snow|sunny|cloudy|°)\b/i.test(s));
+      const billMatch = sentences.find(s => /\b(bill|due|payment|pay|remaining)\b/i.test(s));
+      const taskMatch = sentences.find(s => /\b(task|todo|to-do)\b/i.test(s));
+
+      if (calendarMatch) bullets.push({ icon: '\uD83D\uDCC5', text: calendarMatch.trim() });
+      if (weatherMatch) bullets.push({ icon: '\u2600\uFE0F', text: weatherMatch.trim() });
+      if (billMatch) bullets.push({ icon: '\uD83D\uDCB5', text: billMatch.trim() });
+      if (taskMatch && bullets.length < 3) bullets.push({ icon: '\u2705', text: taskMatch.trim() });
+
+      // Fallback: if we couldn't extract signals, use first 2-3 sentences
+      if (bullets.length === 0) {
+        const fallback = sentences.slice(0, 3);
+        fallback.forEach(s => {
+          if (s.trim()) bullets.push({ icon: '\u2022', text: s.trim() });
+        });
+      }
+
+      return bullets.slice(0, 3);
+    }
+
+    function renderAtAGlance(summaryText) {
+      const listEl = document.getElementById('at-a-glance-list');
+      const expandBtn = document.getElementById('at-a-glance-expand');
+      const fullTextEl = document.getElementById('ai-summary-full-text');
+
+      if (!summaryText || summaryText.startsWith('Click the refresh')) {
+        listEl.innerHTML = '<li class="at-a-glance-item"><span class="at-a-glance-icon">\u2022</span> Click the refresh button to generate your daily summary.</li>';
+        expandBtn.style.display = 'none';
+        return;
+      }
+
+      const bullets = parseSummaryToBullets(summaryText);
+      listEl.innerHTML = bullets.map(b =>
+        `<li class="at-a-glance-item"><span class="at-a-glance-icon">${b.icon}</span> ${b.text}</li>`
+      ).join('');
+
+      fullTextEl.textContent = summaryText;
+      expandBtn.style.display = '';
+    }
+
+    function toggleFullSummary() {
+      const fullEl = document.getElementById('at-a-glance-full');
+      const isHidden = fullEl.style.display === 'none';
+      fullEl.style.display = isHidden ? '' : 'none';
+    }
+
     async function loadAiSummary() {
       try {
         const response = await fetch('daily-summary.json?t=' + Date.now());
         if (!response.ok) {
-          document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+          renderAtAGlance(null);
           return;
         }
 
         const data = await response.json();
-        document.getElementById('ai-summary-text').textContent = data.summary;
+        renderAtAGlance(data.summary);
       } catch (error) {
-        document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+        renderAtAGlance(null);
       }
     }
 
     async function refreshSummary() {
       const btn = document.getElementById('summary-refresh-btn');
-      const textEl = document.getElementById('ai-summary-text');
+      const listEl = document.getElementById('at-a-glance-list');
 
       btn.disabled = true;
-      textEl.textContent = 'Generating your summary...';
+      listEl.innerHTML = '<li class="at-a-glance-item"><span class="at-a-glance-icon">\u2022</span> Generating your summary...</li>';
 
       try {
         const response = await fetch('/api/refresh-summary', { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {
-          textEl.textContent = result.summary;
+          renderAtAGlance(result.summary);
         } else {
-          textEl.textContent = 'Failed to generate summary. Try again.';
+          renderAtAGlance(null);
         }
       } catch (error) {
-        textEl.textContent = 'Error generating summary. Try again.';
+        renderAtAGlance(null);
       } finally {
         btn.disabled = false;
       }
@@ -1494,18 +1593,38 @@
 
       const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
       const wfhOn = workingFromHome?.state === 'on';
+      window._wfhOn = wfhOn;
       const thermostatState = thermostat?.state || 'unknown';
+      const thermostatTargetTemp = thermostat?.attributes?.temperature || '--';
+      const thermostatHvacAction = thermostat?.attributes?.hvac_action || 'idle';
       const deskLampOn = deskLamp?.state === 'on';
       const shelfLightOn = shelfLight?.state === 'on';
 
       // Determine thermostat display and class
-      let thermostatDisplay = thermostatState === 'heat' ? 'Heat' : 'Off';
-      let thermostatClass = thermostatState === 'heat' ? 'stat-warn' : 'stat-ok';
+      let thermostatDisplay = thermostatState === 'heat' ? `Heat ${thermostatTargetTemp}°` : 'Off';
+      let thermostatClass = thermostatHvacAction === 'heating' ? 'stat-warn' : (thermostatState === 'heat' ? 'stat-ok' : 'stat-neutral');
 
-      // Heater runtime
+      // Heater runtime and cost
       const heaterRuntime = data.heater_runtime || {};
-      const heatToday = formatRuntime(heaterRuntime.today);
-      const heatYesterday = formatRuntime(heaterRuntime.yesterday);
+      const heatTodaySecs = heaterRuntime.today || 0;
+      const heatYesterdaySameTimeSecs = heaterRuntime.yesterday_by_same_time || 0;
+      const heatYesterdayTotalSecs = heaterRuntime.yesterday || 0;
+      const heatToday = formatRuntime(heatTodaySecs);
+      const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
+      const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_cost || 0).toFixed(2);
+
+      // Determine heat today color based on runtime comparison
+      let heatTodayClass = 'stat-ok'; // green by default
+      if (heatYesterdayTotalSecs === 0) {
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs) {
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs * 1.25) {
+        heatTodayClass = 'stat-warn';
+      } else {
+        heatTodayClass = 'stat-alert';
+      }
 
       container.innerHTML = `
         <div class="home-temp">
@@ -1514,8 +1633,8 @@
         </div>
 
         <div class="pi-stats-grid shed-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${thermostatState === 'heat' ? '🔥' : '❄️'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="openThermostatControl('shed', 'climate.shed_thermostat', '${thermostatState}', ${thermostatTargetTemp || 18})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${thermostatHvacAction === 'heating' ? '🔥' : (thermostatState === 'heat' ? '🌡️' : '○')}</span>
             <span class="pi-stat-label">${thermostatDisplay}</span>
           </div>
           <div class="pi-stat-box ${wfhOn ? 'stat-ok' : 'stat-neutral'}" onclick="toggleWorkingFromHome()" style="cursor:pointer" title="Toggle working from home">
@@ -1533,13 +1652,15 @@
         </div>
 
         <div class="pi-stats-grid shed-runtime-grid" onclick="openHeaterChart()" style="cursor:pointer" title="View heater history">
-          <div class="pi-stat-box stat-info">
-            <span class="pi-stat-value">${heatToday}</span>
-            <span class="pi-stat-label">Heat Today</span>
+          <div class="pi-stat-box ${heatTodayClass}">
+            <span class="pi-stat-value">$${heatTodayCost}</span>
+            <span class="pi-stat-label">Today</span>
+            <span class="pi-stat-secondary">${heatToday}</span>
           </div>
           <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatYesterday}</span>
-            <span class="pi-stat-label">Heat Yesterday</span>
+            <span class="pi-stat-value">$${heatYesterdayCost}</span>
+            <span class="pi-stat-label">Yesterday</span>
+            <span class="pi-stat-secondary">${heatYesterdaySameTime}</span>
           </div>
         </div>
 
@@ -1558,6 +1679,60 @@
           </button>
         </div>
       `;
+      updateShedHeatBanner();
+    }
+
+    function updateShedHeatBanner() {
+      const banner = document.getElementById('shed-heat-banner');
+      if (!banner) return;
+
+      // Need both data sources to render
+      if (window._calendarEvents === undefined || window._wfhOn === undefined) return;
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const tomorrowDay = tomorrow.getDay(); // 0=Sun, 6=Sat
+
+      let willHeat = false;
+      let reason = '';
+
+      // Simulate what the automation (server.py run_wfh_automation) would do
+      // if it ran at 12:01am tomorrow - same phrase list, checking tomorrow's events
+
+      if (tomorrowDay === 0 || tomorrowDay === 6) {
+        willHeat = false;
+        reason = 'weekend';
+      } else {
+        // Check tomorrow's events with the same phrases the automation uses
+        const noWfhPhrases = ['in office', 'tom office', 'tom in office', 'out of office', 'away', 'holiday', 'vacation'];
+        const tomorrowEvents = (window._calendarEvents || []).filter(e => {
+          const parsed = parseEventDate(e.start);
+          return parsed.isTomorrow;
+        });
+
+        const conflictingEvent = tomorrowEvents.find(e => {
+          const title = e.title.toLowerCase();
+          return noWfhPhrases.some(phrase => title.includes(phrase));
+        });
+
+        if (conflictingEvent) {
+          willHeat = false;
+          reason = conflictingEvent.title;
+        } else if (window._wfhOn) {
+          willHeat = true;
+          reason = 'WFH is on';
+        } else {
+          willHeat = false;
+          reason = 'WFH is off';
+        }
+      }
+
+      banner.style.display = '';
+      banner.className = 'tomorrow-forecast ' + (willHeat ? 'forecast-on' : 'forecast-off');
+      banner.innerHTML = willHeat
+        ? `<span class="forecast-icon">\uD83C\uDF21\uFE0F</span> Tomorrow: Shed heating ON <span class="forecast-reason">(${reason})</span>`
+        : `<span class="forecast-icon">\uD83C\uDF21\uFE0F</span> Tomorrow: Shed heating OFF <span class="forecast-reason">(${reason})</span>`;
     }
 
     async function loadShedStatus() {
@@ -1598,6 +1773,120 @@
       }
     }
 
+    // Thermostat Control Functions
+    let currentThermostatEntity = null;
+    let currentThermostatLocation = null;
+    let currentThermostatMode = 'off';
+    let currentThermostatTemp = 20;
+
+    function openThermostatControl(location, entityId, mode, temp) {
+      currentThermostatEntity = entityId;
+      currentThermostatLocation = location;
+      currentThermostatMode = mode || 'off';
+      currentThermostatTemp = temp || 20;
+
+      const overlay = document.getElementById('thermostat-control-overlay');
+      const title = document.getElementById('thermostat-control-title');
+      const tempValue = document.getElementById('thermostat-temp-value');
+      const tempSection = document.getElementById('thermostat-temp-section');
+      const modeButtons = document.getElementById('thermostat-mode-buttons');
+
+      title.textContent = location === 'shed' ? 'Shed Thermostat' : 'Home Thermostat';
+      tempValue.textContent = currentThermostatTemp;
+
+      // Different modes for shed vs home
+      const modes = location === 'shed'
+        ? [{ value: 'heat', label: 'Heat', icon: '🔥' }, { value: 'off', label: 'Off', icon: '○' }]
+        : [{ value: 'heat', label: 'Heat', icon: '🔥' }, { value: 'cool', label: 'Cool', icon: '❄️' }, { value: 'heat_cool', label: 'Auto', icon: '🔄' }, { value: 'off', label: 'Off', icon: '○' }];
+
+      modeButtons.innerHTML = modes.map(m =>
+        `<button class="thermostat-mode-btn ${currentThermostatMode === m.value ? 'active' : ''}"
+                 data-mode="${m.value}"
+                 onclick="selectThermostatMode('${m.value}', this)">
+          <span class="thermostat-mode-icon">${m.icon}</span>
+          <span class="thermostat-mode-label">${m.label}</span>
+        </button>`
+      ).join('');
+
+      // Show/hide temp section based on mode
+      tempSection.style.display = currentThermostatMode === 'off' ? 'none' : 'block';
+
+      overlay.classList.add('visible');
+      document.addEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControl() {
+      const overlay = document.getElementById('thermostat-control-overlay');
+      overlay.classList.remove('visible');
+      document.removeEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControlOnOverlay(event) {
+      if (event.target.id === 'thermostat-control-overlay') {
+        closeThermostatControl();
+      }
+    }
+
+    function handleThermostatEscape(event) {
+      if (event.key === 'Escape') {
+        closeThermostatControl();
+      }
+    }
+
+    function selectThermostatMode(mode, btnElement) {
+      currentThermostatMode = mode;
+      const buttons = document.querySelectorAll('.thermostat-mode-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      // Show/hide temp section based on mode
+      const tempSection = document.getElementById('thermostat-temp-section');
+      tempSection.style.display = mode === 'off' ? 'none' : 'block';
+    }
+
+    function adjustThermostatTemp(delta) {
+      currentThermostatTemp = Math.max(10, Math.min(30, currentThermostatTemp + delta));
+      document.getElementById('thermostat-temp-value').textContent = currentThermostatTemp;
+    }
+
+    async function applyThermostatSettings() {
+      const applyBtn = document.querySelector('.thermostat-apply-btn');
+      applyBtn.textContent = 'Applying...';
+      applyBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/home-assistant/climate/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entity_id: currentThermostatEntity,
+            hvac_mode: currentThermostatMode,
+            temperature: currentThermostatMode !== 'off' ? currentThermostatTemp : null
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeThermostatControl();
+          // Refresh the appropriate panel
+          if (currentThermostatLocation === 'shed') {
+            setTimeout(() => loadShedStatus(), 500);
+          } else {
+            setTimeout(() => loadHomeStatus(), 500);
+          }
+        } else {
+          alert('Failed to update thermostat: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error updating thermostat:', error);
+        alert('Error updating thermostat');
+      } finally {
+        applyBtn.textContent = 'Apply';
+        applyBtn.disabled = false;
+      }
+    }
+
     async function loadHeaterHistory() {
       const container = document.getElementById('heater-chart-container');
       container.innerHTML = '<div class="panel-empty">Loading heater history...</div>';
@@ -1627,7 +1916,7 @@
       }
 
       // Find max values for scaling
-      const maxHours = Math.max(...days.map(d => d.runtime_hours), 1);
+      const maxCost = Math.max(...days.map(d => d.cost || 0), 0.01);
       const temps = days.map(d => d.outdoor_temp).filter(t => t !== null);
       const minTemp = temps.length > 0 ? Math.min(...temps) : 0;
       const maxTemp = temps.length > 0 ? Math.max(...temps) : 20;
@@ -1635,23 +1924,36 @@
 
       // Calculate totals (avg excludes days when thermostat was off)
       const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
       const enabledDays = days.filter(d => d.thermostat_enabled);
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
       const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+
+      // This month's cost
+      const now = new Date();
+      const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const thisMonthCost = days.filter(d => d.date.startsWith(thisMonthStr)).reduce((sum, d) => sum + (d.cost || 0), 0);
 
       // Build chart HTML
       let html = `
         <div class="heater-chart-summary">
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${totalHours.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Total (${days.length} days)</span>
+            <span class="heater-chart-stat-secondary">${totalHours.toFixed(1)}h</span>
           </div>
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${avgHoursPerDay.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
+            <span class="heater-chart-stat-secondary">${avgHoursPerDay.toFixed(1)}h</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${thisMonthCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">This Month</span>
           </div>
         </div>
         <div class="heater-chart-legend">
-          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Hours</span>
+          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Cost</span>
           <span class="heater-chart-legend-item"><span class="legend-line"></span> Outdoor Temp</span>
           <span class="heater-chart-legend-item"><span class="legend-wfh"></span> WFH Day</span>
           <span class="heater-chart-legend-item"><span class="legend-weekend"></span> Weekend</span>
@@ -1662,7 +1964,7 @@
 
       // Add bars and temperature line points
       days.forEach((day, i) => {
-        const barHeight = maxHours > 0 ? (day.runtime_hours / maxHours) * 100 : 0;
+        const barHeight = maxCost > 0 ? ((day.cost || 0) / maxCost) * 100 : 0;
         const tempY = day.outdoor_temp !== null
           ? 100 - ((day.outdoor_temp - minTemp) / tempRange) * 80 - 10
           : null;
@@ -1671,8 +1973,9 @@
         if (day.is_weekend) dayClasses.push('weekend');
         if (day.is_wfh) dayClasses.push('wfh');
 
+        const dayCost = (day.cost || 0).toFixed(2);
         html += `
-          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}${day.is_wfh ? ' (WFH)' : ''}">
+          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: $${dayCost} (${day.runtime_hours.toFixed(1)}h)${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}${day.is_wfh ? ' (WFH)' : ''}">
             <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
             ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
             <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
@@ -1683,9 +1986,9 @@
       html += `
           </div>
           <div class="heater-chart-y-axis">
-            <span>${maxHours.toFixed(0)}h</span>
-            <span>${(maxHours / 2).toFixed(0)}h</span>
-            <span>0h</span>
+            <span>$${maxCost.toFixed(2)}</span>
+            <span>$${(maxCost / 2).toFixed(2)}</span>
+            <span>$0</span>
           </div>
           <div class="heater-chart-temp-axis">
             <span>${maxTemp.toFixed(0)}°</span>
@@ -1775,8 +2078,10 @@
       const tempRange = Math.max(maxTemp - minTemp, 10);
 
       const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
       const enabledDays = days.filter(d => d.thermostat_enabled);
       const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
 
       let html = `
         <div class="heater-chart-summary">
@@ -1785,7 +2090,11 @@
             <span class="heater-chart-stat-label">Total (${days.length} days)</span>
           </div>
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${avgHoursPerDay.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Total Cost</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
           </div>
         </div>
@@ -1808,7 +2117,7 @@
         if (day.is_weekend) dayClasses.push('weekend');
 
         html += `
-          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}">
+          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.cost ? ' ($' + day.cost.toFixed(2) + ')' : ''}${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}">
             <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
             ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
             <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
@@ -1874,9 +2183,17 @@
 
       const states = data.states;
       const ecobee = states['climate.my_ecobee'];
+      const occupancy = states['input_boolean.422_occupancy'];
+      const ecobeeAux = states['input_boolean.ecobee_aux'];
       const lock = states['lock.back_door_lock'];
       const shedDoor = states['binary_sensor.contact_sensor_2'];
       const garageDoor = states['binary_sensor.contact_sensor'];
+
+      // Aux heat state
+      const isAuxHeat = ecobeeAux?.state === 'on';
+
+      // Occupancy info
+      const isOccupied = occupancy?.state === 'on';
 
       // Ecobee info
       const currentTemp = ecobee?.attributes?.current_temperature;
@@ -1887,8 +2204,29 @@
 
       // Heater runtime
       const heaterRuntime = data.heater_runtime || {};
-      const heatToday = formatRuntime(heaterRuntime.today);
-      const heatYesterday = formatRuntime(heaterRuntime.yesterday);
+      const heatTodaySecs = heaterRuntime.today || 0;
+      const heatYesterdaySameTimeSecs = heaterRuntime.yesterday_by_same_time || 0;
+      const heatYesterdayTotalSecs = heaterRuntime.yesterday || 0;
+      const heatToday = formatRuntime(heatTodaySecs);
+      const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
+      const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_cost || 0).toFixed(2);
+
+      // Determine heat today color based on comparison
+      let heatTodayClass = 'stat-ok'; // green by default
+      if (heatYesterdayTotalSecs === 0) {
+        // Yesterday was zero all day - just show green
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs) {
+        // Less than or equal to yesterday by same time - green
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs * 1.25) {
+        // Up to 25% more - yellow
+        heatTodayClass = 'stat-warn';
+      } else {
+        // Way more - red
+        heatTodayClass = 'stat-alert';
+      }
 
       // Format HVAC display
       let hvacDisplay = hvacState;
@@ -1927,9 +2265,13 @@
         </div>
 
         <div class="pi-stats-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : '○'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="openThermostatControl('home', 'climate.my_ecobee', '${hvacState}', ${targetTemp || 20})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : hvacState === 'off' ? '○' : '🌡️'}</span>
             <span class="pi-stat-label">${hvacDisplay}</span>
+          </div>
+          <div class="pi-stat-box ${isOccupied ? 'stat-ok' : 'stat-warn'}" onclick="toggleHomeOccupancy()" style="cursor:pointer" title="Toggle occupancy">
+            <span class="pi-stat-value">${isOccupied ? '🏠' : '○'}</span>
+            <span class="pi-stat-label">${isOccupied ? 'Occupied' : 'Unoccupied'}</span>
           </div>
           <div class="pi-stat-box ${isLocked ? 'stat-ok' : 'stat-alert'}" onclick="toggleBackDoorLock()" style="cursor:pointer" title="Click to ${isLocked ? 'unlock' : 'lock'}">
             <span class="pi-stat-value">${isLocked ? '🔒' : '🔓'}</span>
@@ -1939,20 +2281,22 @@
             <span class="pi-stat-value">${isShedDoorOpen ? '🚪' : '○'}</span>
             <span class="pi-stat-label">Shed</span>
           </div>
-          <div class="pi-stat-box ${isGarageUnavailable ? 'stat-neutral' : isGarageDoorOpen ? 'stat-alert' : 'stat-ok'}">
-            <span class="pi-stat-value">${isGarageUnavailable ? '?' : isGarageDoorOpen ? '🚗' : '○'}</span>
-            <span class="pi-stat-label">Garage</span>
+          <div class="pi-stat-box ${isAuxHeat ? 'stat-warn' : 'stat-ok'}" onclick="toggleEcobeeAux()" style="cursor:pointer" title="Toggle aux/gas heat">
+            <span class="pi-stat-value">${isAuxHeat ? '🔥' : '♨️'}</span>
+            <span class="pi-stat-label">${isAuxHeat ? 'Aux' : 'HP'}</span>
           </div>
         </div>
 
         <div class="pi-stats-grid shed-runtime-grid" onclick="openHomeHeaterChart()" style="cursor:pointer" title="Click for history">
-          <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatToday}</span>
-            <span class="pi-stat-label">Heat Today</span>
+          <div class="pi-stat-box ${heatTodayClass}">
+            <span class="pi-stat-value">$${heatTodayCost}</span>
+            <span class="pi-stat-label">Today</span>
+            <span class="pi-stat-secondary">${heatToday}</span>
           </div>
           <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatYesterday}</span>
-            <span class="pi-stat-label">Heat Yesterday</span>
+            <span class="pi-stat-value">$${heatYesterdayCost}</span>
+            <span class="pi-stat-label">Yesterday</span>
+            <span class="pi-stat-secondary">${heatYesterdaySameTime}</span>
           </div>
         </div>
       `;
@@ -1971,6 +2315,38 @@
       } catch (error) {
         console.error('Error toggling lock:', error);
         alert('Error toggling lock');
+      }
+    }
+
+    async function toggleHomeOccupancy() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/home_occupancy', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadHomeStatus(), 500);
+        } else {
+          alert('Failed to toggle occupancy: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling occupancy:', error);
+        alert('Error toggling occupancy');
+      }
+    }
+
+    async function toggleEcobeeAux() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/ecobee_aux', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadHomeStatus(), 500);
+        } else {
+          alert('Failed to toggle aux heat: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling aux heat:', error);
+        alert('Error toggling aux heat');
       }
     }
 
@@ -2599,6 +2975,50 @@
       }
     }
 
+    function renderBooks(data) {
+      const container = document.getElementById('books-container');
+      const books = data.books || [];
+      if (books.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No books to read</div>';
+        return;
+      }
+      container.innerHTML = books.map(item => renderMediaItem(item, 'book')).join('');
+    }
+
+    async function loadBooks() {
+      try {
+        const response = await fetch('new_releases.json');
+        const data = await response.json();
+        renderBooks(data);
+      } catch (error) {
+        console.error('Error loading books:', error);
+        document.getElementById('books-container').innerHTML =
+          '<div class="panel-empty">Error loading books</div>';
+      }
+    }
+
+    function renderGames(data) {
+      const container = document.getElementById('games-container');
+      const games = data.games || [];
+      if (games.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No games to play</div>';
+        return;
+      }
+      container.innerHTML = games.map(item => renderMediaItem(item, 'game')).join('');
+    }
+
+    async function loadGames() {
+      try {
+        const response = await fetch('new_releases.json');
+        const data = await response.json();
+        renderGames(data);
+      } catch (error) {
+        console.error('Error loading games:', error);
+        document.getElementById('games-container').innerHTML =
+          '<div class="panel-empty">Error loading games</div>';
+      }
+    }
+
     function renderReadLater(links) {
       const container = document.getElementById('readlater-container');
 
@@ -2716,6 +3136,8 @@
       wisdom: 'Wisdom',
       tvShows: 'TV Shows',
       movies: 'Movies',
+      books: 'Books',
+      games: 'Video Games',
       links: 'Links'
     };
 
@@ -2781,6 +3203,8 @@
       }
       loadTvShows();
       loadMovies();
+      loadBooks();
+      loadGames();
       loadAnyboxStats();
     }
 
@@ -3971,7 +4395,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         }
 
         // Update panel visibility in settings
-        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'movies', 'links', 'piStatus', 'shed', 'home'];
+        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'movies', 'books', 'games', 'links', 'piStatus', 'shed', 'home'];
         allPanels.forEach(panel => {
           if (currentSettings.panels[panel]) {
             currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
@@ -4075,6 +4499,8 @@ Add your own custom rules here for smart home devices, routines, or other person
       }
       loadTvShows();
       loadMovies();
+      loadBooks();
+      loadGames();
 
       // Load any custom panels defined in settings
       loadCustomPanels();
@@ -4147,6 +4573,36 @@ Add your own custom rules here for smart home devices, routines, or other person
       <div class="heater-chart-body">
         <div id="home-heater-chart-container">
           <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermostat Control Modal -->
+  <div class="heater-chart-overlay" id="thermostat-control-overlay">
+    <div class="thermostat-control-modal">
+      <div class="thermostat-control-header">
+        <h2 id="thermostat-control-title">Thermostat Control</h2>
+      </div>
+      <div class="thermostat-control-body">
+        <div class="thermostat-mode-section">
+          <label>Mode</label>
+          <div class="thermostat-mode-buttons" id="thermostat-mode-buttons">
+            <!-- Mode buttons populated by JS -->
+          </div>
+        </div>
+        <div class="thermostat-temp-section" id="thermostat-temp-section">
+          <label>Temperature</label>
+          <div class="thermostat-temp-control">
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(-0.5)">−</button>
+            <span class="thermostat-temp-value" id="thermostat-temp-value">20</span>
+            <span class="thermostat-temp-unit">°C</span>
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(0.5)">+</button>
+          </div>
+        </div>
+        <div class="thermostat-actions">
+          <button class="thermostat-cancel-btn" onclick="closeThermostatControl()">Cancel</button>
+          <button class="thermostat-apply-btn" onclick="applyThermostatSettings()">Save</button>
         </div>
       </div>
     </div>
@@ -4441,7 +4897,8 @@ Add your own custom rules here for smart home devices, routines, or other person
                   <input type="radio" name="theme" value="default" id="pref-theme-default">
                   <span>Default</span>
                 </label>
-                <label class="settings-radio">
+                <!-- LCARS theme deprecated - hidden but code preserved -->
+                <label class="settings-radio" style="display:none">
                   <input type="radio" name="theme" value="lcars" id="pref-theme-lcars">
                   <span>LCARS</span>
                 </label>
@@ -4685,6 +5142,14 @@ Add your own custom rules here for smart home devices, routines, or other person
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="movies">
             <span>Movies</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="books">
+            <span>Books</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="games">
+            <span>Video Games</span>
           </label>
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="links" checked>
