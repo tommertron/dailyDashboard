@@ -29,15 +29,8 @@
     <header class="header">
       <div class="greeting">
         <h1 id="greeting-text">Good Morning!</h1>
-        <div class="at-a-glance" id="at-a-glance">
-          <ul class="at-a-glance-list" id="at-a-glance-list">
-            <li class="at-a-glance-item"><span class="at-a-glance-icon">&#9729;</span> Loading your daily summary...</li>
-          </ul>
-          <button class="at-a-glance-expand" id="at-a-glance-expand" style="display:none" onclick="toggleFullSummary()">Show full summary</button>
-        </div>
-        <div class="at-a-glance-full" id="at-a-glance-full" style="display:none">
-          <p id="ai-summary-full-text"></p>
-          <button class="at-a-glance-expand" onclick="toggleFullSummary()">Hide full summary</button>
+        <div class="ai-summary" id="ai-summary">
+          <p class="ai-summary-text" id="ai-summary-text">Loading your daily summary...</p>
         </div>
       </div>
       <div class="header-right">
@@ -813,7 +806,7 @@
           container.innerHTML = '';
         } else {
           container.innerHTML = `
-            <span class="quick-links-label">Quick Links</span>
+            <span class="quick-links-label">Starred Links</span>
             ${links.map(link => `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="starred-link-chip" title="${link.comment || link.title || 'Untitled'}">${link.title || 'Untitled'}</a>`).join('')}
           `;
         }
@@ -1476,92 +1469,47 @@
       renderWeather(location, weather, forecast);
     }
 
-    function parseSummaryToBullets(summaryText) {
-      if (!summaryText) return [];
-      const bullets = [];
-      const sentences = summaryText.split(/(?<=[.!?])\s+/);
-
-      // Try to extract key signals with icons
-      const calendarMatch = sentences.find(s => /\b(meeting|standup|sync|call|appointment|event)\b/i.test(s));
-      const weatherMatch = sentences.find(s => /\b(weather|temperature|degrees|rain|snow|sunny|cloudy|°)\b/i.test(s));
-      const billMatch = sentences.find(s => /\b(bill|due|payment|pay|remaining)\b/i.test(s));
-      const taskMatch = sentences.find(s => /\b(task|todo|to-do)\b/i.test(s));
-
-      if (calendarMatch) bullets.push({ icon: '\uD83D\uDCC5', text: calendarMatch.trim() });
-      if (weatherMatch) bullets.push({ icon: '\u2600\uFE0F', text: weatherMatch.trim() });
-      if (billMatch) bullets.push({ icon: '\uD83D\uDCB5', text: billMatch.trim() });
-      if (taskMatch && bullets.length < 3) bullets.push({ icon: '\u2705', text: taskMatch.trim() });
-
-      // Fallback: if we couldn't extract signals, use first 2-3 sentences
-      if (bullets.length === 0) {
-        const fallback = sentences.slice(0, 3);
-        fallback.forEach(s => {
-          if (s.trim()) bullets.push({ icon: '\u2022', text: s.trim() });
-        });
-      }
-
-      return bullets.slice(0, 3);
-    }
-
-    function renderAtAGlance(summaryText) {
-      const listEl = document.getElementById('at-a-glance-list');
-      const expandBtn = document.getElementById('at-a-glance-expand');
-      const fullTextEl = document.getElementById('ai-summary-full-text');
-
+    function renderAiSummary(summaryText) {
+      const el = document.getElementById('ai-summary-text');
       if (!summaryText || summaryText.startsWith('Click the refresh')) {
-        listEl.innerHTML = '<li class="at-a-glance-item"><span class="at-a-glance-icon">\u2022</span> Click the refresh button to generate your daily summary.</li>';
-        expandBtn.style.display = 'none';
+        el.textContent = 'Click the refresh button to generate your daily summary.';
         return;
       }
-
-      const bullets = parseSummaryToBullets(summaryText);
-      listEl.innerHTML = bullets.map(b =>
-        `<li class="at-a-glance-item"><span class="at-a-glance-icon">${b.icon}</span> ${b.text}</li>`
-      ).join('');
-
-      fullTextEl.textContent = summaryText;
-      expandBtn.style.display = '';
-    }
-
-    function toggleFullSummary() {
-      const fullEl = document.getElementById('at-a-glance-full');
-      const isHidden = fullEl.style.display === 'none';
-      fullEl.style.display = isHidden ? '' : 'none';
+      el.textContent = summaryText;
     }
 
     async function loadAiSummary() {
       try {
         const response = await fetch('daily-summary.json?t=' + Date.now());
         if (!response.ok) {
-          renderAtAGlance(null);
+          renderAiSummary(null);
           return;
         }
 
         const data = await response.json();
-        renderAtAGlance(data.summary);
+        renderAiSummary(data.summary);
       } catch (error) {
-        renderAtAGlance(null);
+        renderAiSummary(null);
       }
     }
 
     async function refreshSummary() {
       const btn = document.getElementById('summary-refresh-btn');
-      const listEl = document.getElementById('at-a-glance-list');
 
       btn.disabled = true;
-      listEl.innerHTML = '<li class="at-a-glance-item"><span class="at-a-glance-icon">\u2022</span> Generating your summary...</li>';
+      document.getElementById('ai-summary-text').textContent = 'Generating your summary...';
 
       try {
         const response = await fetch('/api/refresh-summary', { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {
-          renderAtAGlance(result.summary);
+          renderAiSummary(result.summary);
         } else {
-          renderAtAGlance(null);
+          renderAiSummary(null);
         }
       } catch (error) {
-        renderAtAGlance(null);
+        renderAiSummary(null);
       } finally {
         btn.disabled = false;
       }
@@ -1612,7 +1560,7 @@
       const heatToday = formatRuntime(heatTodaySecs);
       const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
       const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
-      const heatYesterdayCost = (heaterRuntime.yesterday_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_by_same_time_cost || 0).toFixed(2);
 
       // Determine heat today color based on runtime comparison
       let heatTodayClass = 'stat-ok'; // green by default
@@ -1934,6 +1882,12 @@
       const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const thisMonthCost = days.filter(d => d.date.startsWith(thisMonthStr)).reduce((sum, d) => sum + (d.cost || 0), 0);
 
+      // Avg time to target
+      const targetReachedDays = days.filter(d => d.target_reached === true && d.time_to_target_minutes != null);
+      const avgTimeToTarget = targetReachedDays.length > 0
+        ? targetReachedDays.reduce((sum, d) => sum + d.time_to_target_minutes, 0) / targetReachedDays.length
+        : null;
+
       // Build chart HTML
       let html = `
         <div class="heater-chart-summary">
@@ -1951,6 +1905,13 @@
             <span class="heater-chart-stat-value">$${thisMonthCost.toFixed(2)}</span>
             <span class="heater-chart-stat-label">This Month</span>
           </div>
+          ${avgTimeToTarget !== null ? `
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">${Math.round(avgTimeToTarget)}m</span>
+            <span class="heater-chart-stat-label">Avg to Target</span>
+            <span class="heater-chart-stat-secondary">${targetReachedDays.length} days</span>
+          </div>
+          ` : ''}
         </div>
         <div class="heater-chart-legend">
           <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Cost</span>
@@ -1973,9 +1934,30 @@
         if (day.is_weekend) dayClasses.push('weekend');
         if (day.is_wfh) dayClasses.push('wfh');
 
+        // Build tooltip content
         const dayCost = (day.cost || 0).toFixed(2);
+        let tooltipLines = [`<strong>${day.day_of_week} ${day.day_label}</strong>`];
+        tooltipLines.push(`Cost: $${dayCost} &middot; Runtime: ${day.runtime_hours.toFixed(1)}h`);
+        if (day.outdoor_temp !== null) tooltipLines.push(`Outdoor avg: ${day.outdoor_temp}\u00B0C`);
+        if (day.heating_start_time) {
+          tooltipLines.push(`Heat start: ${day.heating_start_time}`);
+          if (day.indoor_start_temp !== null) tooltipLines.push(`Indoor at start: ${day.indoor_start_temp}\u00B0C`);
+          if (day.outdoor_start_temp !== null) tooltipLines.push(`Outdoor at start: ${day.outdoor_start_temp}\u00B0C`);
+          if (day.target_temp !== null) {
+            if (day.target_reached === true) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C reached: ${day.target_reached_time} (${day.time_to_target_minutes}m)`);
+            } else if (day.target_reached === false) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: NOT reached`);
+            } else {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: in progress`);
+            }
+          }
+        }
+        if (day.is_wfh) tooltipLines.push('WFH day');
+        const tooltipHtml = tooltipLines.join('<br>');
+
         html += `
-          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: $${dayCost} (${day.runtime_hours.toFixed(1)}h)${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}${day.is_wfh ? ' (WFH)' : ''}">
+          <div class="${dayClasses.join(' ')}" data-tooltip="${tooltipHtml.replace(/"/g, '&quot;')}">
             <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
             ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
             <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
@@ -2000,8 +1982,48 @@
 
       container.innerHTML = html;
 
+      // Initialize custom tooltips on bar containers
+      initHeaterChartTooltips(container);
+
       // Draw temperature line using SVG overlay
       drawTempLine(days, minTemp, tempRange);
+    }
+
+    function initHeaterChartTooltips(container) {
+      let tooltip = document.getElementById('heater-chart-tooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'heater-chart-tooltip';
+        tooltip.className = 'heater-chart-tooltip';
+        document.body.appendChild(tooltip);
+      }
+
+      const bars = container.querySelectorAll('.heater-chart-bar-container[data-tooltip]');
+      bars.forEach(bar => {
+        bar.addEventListener('mouseenter', (e) => {
+          tooltip.innerHTML = bar.getAttribute('data-tooltip');
+          tooltip.classList.add('visible');
+          positionHeaterTooltip(e, tooltip);
+        });
+        bar.addEventListener('mousemove', (e) => {
+          positionHeaterTooltip(e, tooltip);
+        });
+        bar.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('visible');
+        });
+      });
+    }
+
+    function positionHeaterTooltip(e, tooltip) {
+      const pad = 12;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      // Keep tooltip within viewport
+      const rect = tooltip.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
     }
 
     function drawTempLine(days, minTemp, tempRange) {
@@ -2210,7 +2232,7 @@
       const heatToday = formatRuntime(heatTodaySecs);
       const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
       const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
-      const heatYesterdayCost = (heaterRuntime.yesterday_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_by_same_time_cost || 0).toFixed(2);
 
       // Determine heat today color based on comparison
       let heatTodayClass = 'stat-ok'; // green by default
@@ -2557,6 +2579,7 @@
       const bills = data.bills_due_before_payday || [];
       const remaining = data.spending_money_left || 0;
       const balance = data.checking_balance || 0;
+      currentBalance = balance;
       const totalDue = data.total_due || 0;
       const daysLeft = data.days_until_payday;
       const vibe = data.vibe || '';
@@ -2585,7 +2608,7 @@
           ${vibe ? `<div class="remaining-vibe">${vibe}</div>` : ''}
         </div>
         <div class="remaining-balance">
-          <span>Balance: ${formatCAD(balance)}</span>
+          <span class="balance-display" onclick="openBalanceModal()" title="Click to update balance">Balance: ${formatCAD(balance)} <span class="balance-edit-icon">✏️</span></span>
           <span>Due: ${formatCAD(totalDue)}</span>
         </div>
         ${bills.length > 0 ? `
@@ -2623,6 +2646,8 @@
     async function payBill(billId) {
       const billItem = document.querySelector(`.bill-item[data-bill-id="${billId}"]`);
       const checkBtn = billItem?.querySelector('.bill-check');
+      const billAmountEl = billItem?.querySelector('.bill-amount');
+      const billAmount = billAmountEl ? parseFloat(billAmountEl.textContent.replace(/[^0-9.-]/g, '')) : 0;
 
       if (checkBtn) {
         checkBtn.disabled = true;
@@ -2635,6 +2660,15 @@
         });
 
         if (response.ok) {
+          // Deduct bill amount from balance
+          if (billAmount > 0) {
+            const newBalance = currentBalance - billAmount;
+            await fetch('http://100.125.128.51:8111/api/balance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ checking_balance: newBalance })
+            });
+          }
           if (billItem) {
             billItem.classList.add('paid');
             setTimeout(() => loadMoney(), 500);
@@ -2652,6 +2686,47 @@
           checkBtn.disabled = false;
           checkBtn.classList.remove('paying');
         }
+      }
+    }
+
+    function openBalanceModal() {
+      const input = document.getElementById('balance-modal-input');
+      if (input) input.value = currentBalance.toFixed(2);
+      const overlay = document.getElementById('balance-modal-overlay');
+      if (overlay) {
+        overlay.classList.add('visible');
+        setTimeout(() => input?.focus(), 50);
+      }
+    }
+
+    function closeBalanceModal() {
+      const overlay = document.getElementById('balance-modal-overlay');
+      if (overlay) overlay.classList.remove('visible');
+    }
+
+    async function submitBalanceModal(event) {
+      event.preventDefault();
+      const input = document.getElementById('balance-modal-input');
+      const newBalance = parseFloat(input.value);
+      if (isNaN(newBalance)) return;
+
+      const saveBtn = document.getElementById('balance-modal-save');
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+      try {
+        const response = await fetch('http://100.125.128.51:8111/api/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checking_balance: newBalance })
+        });
+        if (response.ok) {
+          closeBalanceModal();
+          await loadMoney();
+        }
+      } catch (error) {
+        console.error('Error updating balance:', error);
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
       }
     }
 
@@ -2699,6 +2774,36 @@
       return `<div class="provider-icons">${providers.map(p =>
         `<img class="provider-icon" src="https://image.tmdb.org/t/p/w45${p.logo_path}" alt="${p.provider_name}" title="${p.provider_name}">`
       ).join('')}</div>`;
+    }
+
+    async function markAsWatched(traktId, mediaType, btn) {
+      btn.disabled = true;
+      btn.classList.add('loading');
+      try {
+        const resp = await fetch('/api/media/watched', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({trakt_id: traktId, media_type: mediaType})
+        });
+        if (resp.ok) {
+          const item = btn.closest('.tv-show-item');
+          const wrapper = item.closest('.tv-show-link') || item;
+          wrapper.style.transition = 'opacity 0.3s ease';
+          wrapper.style.opacity = '0';
+          setTimeout(() => {
+            wrapper.remove();
+          }, 300);
+          // Refresh media panels after a short delay to let Trakt update
+          setTimeout(() => { loadTvShows(); loadMovies(); }, 3000);
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+        }
+      } catch (e) {
+        console.error('Error marking watched:', e);
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
     }
 
     function renderMediaItem(item, type) {
@@ -2765,6 +2870,16 @@
         link = item.url || 'https://www.foxtheatre.ca';
       }
 
+      // Determine if item can be marked as watched
+      let watchedBtn = '';
+      if (type === 'dvr' && item.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.trakt_id}, 'episode', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      } else if (type === 'tv' && item.episode?.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.episode.trakt_id}, 'episode', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      } else if (type === 'movie' && item.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.trakt_id}, 'movie', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      }
+
       const content = `
         <div class="tv-show-item${link ? ' clickable' : ''}">
           ${poster ? `<img class="tv-show-poster" src="${poster}" alt="${title}" onerror="this.style.display='none'">` : ''}
@@ -2775,6 +2890,7 @@
           <div class="tv-show-badges">
             ${providers}
             ${badge}
+            ${watchedBtn}
           </div>
         </div>
       `;
@@ -2794,59 +2910,30 @@
 
     function renderEntertainment(data, disk) {
       const container = document.getElementById('entertainment-container');
-      let html = renderStorage(disk);
+      let html = '';
 
-      // Build Watching section (DVR + Up Next + New Episodes)
-      const watchingItems = [];
-      (data.channels_recent || []).forEach(item => watchingItems.push(renderMediaItem(item, 'dvr')));
-      (data.up_next || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
-      (data.new_episodes || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
+      // Combine DVR + Up Next + New Episodes, show top 3
+      const allItems = [];
+      (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
+      (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
 
-      if (watchingItems.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">Watching</h3>
-            ${watchingItems.join('')}
-          </div>
-        `;
-      }
-
-      html += renderEntertainmentSection('Movies', data.movies, 'movie');
-      html += renderEntertainmentSection('Games', data.games, 'game');
-      html += renderEntertainmentSection('Reading', data.books, 'book');
-
-      // Coming Soon section - combine episodes and movies
-      const comingSoonItems = [];
-      (data.coming_soon?.episodes || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon')));
-      (data.coming_soon?.movies || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon_movie')));
-      if (comingSoonItems.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">Coming Soon</h3>
-            ${comingSoonItems.join('')}
-          </div>
-        `;
-      }
-
-      // Fox Theatre section - movies on your list playing at Fox Theatre
-      if (data.fox_theatre && data.fox_theatre.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">
-              <a href="https://www.foxtheatre.ca" target="_blank" style="color: inherit; text-decoration: none;">
-                At Fox Theatre 🦊
-              </a>
-            </h3>
-            ${data.fox_theatre.map(item => renderMediaItem(item, 'fox_theatre')).join('')}
-          </div>
-        `;
-      }
-
-      // Check if everything is empty
-      const hasComingSoon = data.coming_soon?.episodes?.length || data.coming_soon?.movies?.length;
-      const hasFoxTheatre = data.fox_theatre?.length;
-      if (!watchingItems.length && !data.movies?.length && !data.games?.length && !data.books?.length && !hasComingSoon && !hasFoxTheatre) {
+      const top3 = allItems.slice(0, 3);
+      if (top3.length > 0) {
+        html += top3.map(({ item, type }) => renderMediaItem(item, type)).join('');
+      } else {
         html += '<div class="panel-empty">Nothing new to watch</div>';
+      }
+
+      // Link to full media tracker app
+      const totalItems = (data.summary?.channels_recent_count || 0)
+        + (data.summary?.up_next_episodes || 0)
+        + (data.summary?.total_new_episodes || 0)
+        + (data.summary?.coming_soon_episodes || 0)
+        + (data.summary?.total_movies || 0)
+        + (data.summary?.fox_theatre_matches || 0);
+      if (totalItems > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalItems} items</a>`;
       }
 
       container.innerHTML = html;
@@ -2880,25 +2967,32 @@
       const container = document.getElementById('tv-shows-container');
       let html = renderStorage(disk);
 
-      // Build TV section (DVR + Up Next + New Episodes)
-      const tvItems = [];
-      (data.channels_recent || []).forEach(item => tvItems.push(renderMediaItem(item, 'dvr')));
-      (data.up_next || []).forEach(item => tvItems.push(renderMediaItem(item, 'tv')));
-      (data.new_episodes || []).forEach(item => tvItems.push(renderMediaItem(item, 'tv')));
+      // Build TV section (DVR + Up Next + New Episodes) - top 3
+      const allItems = [];
+      (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
+      (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
 
-      if (tvItems.length > 0) {
-        html += tvItems.join('');
+      const top3 = allItems.slice(0, 3);
+      if (top3.length > 0) {
+        html += top3.map(({ item, type }) => renderMediaItem(item, type)).join('');
       }
 
-      // Coming Soon episodes
-      const comingEpisodes = data.coming_soon?.episodes || [];
+      // Coming Soon episodes - top 3
+      const comingEpisodes = (data.coming_soon?.episodes || []).slice(0, 3);
       if (comingEpisodes.length > 0) {
         html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
         html += comingEpisodes.map(item => renderMediaItem(item, 'coming_soon')).join('');
       }
 
-      if (!tvItems.length && !comingEpisodes.length) {
+      if (!top3.length && !comingEpisodes.length) {
         html += '<div class="panel-empty">No shows to watch</div>';
+      }
+
+      // Link to full app
+      const totalItems = allItems.length + (data.coming_soon?.episodes || []).length;
+      if (totalItems > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalItems} items in Media Tracker</a>`;
       }
 
       container.innerHTML = html;
@@ -2931,17 +3025,10 @@
       const container = document.getElementById('movies-container');
       let html = '';
 
-      // Current movies to watch
-      const movies = data.movies || [];
+      // Current movies to watch - top 3, newest first
+      const movies = (data.movies || []).slice(0, 3);
       if (movies.length > 0) {
         html += movies.map(item => renderMediaItem(item, 'movie')).join('');
-      }
-
-      // Coming Soon movies
-      const comingMovies = data.coming_soon?.movies || [];
-      if (comingMovies.length > 0) {
-        html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
-        html += comingMovies.map(item => renderMediaItem(item, 'coming_soon_movie')).join('');
       }
 
       // Fox Theatre section
@@ -2956,8 +3043,14 @@
         html += data.fox_theatre.map(item => renderMediaItem(item, 'fox_theatre')).join('');
       }
 
-      if (!movies.length && !comingMovies.length && !data.fox_theatre?.length) {
+      if (!movies.length && !data.fox_theatre?.length) {
         html += '<div class="panel-empty">No movies to watch</div>';
+      }
+
+      // Link to full app
+      const totalMovies = (data.movies || []).length + (data.coming_soon?.movies || []).length + (data.fox_theatre || []).length;
+      if (totalMovies > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalMovies} items in Media Tracker</a>`;
       }
 
       container.innerHTML = html;
@@ -3123,6 +3216,7 @@
     let currentSettings = null;
     let currentConfig = null;
     let autoRefreshInterval = null;
+    let currentBalance = 0;
 
     const panelNames = {
       weather: 'Weather',
@@ -4547,6 +4641,27 @@ Add your own custom rules here for smart home devices, routines, or other person
 
     init();
   </script>
+
+  <!-- Balance Update Modal -->
+  <div class="heater-chart-overlay" id="balance-modal-overlay" onclick="if(event.target.id==='balance-modal-overlay')closeBalanceModal()">
+    <div class="balance-modal">
+      <div class="balance-modal-header">
+        <h2>Update Balance</h2>
+        <button class="heater-chart-close-btn" onclick="closeBalanceModal()">&times;</button>
+      </div>
+      <form class="balance-modal-body" onsubmit="submitBalanceModal(event)">
+        <label class="balance-modal-label">Checking Balance (CAD)</label>
+        <div class="balance-modal-input-row">
+          <span class="balance-modal-currency">$</span>
+          <input type="number" id="balance-modal-input" step="0.01" class="balance-modal-input" placeholder="0.00">
+        </div>
+        <div class="balance-modal-actions">
+          <button type="button" class="balance-modal-cancel" onclick="closeBalanceModal()">Cancel</button>
+          <button type="submit" id="balance-modal-save" class="balance-modal-save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Heater Chart Modal (Shed) -->
   <div class="heater-chart-overlay" id="heater-chart-overlay" onclick="closeHeaterChartOnOverlay(event)">

@@ -2,6 +2,7 @@
 import http.server
 import json
 import os
+import ssl
 import subprocess
 import threading
 import time
@@ -11,7 +12,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-PORT = 8000
+PORT = 8443
 CACHE_TTL = 300  # 5 minutes in seconds
 
 # Global cache storage
@@ -266,6 +267,7 @@ def ha_request(method, endpoint, data=None):
 
 PI_MONITOR_URL = "http://100.125.128.51:5001"
 CHANNELS_DVR_URL = "http://100.127.232.39:8089"
+MEDIATRACKER_URL = "http://172.17.0.1:8100"
 TMDB_API_URL = "https://api.themoviedb.org/3"
 HEALTHCHECKS_BADGE_URL = "https://healthchecks.io/b/2/76534796-6135-419b-ab51-fa35e8581f10.json"
 BACKUP_HEALTHCHECKS_URL = "https://healthchecks.io/b/2/fc90bb64-b594-4db2-98f3-f48020b1d2f1.json"
@@ -719,7 +721,7 @@ def fetch_heater_history(days=30):
     history_data = []
 
     def get_runtime_for_day(day_start, day_end):
-        """Calculate runtime in seconds for a given day. Returns (seconds, was_enabled, sessions)."""
+        """Calculate runtime in seconds for a given day. Returns (seconds, was_enabled, sessions, target_temp)."""
         try:
             start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
             end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
@@ -735,17 +737,26 @@ def fetch_heater_history(days=30):
                 data = json.loads(response.read().decode('utf-8'))
 
             if not data or len(data) == 0 or len(data[0]) == 0:
-                return 0, False, []
+                return 0, False, [], None
 
             history = data[0]
             total_seconds = 0
             was_enabled = False
             sessions = []
+            target_temp = None
 
             for i, state_change in enumerate(history):
                 hvac_action = state_change.get('attributes', {}).get('hvac_action')
                 if hvac_action == 'heating':
                     was_enabled = True
+                    # Capture target temp from first heating state change
+                    if target_temp is None:
+                        try:
+                            t = state_change.get('attributes', {}).get('temperature')
+                            if t is not None:
+                                target_temp = float(t)
+                        except (ValueError, TypeError):
+                            pass
                 if hvac_action != 'heating':
                     continue
 
@@ -773,11 +784,11 @@ def fetch_heater_history(days=30):
                     total_seconds += (state_end - state_start).total_seconds()
                     sessions.append((state_start, state_end))
 
-            return int(total_seconds), was_enabled, sessions
+            return int(total_seconds), was_enabled, sessions, target_temp
 
         except Exception as e:
             print(f"Error fetching shed heater runtime for {day_start.date()}: {e}")
-            return 0, False, []
+            return 0, False, [], None
 
     def get_wfh_status_for_day(day_start, day_end):
         """Check if WFH toggle was on for majority of the day."""
@@ -887,6 +898,110 @@ def fetch_heater_history(days=30):
             print(f"Error fetching outdoor temp for {day_start.date()}: {e}")
             return None
 
+    def get_indoor_temp_history(range_start, range_end):
+        """Query indoor temp sensor history from HA for a time window.
+        Returns [(datetime, float), ...] sorted by time."""
+        try:
+            start_str = range_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = range_end.strftime('%Y-%m-%dT%H:%M:%S')
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=sensor.temperature_sensor_2&minimal_response"
+            headers = {
+                'Authorization': f'Bearer {ha_key}',
+                'Content-Type': 'application/json',
+            }
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return []
+
+            readings = []
+            for state in data[0]:
+                try:
+                    temp = float(state.get('state', ''))
+                    if -20 < temp < 50:  # Sanity check for indoor temps
+                        last_changed = state.get('last_changed', '')
+                        if last_changed:
+                            ts = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                            ts = ts.astimezone().replace(tzinfo=None)
+                            readings.append((ts, temp))
+                except (ValueError, TypeError):
+                    continue
+            return sorted(readings, key=lambda x: x[0])
+        except Exception as e:
+            print(f"Error fetching indoor temp history: {e}")
+            return []
+
+    def get_temp_at_time(readings, target_time, max_gap_minutes=30):
+        """Find closest reading to a timestamp from a pre-fetched list.
+        Returns temp float or None if nearest reading is >max_gap_minutes away."""
+        if not readings:
+            return None
+        closest = min(readings, key=lambda r: abs((r[0] - target_time).total_seconds()))
+        gap = abs((closest[0] - target_time).total_seconds()) / 60
+        if gap > max_gap_minutes:
+            return None
+        return closest[1]
+
+    def get_outdoor_temp_at_time(target_time):
+        """Query outdoor temp sensors in a 30-min window around a specific timestamp.
+        Returns single closest reading or None."""
+        try:
+            window_start = target_time - timedelta(minutes=30)
+            window_end = target_time + timedelta(minutes=30)
+            start_str = window_start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = window_end.strftime('%Y-%m-%dT%H:%M:%S')
+
+            outdoor_entities = [
+                'sensor.openweathermap_temperature',
+                'sensor.outdoor_temperature',
+            ]
+
+            for entity_id in outdoor_entities:
+                try:
+                    url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id={entity_id}&minimal_response"
+                    headers = {
+                        'Authorization': f'Bearer {ha_key}',
+                        'Content-Type': 'application/json',
+                    }
+                    req = urllib.request.Request(url, headers=headers, method='GET')
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        data = json.loads(response.read().decode('utf-8'))
+
+                    if data and len(data) > 0 and len(data[0]) > 0:
+                        readings = []
+                        for state in data[0]:
+                            try:
+                                temp = float(state.get('state', ''))
+                                if -50 < temp < 60:
+                                    last_changed = state.get('last_changed', '')
+                                    if last_changed:
+                                        ts = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                                        ts = ts.astimezone().replace(tzinfo=None)
+                                        readings.append((ts, temp))
+                            except (ValueError, TypeError):
+                                continue
+                        if readings:
+                            closest = min(readings, key=lambda r: abs((r[0] - target_time).total_seconds()))
+                            return round(closest[1], 1)
+                except Exception:
+                    continue
+            return None
+        except Exception as e:
+            print(f"Error fetching outdoor temp at time: {e}")
+            return None
+
+    def find_target_reached(indoor_readings, heating_start, target_temp):
+        """Scan indoor readings after heating start, returns (reached_time, actual_temp)
+        when temp first hits target. Returns (None, None) if not reached."""
+        if not indoor_readings or target_temp is None:
+            return None, None
+        for ts, temp in indoor_readings:
+            if ts >= heating_start and temp >= target_temp:
+                return ts, temp
+        return None, None
+
     # Load heater rates for cost calculation
     rates_config = load_heater_rates()
 
@@ -908,8 +1023,8 @@ def fetch_heater_history(days=30):
         date_str = day_start.strftime('%Y-%m-%d')
 
         # Check if we have cached data for this day (and it's not today)
-        # Re-fetch if cached entry is missing 'cost' (cache migration)
-        if date_str in cache and date_str != today_str and 'cost' in cache[date_str]:
+        # Re-fetch if cached entry is missing 'cost' or 'indoor_start_temp' (cache migration)
+        if date_str in cache and date_str != today_str and 'cost' in cache[date_str] and 'indoor_start_temp' in cache[date_str]:
             # Use cached data
             history_data.append(cache[date_str])
             current_date += timedelta(days=1)
@@ -920,13 +1035,50 @@ def fetch_heater_history(days=30):
             day_end = now
 
         # Fetch fresh data from HA
-        runtime_seconds, thermostat_enabled, sessions = get_runtime_for_day(day_start, day_end)
+        runtime_seconds, thermostat_enabled, sessions, target_temp = get_runtime_for_day(day_start, day_end)
         outdoor_temp = get_outdoor_temp_for_day(day_start, day_end)
         is_wfh = get_wfh_status_for_day(day_start, day_end)
         weekday = day_start.weekday()  # 0=Monday, 6=Sunday
 
         # Calculate cost for this day
         day_cost = calculate_heating_cost(sessions, day_start, rates_config)
+
+        # Time-to-target tracking
+        heating_start_time = None
+        indoor_start_temp = None
+        outdoor_start_temp = None
+        target_reached_time = None
+        time_to_target_minutes = None
+        target_reached = None
+
+        if thermostat_enabled and sessions:
+            heating_start = sessions[0][0]
+            heating_start_time = heating_start.strftime('%H:%M')
+
+            try:
+                # Query indoor temp history from 30 min before heating start through end of day
+                indoor_query_start = heating_start - timedelta(minutes=30)
+                indoor_readings = get_indoor_temp_history(indoor_query_start, day_end)
+
+                indoor_start_temp = get_temp_at_time(indoor_readings, heating_start)
+                if indoor_start_temp is not None:
+                    indoor_start_temp = round(indoor_start_temp, 1)
+
+                outdoor_start_temp = get_outdoor_temp_at_time(heating_start)
+
+                reached_time, _ = find_target_reached(indoor_readings, heating_start, target_temp)
+                if reached_time is not None:
+                    target_reached = True
+                    target_reached_time = reached_time.strftime('%H:%M')
+                    time_to_target_minutes = int((reached_time - heating_start).total_seconds() / 60)
+                else:
+                    # Only mark as not reached if the day is complete (not today)
+                    if date_str != today_str:
+                        target_reached = False
+                    else:
+                        target_reached = None  # Still in progress
+            except Exception as e:
+                print(f"Error computing time-to-target for {date_str}: {e}")
 
         day_data = {
             'date': date_str,
@@ -938,7 +1090,14 @@ def fetch_heater_history(days=30):
             'runtime_hours': round(runtime_seconds / 3600, 2),
             'runtime_seconds': runtime_seconds,
             'outdoor_temp': outdoor_temp,
-            'cost': day_cost
+            'cost': day_cost,
+            'heating_start_time': heating_start_time,
+            'target_temp': target_temp,
+            'indoor_start_temp': indoor_start_temp,
+            'outdoor_start_temp': outdoor_start_temp,
+            'target_reached_time': target_reached_time,
+            'time_to_target_minutes': time_to_target_minutes,
+            'target_reached': target_reached
         }
 
         history_data.append(day_data)
@@ -983,27 +1142,80 @@ def _build_heat_pump_elec_rates(rates_config):
         'holidays': elec.get('holidays', {}),
     }
 
-def calculate_home_heating_cost(heat_sessions, cool_sessions, date, rates_config, is_aux_heat):
-    """Calculate cost for home HVAC sessions.
-    Heating: if is_aux_heat (gas furnace) uses gas rate, otherwise heat pump electricity.
+def split_sessions_by_aux(heat_sessions, aux_states):
+    """Split heat sessions into aux (gas) and heat pump (electricity) sub-sessions.
+    aux_states: list of (timestamp, is_aux_on) sorted by timestamp from HA history.
+    Falls back to treating all heat as aux if aux_states is empty.
+    Returns (aux_sessions, hp_sessions).
+    """
+    if not aux_states:
+        return heat_sessions, []
+
+    aux_sessions = []
+    hp_sessions = []
+
+    for session_start, session_end in heat_sessions:
+        # Determine aux state in effect at session start (last known state <= session_start)
+        current_aux = aux_states[0][1]
+        for ts, is_on in aux_states:
+            if ts <= session_start:
+                current_aux = is_on
+            else:
+                break
+
+        current_time = session_start
+        for ts, is_on in aux_states:
+            if ts <= session_start:
+                continue
+            if ts >= session_end:
+                break
+            # Aux state changed during this session - record the segment before the change
+            if ts > current_time:
+                if current_aux:
+                    aux_sessions.append((current_time, ts))
+                else:
+                    hp_sessions.append((current_time, ts))
+            current_time = ts
+            current_aux = is_on
+
+        # Record the remaining portion of the session
+        if current_time < session_end:
+            if current_aux:
+                aux_sessions.append((current_time, session_end))
+            else:
+                hp_sessions.append((current_time, session_end))
+
+    return aux_sessions, hp_sessions
+
+
+def calculate_home_heating_cost(heat_sessions, cool_sessions, date, rates_config, aux_states=None):
+    """Calculate cost for home HVAC sessions using historical aux state.
+    Heating sessions are split by aux_states history: aux portions use gas rate,
+    non-aux (heat pump) portions use electricity rate.
     Cooling: always uses heat pump electricity.
+    aux_states: list of (timestamp, is_aux_on) tuples from HA history.
+    If None/empty, all heat is treated as aux (gas) — safe fallback.
     """
     if not rates_config:
         return 0.0
 
     total_cost = 0.0
 
-    # Heating cost
-    if heat_sessions:
-        if is_aux_heat:
-            furnace_m3 = rates_config.get('furnace_m3_per_hour', 1.33)
-            gas_rate = rates_config.get('gas_rate_per_m3', 0.24)
-            for start, end in heat_sessions:
-                hours = (end - start).total_seconds() / 3600.0
-                total_cost += hours * furnace_m3 * gas_rate
-        else:
-            elec_rates = _build_heat_pump_elec_rates(rates_config)
-            total_cost += calculate_heating_cost(heat_sessions, date, elec_rates)
+    # Split heating sessions into gas (aux) and electricity (heat pump) portions
+    aux_heat_sessions, hp_heat_sessions = split_sessions_by_aux(heat_sessions, aux_states or [])
+
+    # Gas cost for aux heat portions
+    if aux_heat_sessions:
+        furnace_m3 = rates_config.get('furnace_m3_per_hour', 1.33)
+        gas_rate = rates_config.get('gas_rate_per_m3', 0.24)
+        for start, end in aux_heat_sessions:
+            hours = (end - start).total_seconds() / 3600.0
+            total_cost += hours * furnace_m3 * gas_rate
+
+    # Electricity cost for heat pump heating portions
+    if hp_heat_sessions:
+        elec_rates = _build_heat_pump_elec_rates(rates_config)
+        total_cost += calculate_heating_cost(hp_heat_sessions, date, elec_rates)
 
     # Cooling cost - always heat pump electricity
     if cool_sessions:
@@ -1053,12 +1265,13 @@ def fetch_home_heater_runtime():
 
     def get_runtime_for_period(start, end):
         """Calculate runtime in seconds for a given period.
-        Returns (total_seconds, heat_sessions, cool_sessions)."""
+        Returns (total_seconds, heat_sessions, cool_sessions, aux_states)
+        where aux_states is a list of (timestamp, is_aux_on) from HA history."""
         try:
             start_str = start.strftime('%Y-%m-%dT%H:%M:%S')
             end_str = end.strftime('%Y-%m-%dT%H:%M:%S')
 
-            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee"
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee,input_boolean.ecobee_aux"
             headers = {
                 'Authorization': f'Bearer {ha_key}',
                 'Content-Type': 'application/json',
@@ -1068,10 +1281,35 @@ def fetch_home_heater_runtime():
             with urllib.request.urlopen(req, timeout=15) as response:
                 data = json.loads(response.read().decode('utf-8'))
 
-            if not data or len(data) == 0 or len(data[0]) == 0:
-                return 0, [], []
+            if not data or len(data) == 0:
+                return 0, [], [], []
 
-            history = data[0]
+            # Separate ecobee climate history from aux boolean history by entity_id
+            ecobee_history = []
+            aux_history = []
+            for entity_data in data:
+                if not entity_data:
+                    continue
+                eid = entity_data[0].get('entity_id', '')
+                if eid == 'climate.my_ecobee':
+                    ecobee_history = entity_data
+                elif eid == 'input_boolean.ecobee_aux':
+                    aux_history = entity_data
+
+            if not ecobee_history:
+                return 0, [], [], []
+
+            # Parse aux state changes into (timestamp, is_on) list
+            aux_states = []
+            for state_change in aux_history:
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+                ts = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                ts = ts.astimezone().replace(tzinfo=None)
+                aux_states.append((ts, state_change.get('state') == 'on'))
+
+            history = ecobee_history
             total_seconds = 0
             heat_sessions = []
             cool_sessions = []
@@ -1108,25 +1346,24 @@ def fetch_home_heater_runtime():
                     else:
                         cool_sessions.append((state_start, state_end))
 
-            return int(total_seconds), heat_sessions, cool_sessions
+            return int(total_seconds), heat_sessions, cool_sessions, aux_states
 
         except Exception as e:
             print(f"Error fetching home heater runtime: {e}")
-            return 0, [], []
+            return 0, [], [], []
 
-    today_runtime, today_heat, today_cool = get_runtime_for_period(today_start, now)
+    today_runtime, today_heat, today_cool, today_aux = get_runtime_for_period(today_start, now)
 
     yesterday_same_time = yesterday_start + (now - today_start)
-    yesterday_by_same_time, yesterday_same_heat, yesterday_same_cool = get_runtime_for_period(yesterday_start, yesterday_same_time)
+    yesterday_by_same_time, yesterday_same_heat, yesterday_same_cool, yesterday_same_aux = get_runtime_for_period(yesterday_start, yesterday_same_time)
 
-    yesterday_total, yesterday_heat, yesterday_cool = get_runtime_for_period(yesterday_start, today_start)
+    yesterday_total, yesterday_heat, yesterday_cool, yesterday_aux = get_runtime_for_period(yesterday_start, today_start)
 
-    # Calculate costs
+    # Calculate costs using per-period aux history so gas vs electricity is correct
     rates_config = load_home_heater_rates()
-    is_aux = get_home_aux_state()
-    today_cost = calculate_home_heating_cost(today_heat, today_cool, today_start, rates_config, is_aux)
-    yesterday_cost = calculate_home_heating_cost(yesterday_heat, yesterday_cool, yesterday_start, rates_config, is_aux)
-    yesterday_by_same_time_cost = calculate_home_heating_cost(yesterday_same_heat, yesterday_same_cool, yesterday_start, rates_config, is_aux)
+    today_cost = calculate_home_heating_cost(today_heat, today_cool, today_start, rates_config, today_aux)
+    yesterday_cost = calculate_home_heating_cost(yesterday_heat, yesterday_cool, yesterday_start, rates_config, yesterday_aux)
+    yesterday_by_same_time_cost = calculate_home_heating_cost(yesterday_same_heat, yesterday_same_cool, yesterday_start, rates_config, yesterday_same_aux)
 
     return {
         'today': today_runtime,
@@ -1157,12 +1394,13 @@ def fetch_home_heater_history(days=30):
 
     def get_runtime_for_day(day_start, day_end):
         """Calculate runtime in seconds for a given day.
-        Returns (seconds, was_enabled, heat_sessions, cool_sessions)."""
+        Returns (seconds, was_enabled, heat_sessions, cool_sessions, aux_states)
+        where aux_states is a list of (timestamp, is_aux_on) from HA history."""
         try:
             start_str = day_start.strftime('%Y-%m-%dT%H:%M:%S')
             end_str = day_end.strftime('%Y-%m-%dT%H:%M:%S')
 
-            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee"
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id=climate.my_ecobee,input_boolean.ecobee_aux"
             headers = {
                 'Authorization': f'Bearer {ha_key}',
                 'Content-Type': 'application/json',
@@ -1172,10 +1410,35 @@ def fetch_home_heater_history(days=30):
             with urllib.request.urlopen(req, timeout=15) as response:
                 data = json.loads(response.read().decode('utf-8'))
 
-            if not data or len(data) == 0 or len(data[0]) == 0:
-                return 0, False, [], []
+            if not data or len(data) == 0:
+                return 0, False, [], [], []
 
-            history = data[0]
+            # Separate ecobee climate history from aux boolean history by entity_id
+            ecobee_history = []
+            aux_history = []
+            for entity_data in data:
+                if not entity_data:
+                    continue
+                eid = entity_data[0].get('entity_id', '')
+                if eid == 'climate.my_ecobee':
+                    ecobee_history = entity_data
+                elif eid == 'input_boolean.ecobee_aux':
+                    aux_history = entity_data
+
+            # Parse aux state changes into (timestamp, is_on) list
+            aux_states = []
+            for state_change in aux_history:
+                last_changed = state_change.get('last_changed', '')
+                if not last_changed:
+                    continue
+                ts = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+                ts = ts.astimezone().replace(tzinfo=None)
+                aux_states.append((ts, state_change.get('state') == 'on'))
+
+            if not ecobee_history:
+                return 0, False, [], [], aux_states
+
+            history = ecobee_history
             total_seconds = 0
             was_enabled = False
             heat_sessions = []
@@ -1215,11 +1478,11 @@ def fetch_home_heater_history(days=30):
                     else:
                         cool_sessions.append((state_start, state_end))
 
-            return int(total_seconds), was_enabled, heat_sessions, cool_sessions
+            return int(total_seconds), was_enabled, heat_sessions, cool_sessions, aux_states
 
         except Exception as e:
             print(f"Error fetching home heater runtime for {day_start.date()}: {e}")
-            return 0, False, [], []
+            return 0, False, [], [], []
 
     def get_outdoor_temp_for_day(day_start, day_end):
         """Get average outdoor temperature for a day."""
@@ -1271,7 +1534,6 @@ def fetch_home_heater_history(days=30):
 
     # Load rates for cost calculation
     rates_config = load_home_heater_rates()
-    is_aux = get_home_aux_state()
 
     # Determine date range
     if cache:
@@ -1287,7 +1549,8 @@ def fetch_home_heater_history(days=30):
         day_end = day_start + timedelta(days=1)
         date_str = day_start.strftime('%Y-%m-%d')
 
-        if date_str in cache and date_str != today_str:
+        yesterday_str = (today_start - timedelta(days=1)).strftime('%Y-%m-%d')
+        if date_str in cache and date_str != today_str and date_str != yesterday_str:
             history_data.append(cache[date_str])
             current_date += timedelta(days=1)
             continue
@@ -1295,12 +1558,12 @@ def fetch_home_heater_history(days=30):
         if date_str == today_str:
             day_end = now
 
-        runtime_seconds, thermostat_enabled, heat_sessions, cool_sessions = get_runtime_for_day(day_start, day_end)
+        runtime_seconds, thermostat_enabled, heat_sessions, cool_sessions, day_aux_states = get_runtime_for_day(day_start, day_end)
         outdoor_temp = get_outdoor_temp_for_day(day_start, day_end)
         weekday = day_start.weekday()
 
-        # Calculate cost - use current aux state for all days
-        day_cost = calculate_home_heating_cost(heat_sessions, cool_sessions, day_start, rates_config, is_aux)
+        # Calculate cost using per-day aux history for correct gas vs electricity split
+        day_cost = calculate_home_heating_cost(heat_sessions, cool_sessions, day_start, rates_config, day_aux_states)
 
         day_data = {
             'date': date_str,
@@ -1316,8 +1579,10 @@ def fetch_home_heater_history(days=30):
 
         history_data.append(day_data)
 
-        if date_str != today_str:
-            cache[date_str] = day_data
+        # Always write to cache — today gets a last_updated so consumers know how fresh it is
+        if date_str == today_str:
+            day_data['last_updated'] = now.isoformat()
+        cache[date_str] = day_data
 
         current_date += timedelta(days=1)
 
@@ -1419,6 +1684,19 @@ def refresh_all_caches():
             print(f"  - HA panel '{panel_id}' cache updated")
         except Exception as e:
             print(f"  - HA panel '{panel_id}' cache error: {e}")
+
+    # Refresh heater history (shed + home)
+    try:
+        fetch_heater_history(days=30)
+        print("  - Shed heater history cache updated")
+    except Exception as e:
+        print(f"  - Shed heater history cache error: {e}")
+
+    try:
+        fetch_home_heater_history(days=30)
+        print("  - Home heater history cache updated")
+    except Exception as e:
+        print(f"  - Home heater history cache error: {e}")
 
     print(f"[{datetime.now().isoformat()}] Cache refresh complete")
 
@@ -1657,9 +1935,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
     def get_home_heater_history(self):
-        """Get home heater runtime history for the past 30 days."""
+        """Serve home heater history from the local cache file.
+        HA polling only happens in the background refresh thread (every 5 min)."""
         try:
-            data = fetch_home_heater_history(days=30)
+            cache = load_home_heater_history_cache()
+            if not cache:
+                # Cache not yet populated (first startup) — do a live fetch
+                data = fetch_home_heater_history(days=30)
+            else:
+                days = [cache[d] for d in sorted(cache.keys())]
+                data = {
+                    'success': True,
+                    'days': days,
+                    'generated_at': datetime.now().isoformat()
+                }
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -2123,6 +2412,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.set_climate()
         elif self.path == '/api/settings':
             self.post_settings()
+        elif self.path == '/api/media/watched':
+            self.proxy_media_tracker('/api/watched')
+        elif self.path == '/api/media/refresh':
+            self.proxy_media_tracker('/api/refresh')
         # Test endpoints with provided key
         elif self.path == '/api/test/openweather':
             content_length = int(self.headers.get('Content-Length', 0))
@@ -2201,39 +2494,33 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
     def refresh_new_releases(self):
-        """Refresh new releases by running the script on Mac Mini via SSH."""
+        """Refresh new releases via the Media Tracker service."""
+        self.proxy_media_tracker('/api/refresh')
+
+    def proxy_media_tracker(self, path):
+        """Proxy a POST request to the Media Tracker service."""
         try:
-            settings = load_settings()
-            ssh_config = settings.get('refreshCommands', {}).get('ssh', {})
-            ssh_host = ssh_config.get('host', 'toms-mac-mini.local')
-            ssh_user = ssh_config.get('user', 'tomrobertson')
-            ssh_timeout = ssh_config.get('timeout', 30)
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length) if content_length > 0 else b''
 
-            ssh_command = f'{ssh_user}@{ssh_host}'
-            remote_command = 'cd /Users/tomrobertson/coding/sequels && python3 new_releases.py'
-
-            result = subprocess.run(
-                ['ssh', ssh_command, remote_command],
-                capture_output=True,
-                text=True,
-                timeout=ssh_timeout
+            req = urllib.request.Request(
+                f"{MEDIATRACKER_URL}{path}",
+                data=body if body else None,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
             )
-
-            if result.returncode == 0:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                result = response.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'message': 'New releases refreshed'}).encode())
-            else:
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': False, 'error': result.stderr}).encode())
-        except subprocess.TimeoutExpired:
-            self.send_response(500)
+                self.wfile.write(result)
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8', errors='replace')
+            self.send_response(e.code)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': False, 'error': 'SSH timeout'}).encode())
+            self.wfile.write(error_body.encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
@@ -2491,5 +2778,15 @@ if __name__ == '__main__':
 
     # Use ThreadingHTTPServer for concurrent request handling
     with http.server.ThreadingHTTPServer(('', PORT), DashboardHandler) as httpd:
-        print(f'Dashboard server running at http://localhost:{PORT}')
+        # Wrap socket with SSL for HTTPS
+        cert_dir = os.path.join(DIRECTORY, 'certs')
+        cert_file = os.path.join(cert_dir, 'shedpi2.forest-fujita.ts.net.crt')
+        key_file = os.path.join(cert_dir, 'shedpi2.forest-fujita.ts.net.key')
+        if os.path.exists(cert_file) and os.path.exists(key_file):
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(certfile=cert_file, keyfile=key_file)
+            httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+            print(f'Dashboard server running at https://localhost:{PORT}')
+        else:
+            print(f'WARNING: SSL certs not found, running without HTTPS at http://localhost:{PORT}')
         httpd.serve_forever()
