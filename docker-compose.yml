@@ -2,7 +2,7 @@ services:
   dashboard:
     build: .
     ports:
-      - "8000:8000"
+      - "8443:8443"
     environment:
       - TZ=America/Toronto
     extra_hosts:
@@ -15,7 +15,6 @@ services:
       - ./generate_summary.py:/app/generate_summary.py:ro
       - ./server.py:/app/server.py:ro
       # Data files (read/write for updates)
-      - ./todos.json:/app/todos.json
       - ./calendar.json:/app/calendar.json
       - ./location.json:/app/location.json
       - ./daily-links.json:/app/daily-links.json
@@ -42,6 +41,8 @@ services:
       - ./lcars.html:/app/lcars.html:ro
       # Themes directory
       - ./themes:/app/themes:ro
+      # TLS certificates (Tailscale)
+      - ./certs:/app/certs:ro
       # SSH keys for todo refresh (optional)
       - ~/.ssh:/root/.ssh:ro
     restart: unless-stopped

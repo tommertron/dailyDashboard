@@ -66,9 +66,6 @@
     <!-- Tomorrow Forecast Card -->
     <div id="shed-heat-banner" class="tomorrow-forecast" style="display:none"></div>
 
-    <!-- Quick Links Bar -->
-    <div class="quick-links-bar" id="header-starred-links"></div>
-
     <!-- Dense top row: Weather/Tasks | Smart Schedule | Remaining/Wisdom -->
     <div class="dense-top-row">
       <div class="stacked-column">
@@ -90,12 +87,22 @@
           <div class="panel-header">
             <h2 class="section-title">Tasks</h2>
             <div class="header-actions">
-              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Things" id="todos-refresh-btn">
+              <button class="icon-btn" onclick="showInboxForm()" title="Add to inbox" id="todos-add-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <button class="icon-btn" onclick="puntAllTodos()" title="Punt all to tomorrow" id="todos-punt-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </button>
+              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Todoist" id="todos-refresh-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <a href="things:///show?id=today" class="app-link" title="Open Things">
+              <a href="https://todoist.com/app/today" class="app-link" title="Open Todoist" target="_blank">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
@@ -108,30 +115,53 @@
         </div>
       </div>
 
-      <div class="panel" data-panel="smartSchedule">
-        <div class="panel-header">
-          <h2 class="section-title">Smart Schedule</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </a>
+      <div class="stacked-column center-column">
+        <div class="panel" data-panel="raindropFavourites">
+          <div class="panel-header">
+            <h2 class="section-title">Favourites</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="loadFavouriteLinks()" title="Refresh Favourites" id="favourites-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="favourites-container">
+            <div class="panel-empty">Loading...</div>
           </div>
         </div>
-        <div class="panel-body">
-          <div id="smart-schedule-timeline">
-            <div class="panel-empty">Loading...</div>
+
+        <div class="panel" data-panel="smartSchedule">
+          <div class="panel-header">
+            <h2 class="section-title">Smart Schedule</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="smart-schedule-timeline">
+              <div class="panel-empty">Loading...</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="stacked-column">
+      <div class="stacked-column right-column">
         <div class="panel" data-panel="bills">
           <div class="panel-header">
             <h2 class="section-title">Remaining</h2>
@@ -158,52 +188,13 @@
           </div>
         </div>
 
-        <div class="panel wisdom-panel" data-panel="wisdom">
-          <div class="panel-header">
-            <h2 class="section-title">Wisdom</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="wisdom-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
       </div>
     </div>
 
+    <!-- Hidden calendar-container kept for JS that uses it (shed heat banner, timed todos) -->
+    <div id="calendar-container" style="display:none"></div>
+
     <div class="three-column-grid">
-      <div class="panel" data-panel="schedule">
-        <div class="panel-header">
-          <h2 class="section-title">Schedule</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="calendar-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div id="calendar-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-      </div>
 
       <div class="panel" data-panel="shed">
         <div class="panel-header">
@@ -256,7 +247,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="http://100.125.128.51:5001" class="app-link" title="Open Pi Monitor" target="_blank">
+            <a href="http://100.115.42.106:5001" class="app-link" title="Open Pi Monitor" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
@@ -265,6 +256,42 @@
         </div>
         <div class="panel-body" id="pi-status-container">
           <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel links-panel" data-panel="links">
+        <div class="panel-header">
+          <h2 class="section-title">Raindrop</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body anybox-body">
+          <div class="anybox-stats" id="anybox-stats-container">
+            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
+              <span class="stat-value" id="stat-all">--</span>
+              <span class="stat-label">Total</span>
+            </a>
+            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
+              <span class="stat-value" id="stat-untagged">--</span>
+              <span class="stat-label">Unsorted</span>
+            </a>
+          </div>
+          <div class="anybox-section">
+            <h3 class="anybox-section-title">Random Links</h3>
+            <div id="links-container">
+              <div class="panel-empty">Loading...</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -277,14 +304,9 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="sequel://" class="app-link" title="Open Sequel">
+            <a href="http://shedpi2.forest-fujita.ts.net:8100" class="app-link" title="Open Media Tracker" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-              </svg>
-            </a>
-            <a href="http://100.127.232.39:8089" class="app-link" title="Open Channels" target="_blank">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </a>
           </div>
@@ -342,20 +364,10 @@
         </div>
       </div>
 
-      <div class="panel links-panel" data-panel="links">
+      <div class="panel links-panel" data-panel="readLater">
         <div class="panel-header">
-          <h2 class="section-title">Links</h2>
+          <h2 class="section-title">Read Later</h2>
           <div class="header-actions">
-            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="anybox://" class="app-link" title="Open Anybox">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            </a>
             <a href="goodlinks://" class="app-link" title="Open GoodLinks">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -363,33 +375,31 @@
             </a>
           </div>
         </div>
-        <div class="panel-body anybox-body">
-          <div class="anybox-stats" id="anybox-stats-container">
-            <a href="anybox://show?id=all" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-all">--</span>
-              <span class="stat-label">Total</span>
-            </a>
-            <a href="anybox://filter/FB4D031C-C37E-4A39-95BD-E6C2CB2B12A7" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-last7">--</span>
-              <span class="stat-label">Last 7 Days</span>
-            </a>
-            <a href="anybox://show?id=untagged" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-untagged">--</span>
-              <span class="stat-label">Untagged</span>
+        <div class="panel-body">
+          <div id="readlater-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel wisdom-panel" data-panel="wisdom">
+        <div class="panel-header">
+          <h2 class="section-title">Wisdom</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
             </a>
           </div>
-          <div class="anybox-section">
-            <h3 class="anybox-section-title">Random Links</h3>
-            <div id="links-container">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
-          <div class="anybox-section">
-            <a href="goodlinks://" class="anybox-section-title-link"><h3 class="anybox-section-title">Read Later</h3></a>
-            <div id="readlater-container">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
+        </div>
+        <div class="panel-body" id="wisdom-container">
+          <div class="panel-empty">Loading...</div>
         </div>
       </div>
 
@@ -718,7 +728,7 @@
       tasks: {
         id: 'tasks',
         name: 'Tasks',
-        dataSource: { type: 'file', path: 'todos.json', dataPath: 'todos' },
+        dataSource: { type: 'api', path: '/api/todoist/tasks' },
         displayTemplate: 'list',
         fields: [
           { key: 'title', type: 'text', display: 'primary' },
@@ -771,30 +781,27 @@
 
     async function loadLinks() {
       try {
-        const response = await fetch('daily-links.json');
-        let text = await response.text();
-        // Strip trailing EOF if present (artifact from source)
-        text = text.replace(/EOF\s*$/, '');
-        const data = JSON.parse(text);
+        const response = await fetch('/api/raindrop/links');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
         renderLinks(data.links);
       } catch (error) {
         console.error('Error loading links:', error);
         document.getElementById('links-container').innerHTML =
-          '<div class="empty-state">Error loading links. Make sure daily-links.json exists.</div>';
+          '<div class="panel-empty">Error loading links from Raindrop.io</div>';
       }
     }
 
     async function loadAnyboxStats() {
       try {
-        const response = await fetch('anyboxStats.json');
+        const response = await fetch('/api/raindrop/stats');
         const data = await response.json();
-        document.getElementById('stat-all').textContent = data.all || '--';
-        document.getElementById('stat-last7').textContent = data.last7 || '--';
-        document.getElementById('stat-untagged').textContent = data.untagged || '--';
+        if (data.success === false) throw new Error(data.error);
+        document.getElementById('stat-all').textContent = data.total ?? '--';
+        document.getElementById('stat-untagged').textContent = data.unsorted ?? '--';
       } catch (error) {
-        console.error('Error loading anybox stats:', error);
+        console.error('Error loading Raindrop stats:', error);
         document.getElementById('stat-all').textContent = '--';
-        document.getElementById('stat-last7').textContent = '--';
         document.getElementById('stat-untagged').textContent = '--';
       }
     }
@@ -815,61 +822,171 @@
 
     async function loadStarredLinks() {
       try {
-        const response = await fetch('starredLinks.json');
-        let text = await response.text();
-        // Fix malformed JSON with unescaped quotes inside strings
-        // Handle curly quotes first
-        text = text.replace(/[\u201C\u201D\u2018\u2019]/g, "'");
-        // Fix lines with title/comment that have inner quotes
-        // Match the value portion and replace inner quotes
-        text = text.split('\n').map(line => {
-          const match = line.match(/^(\s*"(?:title|comment)":\s*")(.*)(",?\s*)$/);
-          if (match) {
-            const [, prefix, value, suffix] = match;
-            // Replace unescaped quotes in the value with single quotes
-            const fixed = value.replace(/"/g, "'");
-            return prefix + fixed + suffix;
-          }
-          return line;
-        }).join('\n');
-        const data = JSON.parse(text);
+        const response = await fetch('/api/raindrop/favorites');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
         renderStarredLinks(data.links);
       } catch (error) {
         console.error('Error loading starred links:', error);
-        document.getElementById('starred-links-container').innerHTML =
-          '<div class="panel-empty">No starred links</div>';
+        const el = document.getElementById('header-starred-links');
+        if (el) el.innerHTML = '';
       }
     }
 
-    function renderTodos(todos) {
-      const container = document.getElementById('todos-container');
-
-      if (!todos || todos.length === 0) {
-        container.innerHTML = '<div class="panel-empty">No tasks for today</div>';
-        return;
+    async function loadFavouriteLinks() {
+      const container = document.getElementById('favourites-container');
+      if (!container) return;
+      try {
+        const response = await fetch('/api/raindrop/favorites');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
+        if (!data.links || data.links.length === 0) {
+          container.innerHTML = '<div class="panel-empty">No favourites</div>';
+          return;
+        }
+        container.innerHTML = data.links.map(link => `
+          <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="favourite-link-item">
+            <span class="favourite-link-domain">${new URL(link.url).hostname.replace('www.', '')}</span>
+            <span class="favourite-link-title">${link.title || link.url}</span>
+          </a>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading favourite links:', error);
+        container.innerHTML = '<div class="panel-empty">Error loading favourites</div>';
       }
+    }
 
-      container.innerHTML = todos.map(todo => {
-        const isCompleted = todo.status === 'Completed';
+    function renderTodoItems(tasks) {
+      if (!tasks || tasks.length === 0) return '';
+      const sorted = [...tasks].sort((a, b) => a.priority === b.priority ? 0 : a.priority > b.priority ? 1 : -1);
+      return sorted.map(todo => {
+        const priorityClass = todo.priority > 1 ? ` priority-${todo.priority}` : '';
         return `
-          <div class="todo-item${isCompleted ? ' completed' : ''}">
-            <span class="todo-bullet"></span>
-            <span class="todo-text">${todo.title}</span>
+          <div class="todo-item${priorityClass}" data-task-id="${todo.id}">
+            <button class="todo-checkbox" onclick="completeTodoistTask('${todo.id}')" title="Mark complete">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="9"/>
+              </svg>
+            </button>
+            <a href="https://todoist.com/app/task/${todo.id}" target="_blank" class="todo-text" title="Open in Todoist">${todo.content}</a>
           </div>
         `;
       }).join('');
     }
 
-    async function loadTodos(bustCache = false) {
+    function renderTodos(data) {
+      const container = document.getElementById('todos-container');
+
+      // Support both old array format and new { today, inbox } format
+      const todayTasks = Array.isArray(data) ? data : (data.today || []);
+      const inboxTasks = Array.isArray(data) ? [] : (data.inbox || []);
+
+      if (todayTasks.length === 0 && inboxTasks.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No tasks</div>';
+        return;
+      }
+
+      let html = '';
+
+      if (todayTasks.length > 0) {
+        html += `<div class="todo-section-label">Today</div>`;
+        html += renderTodoItems(todayTasks);
+      } else {
+        html += '<div class="panel-empty" style="padding: 6px 0 8px">No tasks for today</div>';
+      }
+
+      html += `<div class="todo-section-label todo-section-inbox">Inbox</div>`;
+      if (inboxTasks.length > 0) {
+        html += renderTodoItems(inboxTasks);
+      } else {
+        html += '<div class="panel-empty" style="padding: 4px 0 2px; font-size: 0.8rem;">Empty</div>';
+      }
+
+      html += `
+        <div class="todo-add-form" id="todo-add-form" style="display:none;">
+          <input type="text" id="todo-add-input" class="todo-add-input" placeholder="Add to inbox…" maxlength="500" />
+          <button class="todo-add-submit" onclick="submitInboxTask()" title="Add task">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button class="todo-add-cancel" onclick="hideInboxForm()" title="Cancel">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      `;
+
+      container.innerHTML = html;
+
+      // Re-attach keydown listener after render
+      const input = document.getElementById('todo-add-input');
+      if (input) {
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') submitInboxTask();
+          if (e.key === 'Escape') hideInboxForm();
+        });
+      }
+    }
+
+    async function loadTodos() {
       try {
-        const url = bustCache ? `todos.json?t=${Date.now()}` : 'todos.json';
-        const response = await fetch(url);
+        const response = await fetch('/api/todoist/tasks');
         const data = await response.json();
-        renderTodos(data.todos);
+        if (data.success === false) throw new Error(data.error);
+        window._todos = data;
+        renderTodos(data);
+        if (window._calendarEvents) {
+          renderCalendar(window._calendarEvents);
+          renderSmartSchedule(window._calendarEvents);
+        }
       } catch (error) {
         console.error('Error loading todos:', error);
         document.getElementById('todos-container').innerHTML =
-          '<div class="empty-state">Error loading todos. Make sure todos.json exists.</div>';
+          `<div class="panel-empty">Error loading tasks: ${error.message}</div>`;
+      }
+    }
+
+    async function completeTodoistTask(taskId) {
+      const item = document.querySelector(`.todo-item[data-task-id="${taskId}"]`);
+      if (!item) return;
+
+      // Animate completion
+      item.classList.add('completing');
+      const checkbox = item.querySelector('.todo-checkbox');
+      checkbox.disabled = true;
+
+      try {
+        const response = await fetch(`/api/todoist/tasks/${taskId}/close`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          item.classList.add('completed');
+          setTimeout(() => {
+            item.style.height = item.offsetHeight + 'px';
+            requestAnimationFrame(() => {
+              item.style.height = '0';
+              item.style.opacity = '0';
+              item.style.padding = '0';
+              item.style.margin = '0';
+              item.style.overflow = 'hidden';
+              setTimeout(() => {
+                item.remove();
+                // Refresh to keep inbox section accurate
+                loadTodos();
+              }, 300);
+            });
+          }, 600);
+        } else {
+          item.classList.remove('completing');
+          checkbox.disabled = false;
+          console.error('Failed to complete task:', result.error);
+        }
+      } catch (error) {
+        item.classList.remove('completing');
+        checkbox.disabled = false;
+        console.error('Error completing task:', error);
       }
     }
 
@@ -879,62 +996,116 @@
       btn.style.opacity = '0.5';
 
       try {
-        const response = await fetch('/api/refresh-todos', { method: 'POST' });
-        const result = await response.json();
-
-        if (result.success) {
-          btn.textContent = 'Syncing...';
-          // Wait for file to sync, then reload with cache-bust
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          await loadTodos(true);
-        } else {
-          console.error('Refresh failed:', result.error);
-          alert('Failed to refresh todos: ' + result.error);
-        }
+        await loadTodos();
       } catch (error) {
         console.error('Error refreshing todos:', error);
-        alert('Error refreshing todos');
       } finally {
         btn.disabled = false;
         btn.style.opacity = '1';
       }
     }
 
-    // Refresh combined Links panel (Anybox + GoodLinks)
+    function showInboxForm() {
+      const form = document.getElementById('todo-add-form');
+      if (!form) return;
+      form.style.display = 'flex';
+      const input = document.getElementById('todo-add-input');
+      if (input) { input.value = ''; input.focus(); }
+    }
+
+    function hideInboxForm() {
+      const form = document.getElementById('todo-add-form');
+      if (form) form.style.display = 'none';
+    }
+
+    async function submitInboxTask() {
+      const input = document.getElementById('todo-add-input');
+      const content = input ? input.value.trim() : '';
+      if (!content) return;
+
+      const submitBtn = document.querySelector('.todo-add-submit');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.5'; }
+
+      try {
+        const response = await fetch('/api/todoist/tasks/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        const result = await response.json();
+        if (result.success) {
+          hideInboxForm();
+          await loadTodos();
+        } else {
+          console.error('Failed to add task:', result.error);
+          alert('Failed to add task: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error adding task:', error);
+        alert('Error adding task');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+      }
+    }
+
+    async function puntAllTodos() {
+      const btn = document.getElementById('todos-punt-btn');
+      const items = document.querySelectorAll('.todo-item');
+      if (!items.length) return;
+
+      if (!confirm('Punt all tasks to tomorrow?')) return;
+
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      try {
+        const taskIds = Array.from(items).map(el => el.dataset.taskId);
+        const response = await fetch('/api/todoist/tasks/punt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_ids: taskIds })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          items.forEach(item => {
+            item.style.transition = 'all 0.3s ease';
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(30px)';
+          });
+          setTimeout(() => {
+            document.getElementById('todos-container').innerHTML =
+              '<div class="panel-empty">All tasks punted to tomorrow</div>';
+          }, 300);
+        } else {
+          console.error('Failed to punt tasks:', result.error);
+          alert('Failed to punt tasks: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error punting tasks:', error);
+        alert('Error punting tasks');
+      } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    // Refresh combined Links panel (Raindrop.io + GoodLinks)
     async function refreshLinks() {
       const btn = document.getElementById('links-refresh-btn');
       if (btn) {
         btn.disabled = true;
         btn.style.opacity = '0.5';
       }
-
       try {
-        // Refresh both Anybox and GoodLinks in parallel
-        const [anyboxResult, goodlinksResult] = await Promise.all([
-          fetch('/api/refresh/anybox', { method: 'POST' }).then(r => r.json()),
-          fetch('/api/refresh/goodlinks', { method: 'POST' }).then(r => r.json())
-        ]);
-
-        // Wait for files to sync
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Reload all links data
         await Promise.all([
           loadLinks(),
           loadAnyboxStats(),
           loadStarredLinks(),
           loadReadLater()
         ]);
-
-        if (!anyboxResult.success) {
-          console.error('Anybox refresh failed:', anyboxResult.error);
-        }
-        if (!goodlinksResult.success) {
-          console.error('GoodLinks refresh failed:', goodlinksResult.error);
-        }
       } catch (error) {
         console.error('Error refreshing links:', error);
-        alert('Error refreshing links');
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -947,7 +1118,7 @@
     async function refreshPanel(panelType) {
       // Map panel types to button IDs and reload functions
       const panelConfig = {
-        tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos(true) },
+        tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos() },
         bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
         calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
         anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
@@ -1017,6 +1188,43 @@
       return { time, isToday, isTomorrow, daysAway, eventDate };
     }
 
+    function parseTimeToMinutes(timeStr) {
+      if (!timeStr) return 9999;
+      const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!m) return 9999;
+      let h = parseInt(m[1]);
+      const min = parseInt(m[2]);
+      const ap = m[3].toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return h * 60 + min;
+    }
+
+    function getTodayTimedTodosAsEvents() {
+      if (!window._todos) return [];
+      const todayList = Array.isArray(window._todos) ? window._todos : (window._todos.today || []);
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const todayStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      return todayList
+        .filter(t => {
+          const due = t.due && t.due.date;
+          return due && due.includes('T') && due.startsWith(todayStr);
+        })
+        .map(t => {
+          const dt = new Date(t.due.date);
+          const h = dt.getHours(), mn = dt.getMinutes();
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const dh = h % 12 || 12;
+          const timeStr = `${dh}:${mn.toString().padStart(2, '0')} ${ampm}`;
+          return {
+            title: t.content, calendar: 'Tasks', allday: 'No',
+            time: timeStr, isToday: true, isTomorrow: false, daysAway: 0,
+            eventDate: dt, sortMinutes: h * 60 + mn, isTodo: true, todoId: t.id
+          };
+        });
+    }
+
     function renderCalendar(events) {
       const container = document.getElementById('calendar-container');
 
@@ -1029,8 +1237,14 @@
       const parsedEvents = events.map(e => ({ ...e, ...parseEventDate(e.start) }));
 
       // Group events by today/tomorrow/upcoming (within 7 days)
-      const todayEvents = parsedEvents.filter(e => e.isToday);
-      const tomorrowEvents = parsedEvents.filter(e => e.isTomorrow);
+      const rawTodayEvents = parsedEvents.filter(e => e.isToday).map(e => ({
+        ...e, sortMinutes: e.allday === 'Yes' ? -1 : parseTimeToMinutes(e.time)
+      }));
+      const timedTodos = getTodayTimedTodosAsEvents();
+      const todayEvents = [...rawTodayEvents, ...timedTodos]
+        .sort((a, b) => a.sortMinutes - b.sortMinutes)
+        .slice(0, 3);
+      const tomorrowEvents = parsedEvents.filter(e => e.isTomorrow).slice(0, 3);
       const upcomingEvents = parsedEvents.filter(e => e.daysAway >= 2 && e.daysAway <= 7);
 
       let html = '';
@@ -1038,7 +1252,7 @@
       if (todayEvents.length > 0) {
         html += '<div class="calendar-day-label">Today</div>';
         html += todayEvents.map(event => `
-          <div class="calendar-event">
+          <div class="calendar-event${event.isTodo ? ' todo-event' : ''}">
             <div class="event-time">${event.allday === 'Yes' ? 'All day' : event.time}</div>
             <div class="event-details">
               <div class="event-title">${event.title}</div>
@@ -1090,7 +1304,8 @@
           .split('\n')
           .filter(line => line.trim())
           .map(line => JSON.parse(line))
-          .filter(event => event.title !== 'Focus Time');
+          .filter(event => event.title !== 'Focus Time')
+          .filter(event => event.title.trim().toLowerCase() !== 'busy');
 
         renderSmartSchedule(events);
         renderCalendar(events);
@@ -1152,6 +1367,21 @@
         return { ...e, startDate, endDate };
       }).filter(e => e.startDate && e.endDate);
 
+      // Inject timed Todoist tasks (treat as 30-min blocks)
+      if (window._todos) {
+        const todoList = Array.isArray(window._todos) ? window._todos : (window._todos.today || []);
+        const d = now;
+        const pad = n => String(n).padStart(2, '0');
+        const todayStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        todoList.forEach(t => {
+          const due = t.due && t.due.date;
+          if (!due || !due.includes('T') || !due.startsWith(todayStr)) return;
+          const startDate = new Date(due);
+          const endDate = new Date(startDate.getTime() + 30 * 60000);
+          parsedEvents.push({ title: t.content, calendar: 'Tasks', allday: 'No', startDate, endDate, isTodo: true });
+        });
+      }
+
       let relevantEvents;
       let emptyMessage;
       let showingTomorrow = false;
@@ -1211,6 +1441,9 @@
         seen.add(key);
         return true;
       });
+
+      // Cap at 3 events
+      relevantEvents = relevantEvents.slice(0, 3);
 
       // If no relevant events, show empty state
       if (relevantEvents.length === 0) {
@@ -2814,13 +3047,14 @@
       let providers = '';
       let link = '';
 
+      const mtBase = `http://${location.hostname}:8100`;
       if (type === 'dvr') {
         poster = item.poster || '';
         title = item.title;
         const episodeCode = item.season ? `S${item.season}E${item.episode || '?'}` : '';
         meta = episodeCode ? `${episodeCode}${item.episode_title ? ' - ' + item.episode_title : ''}` : (item.episode_title || '');
         badge = '<span class="tv-show-source channels">DVR</span>';
-        link = item.channels_url || (item.recording_id ? `channels://play/recording/${item.recording_id}` : 'channels://');
+        link = `${mtBase}#show=${encodeURIComponent(title)}`;
       } else if (type === 'tv' || type === 'coming_soon') {
         poster = item.show?.poster_url || '';
         title = item.show?.title || item.title || 'Unknown';
@@ -2835,7 +3069,7 @@
           badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
         }
         providers = renderProviderIcons(item.watch_providers);
-        if (item.on_channels) link = 'channels://';
+        link = `${mtBase}#show=${encodeURIComponent(title)}`;
       } else if (type === 'movie' || type === 'coming_soon_movie') {
         poster = item.poster_url || '';
         title = item.title;
@@ -2849,7 +3083,7 @@
           badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
         }
         providers = renderProviderIcons(item.watch_providers);
-        if (item.on_channels) link = 'channels://';
+        link = `${mtBase}#movie=${encodeURIComponent(title)}`;
       } else if (type === 'game') {
         poster = item.poster_url || item.cover_url || '';
         title = item.title || item.name;
@@ -2895,7 +3129,8 @@
         </div>
       `;
 
-      return link ? `<a href="${link}" class="tv-show-link">${content}</a>` : content;
+      const target = link && link.startsWith('http') ? ' target="_blank"' : '';
+      return link ? `<a href="${link}" class="tv-show-link"${target}>${content}</a>` : content;
     }
 
     function renderEntertainmentSection(title, items, type) {
@@ -2978,8 +3213,18 @@
         html += top3.map(({ item, type }) => renderMediaItem(item, type)).join('');
       }
 
-      // Coming Soon episodes - top 3
-      const comingEpisodes = (data.coming_soon?.episodes || []).slice(0, 3);
+      // Coming Soon episodes — one per show, strictly future release dates only
+      const now = new Date();
+      const seenShows = new Set();
+      const comingEpisodes = (data.coming_soon?.episodes || [])
+        .filter(ep => ep.release_date && new Date(ep.release_date) > now)
+        .filter(ep => {
+          const showTitle = ep.show?.title || ep.title;
+          if (seenShows.has(showTitle)) return false;
+          seenShows.add(showTitle);
+          return true;
+        })
+        .slice(0, 5);
       if (comingEpisodes.length > 0) {
         html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
         html += comingEpisodes.map(item => renderMediaItem(item, 'coming_soon')).join('');
@@ -3329,6 +3574,7 @@
       updateKeyStatus('gemini', config.hasGeminiKey, config.geminiApiKeyMasked);
       updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
       updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
+      updateKeyStatus('raindrop', config.hasRaindropKey, config.raindropApiKeyMasked);
     }
 
     function updateKeyStatus(service, hasKey, maskedKey) {
@@ -3379,6 +3625,7 @@
       const geminiKey = document.getElementById('key-gemini').value;
       const haKey = document.getElementById('key-homeassistant').value;
       const tmdbKey = document.getElementById('key-tmdb').value;
+      const raindropKey = document.getElementById('key-raindrop').value;
 
       if (name) updates.name = name;
       if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
@@ -3387,6 +3634,7 @@
       if (geminiKey) updates.geminiApiKey = geminiKey;
       if (haKey) updates.homeAssistantApiKey = haKey;
       if (tmdbKey) updates.tmdbApiKey = tmdbKey;
+      if (raindropKey) updates.raindropApiKey = raindropKey;
 
       if (Object.keys(updates).length === 0) return true;
 
@@ -3406,6 +3654,7 @@
           document.getElementById('key-gemini').value = '';
           document.getElementById('key-homeassistant').value = '';
           document.getElementById('key-tmdb').value = '';
+          document.getElementById('key-raindrop').value = '';
           return true;
         } else {
           console.error('Failed to save config:', result.error);
@@ -4566,15 +4815,11 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadAiSummary();
       loadWeather();
       loadCalendar();
-      // Use generic renderer for tasks panel if enabled
-      if (currentSettings?.useGenericRenderer?.tasks) {
-        GenericPanelRenderer.render('todos-container', builtInPanelConfigs.tasks);
-      } else {
-        loadTodos();
-      }
+      loadTodos();
       loadLinks();
       loadAnyboxStats();
       loadStarredLinks();
+      loadFavouriteLinks();
       loadShedStatus();
       loadHomeStatus();
       loadPiStatus();
@@ -4835,6 +5080,17 @@ Add your own custom rules here for smart home devices, routines, or other person
                 </div>
               </div>
 
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>Raindrop.io</label>
+                  <span class="api-key-status" id="status-raindrop">Not configured</span>
+                </div>
+                <p class="api-key-help">Bookmark manager. Use your test token from <a href="https://app.raindrop.io/settings/integrations" target="_blank">Raindrop integrations</a>.</p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-raindrop" class="settings-input" placeholder="Enter test token">
+                </div>
+              </div>
+
               <div class="settings-form-group" style="margin-top: 1.5rem;">
                 <label for="config-name">Display Name</label>
                 <p class="api-key-help">Used in greetings and AI summaries.</p>
@@ -4984,7 +5240,7 @@ Add your own custom rules here for smart home devices, routines, or other person
               </div>
               <div class="settings-form-group">
                 <label for="url-pi">Pi Monitor URL</label>
-                <input type="text" id="url-pi" class="settings-input" placeholder="http://100.125.128.51:5001">
+                <input type="text" id="url-pi" class="settings-input" placeholder="http://100.115.42.106:5001">
               </div>
             </div>
           </div>
@@ -5282,7 +5538,7 @@ Add your own custom rules here for smart home devices, routines, or other person
           <p><strong>Next steps:</strong></p>
           <ul>
             <li>Add events to <code>calendar.json</code> for your schedule</li>
-            <li>Add tasks to <code>todos.json</code> for your task list</li>
+            <li>Add a Todoist API key in Settings to sync your tasks</li>
             <li>Check <strong>Settings</strong> for more customization</li>
           </ul>
         </div>

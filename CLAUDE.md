@@ -25,7 +25,6 @@ Personal data aggregation dashboard running on a Raspberry Pi in Docker. Display
 - **`themes/default.css`** (~4,100 lines) - Light/dark theme with CSS custom properties. Dark mode via `prefers-color-scheme`.
 
 ### Data Files (JSON/Text, volume-mounted, updated by external shortcuts or automations)
-- `todos.json` - Tasks from Things app (via Apple Shortcut)
 - `calendar.json` - Calendar events in NDJSON format inside a JSON wrapper
 - `location.json` - Current lat/long
 - `daily-links.json` - Links from Anybox
@@ -54,7 +53,10 @@ This dashboard runs in a Docker container. **Any changes you make to the code re
    docker compose down && docker compose up -d --build
    ```
 
-2. **Auto-update (volume-mounted, no rebuild needed)**: `index.html`, `themes/*.css`, all `*.json` and `*.txt` data files
+2. **Volume-mounted files** (`index.html`, `themes/*.css`, all `*.json` and `*.txt`): These do NOT require a rebuild, but **bind mounts on this Raspberry Pi do not always sync live**. After editing any volume-mounted file, always run:
+   ```bash
+   docker compose restart
+   ```
 
 3. **Adding new data files**: Add volume mount to `docker-compose.yml`, `chmod 644 filename.json`, rebuild
 
@@ -66,6 +68,30 @@ docker logs dailydashboard-dashboard-1                 # View logs
 docker compose restart                                 # Restart (mounted file changes only)
 docker ps --filter "name=dailydashboard"               # Check status
 ```
+
+### Verification Before Calling Work Done
+
+After any change, **always verify** before declaring it complete:
+
+1. **Confirm the container has the latest file** — checksums must match:
+   ```bash
+   md5sum /home/tommertron/code/dailyDashboard/<file> && docker exec dailydashboard-dashboard-1 md5sum /app/<file>
+   ```
+
+2. **Check server logs for errors**:
+   ```bash
+   docker logs dailydashboard-dashboard-1 2>&1 | grep -i "error\|exception" | tail -20
+   ```
+
+3. **Test API endpoints directly from inside the container**:
+   ```bash
+   docker exec dailydashboard-dashboard-1 python3 -c "
+   import urllib.request, json
+   with urllib.request.urlopen('http://localhost:8000/api/ENDPOINT') as r:
+       print(r.status, json.loads(r.read()))"
+   ```
+
+4. **When changing a JS data format** (e.g. an API response changes from array to object): search `index.html` for ALL usages of the affected variable (e.g. `grep "_todos" index.html`) and update every callsite — not just the obvious render function. Missing one will cause a silent JS error caught by an unrelated catch block, showing a misleading error message.
 
 ---
 
@@ -171,7 +197,7 @@ Three-Column Grid: Calendar | Shed+Home+Pi | TV+Movies+Books+Games+Links
 | Weather | OpenWeatherMap | `loadWeather()` |
 | Smart Schedule | calendar.json | `renderSmartSchedule()` - timeline view |
 | Calendar | calendar.json | `renderCalendar()` - grouped by today/tomorrow/week |
-| Tasks | todos.json | `loadTodos()` |
+| Tasks | Todoist API | `loadTodos()` |
 | Bills | money.txt | via `/api/money` |
 | Wisdom | wisdom.json | `loadWisdom()` - 6hr rotation |
 | Shed | Home Assistant | `loadShedStatus()` / `renderShedStatus()` |
@@ -239,3 +265,65 @@ Date format is always: `Mon DD, YYYY at H:MM AM/PM` (e.g., "Feb 11, 2026 at 9:00
 6. Add JS load function and call it in `init()`
 7. If backend changes needed, update `server.py`
 8. Rebuild: `docker compose down && docker compose up -d --build`
+9. **Write or update Playwright tests** (see Testing section below)
+
+---
+
+## Testing with Playwright
+
+Tests live in `tests/dashboard.spec.js`. The test suite uses `@playwright/test` (installed via `npm install` from `package.json`).
+
+### Running Tests
+
+```bash
+# Run all tests (headless)
+npx playwright test
+
+# Run a single test by name
+npx playwright test -g "wisdom refresh button"
+
+# Run headed (useful for debugging)
+npx playwright test --headed
+
+# Show full test report
+npx playwright show-report
+```
+
+Tests target `http://localhost:8443`. The container must be running.
+
+### Test Structure
+
+**`tests/dashboard.spec.js`** contains:
+- **Page load** — date badge visible, AI summary present, shed heat banner present
+- **Panel visibility** — all 10 main panels render (via `data-panel` attribute)
+- **Content checks** — weather and wisdom containers are non-empty after data loads
+- **Settings modal** — opens, has expected panes, closes on Escape
+- **Refresh buttons** — wisdom, tasks, bills buttons are clickable
+- **Add task form** — opens and cancels correctly
+- **Thermostat modal** — opens when thermostat button is clicked (skipped if shed data unavailable)
+- **No JS errors** — asserts zero uncaught JS exceptions on load
+
+### When to Write/Update Tests
+
+**After adding a new panel:**
+- Add it to the `panels` array in the spec so visibility is asserted automatically
+- Add a content check if the panel loads async data
+
+**After adding a new interactive element (button, modal, form):**
+- Write a test that clicks it and asserts the expected UI response
+
+**After fixing a bug:**
+- Add a regression test that would have caught the bug
+
+**Selector conventions:**
+- Use `data-panel="{name}"` for panel roots
+- Use `#container-id` for content containers
+- Use `#btn-id` for buttons
+- Avoid brittle text selectors; prefer IDs and data attributes
+
+### Verifying After Changes
+
+Always run `npx playwright test` before declaring a feature complete. If a test fails unexpectedly, check:
+1. Is the container running? (`docker ps --filter "name=dailydashboard"`)
+2. Did `data-panel` attribute or element ID change in `index.html`?
+3. Check container logs for backend errors

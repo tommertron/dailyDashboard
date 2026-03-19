@@ -23,7 +23,7 @@
       "visible": true
     },
     "bills": {
-      "visible": true
+      "visible": false
     },
     "wisdom": {
       "visible": true
@@ -130,7 +130,7 @@
   },
   "apiUrls": {
     "channelsDvr": "http://100.127.232.39:8089",
-    "piMonitor": "http://100.125.128.51:5001"
+    "piMonitor": "http://100.115.42.106:5001"
   },
   "refreshIntervals": {
     "autoRefresh": 300000
@@ -176,8 +176,8 @@
   },
   "aiPrompts": {
     "provider": "openai",
-    "model": "gpt-4o-mini",
-    "activePersona": "picard",
+    "model": "gpt-4o",
+    "activePersona": "merlin-mann",
     "activeTemplate": "default",
     "personas": {
       "picard": {

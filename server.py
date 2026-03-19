@@ -265,7 +265,7 @@ def ha_request(method, endpoint, data=None):
     with urllib.request.urlopen(req, timeout=10) as response:
         return json.loads(response.read().decode('utf-8'))
 
-PI_MONITOR_URL = "http://100.125.128.51:5001"
+PI_MONITOR_URL = "http://100.115.42.106:5001"
 CHANNELS_DVR_URL = "http://100.127.232.39:8089"
 MEDIATRACKER_URL = "http://172.17.0.1:8100"
 TMDB_API_URL = "https://api.themoviedb.org/3"
@@ -1785,6 +1785,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_heater_history()
         elif self.path == '/api/home-heater-history':
             self.get_home_heater_history()
+        elif self.path == '/api/todoist/tasks':
+            self.get_todoist_tasks()
+        elif self.path == '/api/raindrop/links':
+            self.get_raindrop_links()
+        elif self.path == '/api/raindrop/stats':
+            self.get_raindrop_stats()
+        elif self.path == '/api/raindrop/favorites':
+            self.get_raindrop_favorites()
         else:
             super().do_GET()
 
@@ -1813,6 +1821,294 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def get_todoist_tasks(self):
+        """Get today's tasks from Todoist API."""
+        try:
+            config = load_config()
+            api_key = config.get('todoistApiKey', '')
+            if not api_key:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'Todoist API key not configured'}).encode())
+                return
+
+            all_tasks = []
+            next_cursor = None
+            while True:
+                url = 'https://api.todoist.com/api/v1/tasks'
+                if next_cursor:
+                    url += f'?cursor={next_cursor}'
+                req = urllib.request.Request(
+                    url,
+                    headers={
+                        'Authorization': f'Bearer {api_key}',
+                        'Content-Type': 'application/json'
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = json.loads(resp.read().decode())
+                all_tasks.extend(data.get('results', []))
+                next_cursor = data.get('next_cursor')
+                if not next_cursor:
+                    break
+
+            # Find inbox project ID
+            proj_req = urllib.request.Request(
+                'https://api.todoist.com/api/v1/projects',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+            )
+            with urllib.request.urlopen(proj_req, timeout=10) as proj_resp:
+                proj_data = json.loads(proj_resp.read().decode())
+            projects = proj_data.get('results', [])
+            inbox_id = next(
+                (p['id'] for p in projects if p.get('name', '').lower() == 'inbox'),
+                None
+            )
+
+            today = datetime.now().strftime('%Y-%m-%d')
+            today_tasks = [
+                t for t in all_tasks
+                if t.get('due') and t['due']['date'][:10] <= today
+            ]
+            inbox_tasks = [
+                t for t in all_tasks
+                if inbox_id and t.get('project_id') == inbox_id and not t.get('due')
+            ]
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'today': today_tasks, 'inbox': inbox_tasks}).encode())
+        except Exception as e:
+            print(f"Error fetching Todoist tasks: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def close_todoist_task(self, task_id):
+        """Close (complete) a Todoist task."""
+        try:
+            config = load_config()
+            api_key = config.get('todoistApiKey', '')
+            if not api_key:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'Todoist API key not configured'}).encode())
+                return
+
+            req = urllib.request.Request(
+                f'https://api.todoist.com/api/v1/tasks/{task_id}/close',
+                method='POST',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode())
+        except Exception as e:
+            print(f"Error closing Todoist task {task_id}: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def create_todoist_task(self):
+        """Create a new task in the Todoist inbox."""
+        try:
+            config = load_config()
+            api_key = config.get('todoistApiKey', '')
+            if not api_key:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'Todoist API key not configured'}).encode())
+                return
+
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8')) if post_data else {}
+            content = data.get('content', '').strip()
+            if not content:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'Task content is required'}).encode())
+                return
+
+            payload = json.dumps({'content': content}).encode()
+            req = urllib.request.Request(
+                'https://api.todoist.com/api/v1/tasks',
+                data=payload,
+                method='POST',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                task = json.loads(resp.read().decode())
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'task': task}).encode())
+        except Exception as e:
+            print(f"Error creating Todoist task: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def punt_todoist_tasks(self):
+        """Reschedule all given tasks to tomorrow via Todoist Sync API."""
+        try:
+            config = load_config()
+            api_key = config.get('todoistApiKey', '')
+            if not api_key:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'Todoist API key not configured'}).encode())
+                return
+
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            body = json.loads(post_data.decode('utf-8')) if post_data else {}
+            task_ids = body.get('task_ids', [])
+
+            if not task_ids:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': 'No task IDs provided'}).encode())
+                return
+
+            import uuid
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            commands = []
+            for tid in task_ids:
+                commands.append({
+                    'type': 'item_update',
+                    'uuid': str(uuid.uuid4()),
+                    'args': {
+                        'id': tid,
+                        'due': {'date': tomorrow}
+                    }
+                })
+
+            payload = json.dumps({'commands': commands}).encode()
+            req = urllib.request.Request(
+                'https://api.todoist.com/api/v1/sync',
+                data=payload,
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read().decode())
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'punted': len(task_ids)}).encode())
+        except Exception as e:
+            print(f"Error punting Todoist tasks: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def _raindrop_request(self, path, params=None):
+        """Make an authenticated request to the Raindrop.io API."""
+        config = load_config()
+        api_key = config.get('raindropApiKey', '')
+        if not api_key:
+            return None, 'Raindrop API key not configured'
+        url = f'https://api.raindrop.io/rest/v1{path}'
+        if params:
+            url += '?' + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {api_key}'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode()), None
+
+    def get_raindrop_links(self):
+        """Fetch random raindrops for the links panel."""
+        try:
+            import random
+            # Get total count first
+            count_data, err = self._raindrop_request('/raindrops/0', {'perpage': 1})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            total = count_data.get('count', 0)
+            # Pick a random page (fetch 20 per page, pick random offset)
+            per_page = 20
+            max_page = max(0, (total - per_page) // per_page)
+            page = random.randint(0, max_page)
+            data, err2 = self._raindrop_request('/raindrops/0', {'perpage': per_page, 'page': page})
+            if err2:
+                self.send_json_response(400, {'success': False, 'error': err2})
+                return
+            links = [
+                {
+                    'url': item.get('link', ''),
+                    'title': item.get('title', 'Untitled'),
+                    'tags': ', '.join(item.get('tags', [])),
+                    'comment': item.get('note', ''),
+                    'important': item.get('important', False),
+                }
+                for item in data.get('items', [])
+                if item.get('link')
+            ]
+            self.send_json_response(200, {'success': True, 'links': links})
+        except Exception as e:
+            print(f"Error fetching Raindrop links: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def get_raindrop_stats(self):
+        """Fetch Raindrop.io collection stats."""
+        try:
+            all_data, err = self._raindrop_request('/raindrops/0', {'perpage': 1})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            unsorted_data, _ = self._raindrop_request('/raindrops/-1', {'perpage': 1})
+            total = all_data.get('count', 0)
+            unsorted = unsorted_data.get('count', 0) if unsorted_data else 0
+            self.send_json_response(200, {'success': True, 'total': total, 'unsorted': unsorted})
+        except Exception as e:
+            print(f"Error fetching Raindrop stats: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def get_raindrop_favorites(self):
+        """Fetch favorited raindrops for the starred links header."""
+        try:
+            data, err = self._raindrop_request('/raindrops/0', {'search': 'important:true', 'perpage': 10})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            links = [
+                {'url': item.get('link', ''), 'title': item.get('title', 'Untitled')}
+                for item in data.get('items', [])
+                if item.get('link')
+            ]
+            self.send_json_response(200, {'success': True, 'links': links})
+        except Exception as e:
+            print(f"Error fetching Raindrop favorites: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
 
     def get_money(self):
         """Get money/bills data from money.txt."""
@@ -2105,6 +2401,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'hasGeminiKey': bool(config.get('geminiApiKey')),
                 'hasHomeAssistantKey': bool(config.get('homeAssistantApiKey')),
                 'hasTmdbKey': bool(config.get('tmdbApiKey')),
+                'hasRaindropKey': bool(config.get('raindropApiKey')),
                 'homeAssistantUrl': config.get('homeAssistantUrl', ''),
                 # Masked versions for display
                 'openWeatherApiKeyMasked': mask_key(config.get('openWeatherApiKey', '')),
@@ -2113,6 +2410,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 'geminiApiKeyMasked': mask_key(config.get('geminiApiKey', '')),
                 'homeAssistantApiKeyMasked': mask_key(config.get('homeAssistantApiKey', '')),
                 'tmdbApiKeyMasked': mask_key(config.get('tmdbApiKey', '')),
+                'raindropApiKeyMasked': mask_key(config.get('raindropApiKey', '')),
             }
             self.send_json_response(200, {'success': True, 'config': safe_config})
         except Exception as e:
@@ -2129,7 +2427,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
             # Only update provided keys (don't require all keys)
             allowed_keys = ['name', 'openWeatherApiKey', 'openaiApiKey', 'anthropicApiKey',
-                           'geminiApiKey', 'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey']
+                           'geminiApiKey', 'homeAssistantApiKey', 'homeAssistantUrl', 'tmdbApiKey',
+                           'raindropApiKey']
 
             for key in allowed_keys:
                 if key in updates and updates[key]:  # Only update if value provided
@@ -2416,6 +2715,13 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.proxy_media_tracker('/api/watched')
         elif self.path == '/api/media/refresh':
             self.proxy_media_tracker('/api/refresh')
+        elif self.path == '/api/todoist/tasks/punt':
+            self.punt_todoist_tasks()
+        elif self.path == '/api/todoist/tasks/add':
+            self.create_todoist_task()
+        elif self.path.startswith('/api/todoist/tasks/') and self.path.endswith('/close'):
+            task_id = self.path.split('/api/todoist/tasks/')[1].rsplit('/close', 1)[0]
+            self.close_todoist_task(task_id)
         # Test endpoints with provided key
         elif self.path == '/api/test/openweather':
             content_length = int(self.headers.get('Content-Length', 0))

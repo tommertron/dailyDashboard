@@ -192,7 +192,7 @@ fi
 echo "Initializing data files..."
 
 # JSON array files
-for file in todos.json calendar.json daily-links.json starredLinks.json sequelEpisodes.json readlater.json; do
+for file in calendar.json daily-links.json starredLinks.json sequelEpisodes.json readlater.json; do
     [ -f "$file" ] || echo '[]' > "$file"
 done
 
@@ -272,7 +272,6 @@ services:
       # Script files
       - ./generate_summary.py:/app/generate_summary.py:ro
       # Data files
-      - ./todos.json:/app/todos.json
       - ./calendar.json:/app/calendar.json
       - ./location.json:/app/location.json
       - ./daily-links.json:/app/daily-links.json

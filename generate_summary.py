@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from urllib.parse import quote
+from update_wisdom import select_random_wisdom
 
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
@@ -137,7 +138,7 @@ def fetch_heater_runtime(ha_url, ha_key):
     }
 
 
-PI_MONITOR_URL = "http://100.125.128.51:5001"
+PI_MONITOR_URL = "http://100.115.42.106:5001"
 BACKUP_STATUS_FILE = "/mnt/ssd/backupJobs/backup_status.json"
 BACKUP_HEALTHCHECKS_URL = "https://healthchecks.io/b/2/fc90bb64-b594-4db2-98f3-f48020b1d2f1.json"
 
@@ -245,10 +246,25 @@ def gather_daily_data():
         'is_evening': hour >= 17,
     }
 
-    # Load todos
-    todos_data = load_json_file('todos.json')
-    if todos_data:
-        data['todos'] = todos_data.get('todos', [])
+    # Load todos from Todoist API
+    config = load_json_file('config.json') or {}
+    todoist_key = config.get('todoistApiKey', '')
+    if todoist_key:
+        try:
+            req = Request(
+                'https://api.todoist.com/api/v1/tasks',
+                headers={'Authorization': f'Bearer {todoist_key}'}
+            )
+            with urlopen(req, timeout=10) as resp:
+                todoist_data = json.loads(resp.read().decode())
+            today = datetime.now().strftime('%Y-%m-%d')
+            todoist_tasks = [
+                t for t in todoist_data.get('results', [])
+                if t.get('due') and t['due']['date'][:10] <= today
+            ]
+            data['todos'] = [{'title': t['content'], 'status': 'Open'} for t in todoist_tasks]
+        except Exception as e:
+            print(f"Warning: Could not fetch Todoist tasks: {e}")
 
     # Load calendar
     calendar_data = load_json_file('calendar.json')
@@ -735,10 +751,12 @@ def main():
     if summary:
         save_summary(summary)
         print(f"Summary: {summary}")
-        return 0
     else:
         print("Failed to generate summary")
-        return 1
+
+    select_random_wisdom()
+
+    return 0 if summary else 1
 
 if __name__ == '__main__':
     exit(main())
