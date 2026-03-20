@@ -23,12 +23,21 @@
       "visible": true
     },
     "bills": {
-      "visible": true
+      "visible": false
     },
     "wisdom": {
       "visible": true
     },
     "tvShows": {
+      "visible": true
+    },
+    "movies": {
+      "visible": true
+    },
+    "books": {
+      "visible": true
+    },
+    "games": {
       "visible": true
     },
     "links": {
@@ -90,6 +99,11 @@
             "type": "climate"
           },
           {
+            "entityId": "input_boolean.422_occupancy",
+            "displayName": "Occupied",
+            "type": "toggle"
+          },
+          {
             "entityId": "lock.back_door_lock",
             "displayName": "Back Door",
             "type": "lock"
@@ -103,6 +117,11 @@
             "entityId": "binary_sensor.contact_sensor",
             "displayName": "Garage Door",
             "type": "door"
+          },
+          {
+            "entityId": "input_boolean.ecobee_aux",
+            "displayName": "Aux Heat",
+            "type": "toggle"
           }
         ],
         "scenes": []
@@ -111,7 +130,7 @@
   },
   "apiUrls": {
     "channelsDvr": "http://100.127.232.39:8089",
-    "piMonitor": "http://100.125.128.51:5001"
+    "piMonitor": "http://100.115.42.106:5001"
   },
   "refreshIntervals": {
     "autoRefresh": 300000
@@ -143,10 +162,10 @@
         "shortcutName": "Anybox Random 2",
         "description": "Export links from Anybox"
       },
-      "sequel": {
-        "enabled": true,
-        "shortcutName": "New Episodes Daily",
-        "description": "Fetch upcoming TV episodes"
+      "entertainment": {
+        "enabled": false,
+        "shortcutName": "",
+        "description": ""
       },
       "goodlinks": {
         "enabled": true,
@@ -157,7 +176,7 @@
   },
   "aiPrompts": {
     "provider": "openai",
-    "model": "gpt-4-turbo",
+    "model": "gpt-4o",
     "activePersona": "merlin-mann",
     "activeTemplate": "default",
     "personas": {
@@ -176,11 +195,11 @@
       "default": {
         "name": "Full Briefing",
         "description": "Complete daily briefing with all data points",
-        "introPrompt": "Based on the following data from my dashboard for {date}, give me a friendly 2-3 sentence summary.\n\nDashboard Data:\n{data}\n\n{rules}\n\nIMPORTANT: Do NOT start with any greeting like \"Good morning\" or \"Good afternoon\" - the dashboard already shows a greeting. Just dive straight into the briefing.\n\nKeep it concise - 2-3 sentences max.\n\nIf you see \u201cWFH\u201d on my calendar the next day day it means I should heat up the shed tomorrow! If I\u2019m the office I should make sure to flip the WFH toggle on home assistant off so I don\u2019t heat up the shed too much."
+        "introPrompt": "Based on the following data from my dashboard for {date}, give me a friendly 2-3 sentence summary.\n\nDashboard Data:\n{data}\n\n{rules}\n\nIMPORTANT: Do NOT start with any greeting like \"Good morning\" or \"Good afternoon\" - the dashboard already shows a greeting. Just dive straight into the briefing.\n\nKeep it concise - 2-3 sentences max.\n\nIMPORTANT WORK SCHEDULE: I NEVER work on Saturday or Sunday. Check `tomorrow_is_workday` and `tomorrow_day_of_week` in the data. If tomorrow is a weekend, do NOT suggest heating the shed or remind me about WFH prep. The shed only needs heating on workdays (Monday-Friday).\n\nIf tomorrow IS a workday and I see \u201cWFH\u201d on my calendar for that day, the WFH toggle should be ON so the shed pre-heats. If tomorrow is an office day (no WFH event), the toggle should be OFF. If tomorrow is a weekend, the toggle should be OFF."
       }
     },
     "rules": {
-      "default": "# Dashboard Summary Prompt\n\nYou are generating a morning/evening briefing. Be conversational and concise\u2014not a bullet-point report.\n\n## Context Flags\n\n- `is_evening` (after 5pm): Shift focus to tomorrow\u2019s preview and wind-down suggestions\n- `is_workday_hours`: Working hours are active\n- Check calendar for \u201cWFH\u201d in event titles to determine tomorrow\u2019s work location\n\n-----\n\n## \ud83d\udea8 Priority Alerts (Always Mention)\n\nCheck these first and mention prominently if triggered:\n\n|Condition                                       |Action                           |\n|------------------------------------------------|---------------------------------|\n|`back_door_lock` = \u201cunlocked\u201d                   |Security warning                 |\n|`shed_door` or `garage_door` = \u201copen\u201d           |Mention, especially evening/night|\n|`pi_ups.on_ac_power` = false                    |Power outage\u2014currently on battery|\n|`pi_ups.battery_percent` < 50%                  |Low UPS battery                  |\n|`backup.healthcheck` \u2260 \u201cup\u201d or has `failed_jobs`|Backup failure warning           |\n\n-----\n\n## Core Briefing Elements\n\n### Weather\n\n- Current: temperature and conditions\n- Tomorrow (`tomorrow_weather`): high/low and conditions\u2014mention briefly, especially if notably different\n\n### Calendar (`calendar_events`)\n\nParse the `start` field to determine today vs tomorrow:\n\n- **Daytime**: Focus on today\u2019s remaining events\n- **Evening**: Lead with tomorrow\u2019s preview (\u201cLooking ahead to tomorrow\u2026\u201d)\n\n### Tasks\n\nMention pending items from Things that need attention.\n\n### Bills (`money_and_bills`)\n\nNote any bills due in the next 7 days with amount and due date.\n\n-----\n\n## Situational Elements (Include When Notable)\n\n### Shed/Office Status\n\nThe shed is a home office with smart heating.\n\n**During workday hours** (`is_workday_hours` = true):\n\n- If `shed.temperature` < 15\u00b0C AND `shed.thermostat_status` = \u201coff\u201d: Suggest turning on heat (use EXACT temp value, e.g., \u201c1.9\u00b0C\u201d)\n- Skip if already heating or warm enough\n- Skip entirely if calendar shows I\u2019m at the office\n\n**Evening** (`is_evening` = true):\n\n- If `shed.thermostat_status` = \u201cheat\u201d: Suggest turning off to save energy\n- Don\u2019t suggest turning heat ON\u2014workday is done\n\n### WFH Toggle Check (Evening/Morning)\n\nThe `shed.working_from_home` toggle controls automatic morning pre-heating.\n\n1. **Determine tomorrow\u2019s location:**\n- Look for \u201cWFH\u201d in calendar event titles \u2192 working from HOME\n- Regular meetings (Zoom, syncs) don\u2019t indicate office days\n- Only assume office if explicitly mentioned\n1. **Compare with toggle state:**\n- Calendar shows WFH but toggle \u201coff\u201d \u2192 Remind to turn ON\n- Calendar shows office but toggle \u201con\u201d \u2192 Remind to turn OFF\n- Already correct \u2192 Don\u2019t mention\n\n### TV Shows (`upcoming_tv_shows`)\n\n- Episode releasing TODAY? Mention it as something to look forward to\n- Evening + today\u2019s release = great activity suggestion\n- Just highlight one show, don\u2019t list multiple\n\n### Anybox Stats (`anybox_stats`)\n\nOnly mention if notable:\n\n- Untagged count 10+ \u2192 Gently suggest organizing\n- Notably high `added_last_7_days` \u2192 \u201cYou\u2019ve been saving lots of articles lately!\u201d\n\n### Read Later (GoodLinks)\n\n- Evening: Maybe suggest an interesting article for relaxing reading\n- Only if something has a compelling summary\u2014don\u2019t force it\n\n### Pi UPS\n\n- Recent power outage (last 24h)? Mention it\n- Otherwise skip\u2014it\u2019s background info\n\n### Daily Wisdom (`current_wisdom`)\n\n- Weave in naturally if it genuinely connects to something in the briefing\n- Don\u2019t attribute to source\u2014just present as wisdom\n- Skip if it doesn\u2019t fit organically\n\n-----\n\n## Tone Guidelines\n\n- Conversational, not robotic\n- Concise\u2014this is a quick briefing, not a report\n- Warm but efficient\n- Use natural transitions between topics"
+      "default": "# Dashboard Summary Prompt\n\nYou are generating a morning/evening briefing. Be conversational and concise\u2014not a bullet-point report.\n\n## Context Flags\n\n- `is_evening` (after 5pm): Shift focus to tomorrow\u2019s preview and wind-down suggestions\n- `is_workday_hours`: Working hours are active\n- Check calendar for \u201cWFH\u201d in event titles to determine tomorrow\u2019s work location\n\n-----\n\n## \ud83d\udea8 Priority Alerts (Always Mention)\n\nCheck these first and mention prominently if triggered:\n\n|Condition                                       |Action                           |\n|------------------------------------------------|---------------------------------|\n|`back_door_lock` = \u201cunlocked\u201d                   |Security warning                 |\n|`shed_door` or `garage_door` = \u201copen\u201d           |Mention, especially evening/night|\n|`pi_ups.on_ac_power` = false                    |Power outage\u2014currently on battery|\n|`pi_ups.battery_percent` < 50%                  |Low UPS battery                  |\n|`backup.healthcheck` \u2260 \u201cup\u201d or has `failed_jobs`|Backup failure warning           |\n\n-----\n\n## Core Briefing Elements\n\n### Weather\n\n- Current: temperature and conditions\n- Tomorrow (`tomorrow_weather`): high/low and conditions\u2014mention briefly, especially if notably different\n\n### Calendar (`calendar_events`)\n\nParse the `start` field to determine today vs tomorrow:\n\n- **Daytime**: Focus on today\u2019s remaining events\n- **Evening**: Lead with tomorrow\u2019s preview (\u201cLooking ahead to tomorrow\u2026\u201d)\n\n### Tasks\n\nMention pending items from Things that need attention.\n\n### Bills (`money_and_bills`)\n\nNote any bills due in the next 7 days with amount and due date.\n\n-----\n\n## Situational Elements (Include When Notable)\n\n### Shed/Office Status\n\nThe shed is a home office with smart heating. It is ONLY used on workdays (Monday\u2013Friday). NEVER suggest heating the shed on weekends.\n\n**During workday hours** (`is_workday_hours` = true):\n\n- If `shed.temperature` < 15\u00b0C AND `shed.thermostat_status` = \u201coff\u201d: Suggest turning on heat (use EXACT temp value, e.g., \u201c1.9\u00b0C\u201d)\n- Skip if already heating or warm enough\n- Skip entirely if calendar shows I\u2019m at the office\n\n**Weekends** (`tomorrow_is_workday` = false or `day_of_week` is Saturday/Sunday):\n\n- NEVER suggest heating the shed or prepping for work\n- If heater is running, suggest turning it off\n\n**Evening** (`is_evening` = true):\n\n- If `shed.thermostat_status` = \u201cheat\u201d: Suggest turning off to save energy\n- Don\u2019t suggest turning heat ON\u2014workday is done\n\n### WFH Toggle Check (Evening/Morning)\n\nThe `shed.working_from_home` toggle controls automatic morning pre-heating.\n\n1. **First check: Is tomorrow a workday?**\n- Check `tomorrow_is_workday` in the data. If `false` (Saturday or Sunday), the toggle should be OFF. I NEVER work weekends.\n- If toggle is ON and tomorrow is a weekend \u2192 Remind to turn OFF (\u201cno need to heat the shed on a weekend\u201d)\n- If toggle is OFF and tomorrow is a weekend \u2192 Don\u2019t mention it, everything is correct\n\n2. **If tomorrow IS a workday, determine location:**\n- Look for \u201cWFH\u201d in TOMORROW\u2019s calendar event titles (check `relative_day` = \u201ctomorrow\u201d) \u2192 working from HOME\n- No WFH event for tomorrow \u2192 assume office day\n- Regular meetings (Zoom, syncs) don\u2019t indicate WFH\n\n3. **Compare with toggle state (workdays only):**\n- Tomorrow is WFH but toggle \u201coff\u201d \u2192 Remind to turn ON so shed pre-heats\n- Tomorrow is office but toggle \u201con\u201d \u2192 Remind to turn OFF to avoid wasting energy\n- Already correct \u2192 Don\u2019t mention\n\n### TV Shows (`upcoming_tv_shows`)\n\n- Episode releasing TODAY? Mention it as something to look forward to\n- Evening + today\u2019s release = great activity suggestion\n- Just highlight one show, don\u2019t list multiple\n\n### Anybox Stats (`anybox_stats`)\n\nOnly mention if notable:\n\n- Untagged count 10+ \u2192 Gently suggest organizing\n- Notably high `added_last_7_days` \u2192 \u201cYou\u2019ve been saving lots of articles lately!\u201d\n\n### Read Later (GoodLinks)\n\n- Evening: Maybe suggest an interesting article for relaxing reading\n- Only if something has a compelling summary\u2014don\u2019t force it\n\n### Pi UPS\n\n- Recent power outage (last 24h)? Mention it\n- Otherwise skip\u2014it\u2019s background info\n\n### Daily Wisdom (`current_wisdom`)\n\n- Weave in naturally if it genuinely connects to something in the briefing\n- Don\u2019t attribute to source\u2014just present as wisdom\n- Skip if it doesn\u2019t fit organically\n\n-----\n\n## Tone Guidelines\n\n- Conversational, not robotic\n- Concise\u2014this is a quick briefing, not a report\n- Warm but efficient\n- Use natural transitions between topics"
     }
   },
   "theme": {

@@ -29,23 +29,25 @@
     <header class="header">
       <div class="greeting">
         <h1 id="greeting-text">Good Morning!</h1>
-        <p class="ai-summary-inline" id="ai-summary-text">Loading your daily summary...</p>
-        <div class="header-starred-links" id="header-starred-links"></div>
+        <div class="ai-summary" id="ai-summary">
+          <p class="ai-summary-text" id="ai-summary-text">Loading your daily summary...</p>
+        </div>
       </div>
       <div class="header-right">
-        <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
         <div class="theme-switcher">
+          <button class="summary-refresh-btn-small" onclick="refreshSummary()" id="summary-refresh-btn" title="Refresh AI Summary">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
           <button class="theme-btn" id="theme-default" onclick="setTheme('default')" title="Default Theme">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
               <circle cx="12" cy="12" r="5"/>
               <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
             </svg>
           </button>
-          <button class="theme-btn" id="theme-lcars" onclick="setTheme('lcars')" title="LCARS Theme">
+          <!-- LCARS theme deprecated - hidden but code preserved -->
+          <button class="theme-btn" id="theme-lcars" onclick="setTheme('lcars')" title="LCARS Theme" style="display:none">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
               <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
             </svg>
@@ -60,6 +62,9 @@
         <div class="date-badge" id="date-badge"></div>
       </div>
     </header>
+
+    <!-- Tomorrow Forecast Card -->
+    <div id="shed-heat-banner" class="tomorrow-forecast" style="display:none"></div>
 
     <!-- Dense top row: Weather/Tasks | Smart Schedule | Remaining/Wisdom -->
     <div class="dense-top-row">
@@ -82,12 +87,22 @@
           <div class="panel-header">
             <h2 class="section-title">Tasks</h2>
             <div class="header-actions">
-              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Things" id="todos-refresh-btn">
+              <button class="icon-btn" onclick="showInboxForm()" title="Add to inbox" id="todos-add-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <button class="icon-btn" onclick="puntAllTodos()" title="Punt all to tomorrow" id="todos-punt-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </button>
+              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Todoist" id="todos-refresh-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <a href="things:///show?id=today" class="app-link" title="Open Things">
+              <a href="https://todoist.com/app/today" class="app-link" title="Open Todoist" target="_blank">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
@@ -100,30 +115,53 @@
         </div>
       </div>
 
-      <div class="panel" data-panel="smartSchedule">
-        <div class="panel-header">
-          <h2 class="section-title">Smart Schedule</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </a>
+      <div class="stacked-column center-column">
+        <div class="panel" data-panel="raindropFavourites">
+          <div class="panel-header">
+            <h2 class="section-title">Favourites</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="loadFavouriteLinks()" title="Refresh Favourites" id="favourites-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body" id="favourites-container">
+            <div class="panel-empty">Loading...</div>
           </div>
         </div>
-        <div class="panel-body">
-          <div id="smart-schedule-timeline">
-            <div class="panel-empty">Loading...</div>
+
+        <div class="panel" data-panel="smartSchedule">
+          <div class="panel-header">
+            <h2 class="section-title">Smart Schedule</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="smart-schedule-timeline">
+              <div class="panel-empty">Loading...</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="stacked-column">
+      <div class="stacked-column right-column">
         <div class="panel" data-panel="bills">
           <div class="panel-header">
             <h2 class="section-title">Remaining</h2>
@@ -150,52 +188,13 @@
           </div>
         </div>
 
-        <div class="panel wisdom-panel" data-panel="wisdom">
-          <div class="panel-header">
-            <h2 class="section-title">Wisdom</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="wisdom-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
       </div>
     </div>
 
+    <!-- Hidden calendar-container kept for JS that uses it (shed heat banner, timed todos) -->
+    <div id="calendar-container" style="display:none"></div>
+
     <div class="three-column-grid">
-      <div class="panel" data-panel="schedule">
-        <div class="panel-header">
-          <h2 class="section-title">Schedule</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="calendar-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div id="calendar-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-      </div>
 
       <div class="panel" data-panel="shed">
         <div class="panel-header">
@@ -248,7 +247,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="http://100.125.128.51:5001" class="app-link" title="Open Pi Monitor" target="_blank">
+            <a href="http://100.115.42.106:5001" class="app-link" title="Open Pi Monitor" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
@@ -257,6 +256,42 @@
         </div>
         <div class="panel-body" id="pi-status-container">
           <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel links-panel" data-panel="links">
+        <div class="panel-header">
+          <h2 class="section-title">Raindrop</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body anybox-body">
+          <div class="anybox-stats" id="anybox-stats-container">
+            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
+              <span class="stat-value" id="stat-all">--</span>
+              <span class="stat-label">Total</span>
+            </a>
+            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
+              <span class="stat-value" id="stat-untagged">--</span>
+              <span class="stat-label">Unsorted</span>
+            </a>
+          </div>
+          <div class="anybox-section">
+            <h3 class="anybox-section-title">Random Links</h3>
+            <div id="links-container">
+              <div class="panel-empty">Loading...</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -269,14 +304,9 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="sequel://" class="app-link" title="Open Sequel">
+            <a href="http://shedpi2.forest-fujita.ts.net:8100" class="app-link" title="Open Media Tracker" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-              </svg>
-            </a>
-            <a href="http://100.127.232.39:8089" class="app-link" title="Open Channels" target="_blank">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </a>
           </div>
@@ -302,20 +332,42 @@
         </div>
       </div>
 
-      <div class="panel links-panel" data-panel="links">
+      <div class="panel tv-panel" data-panel="books">
         <div class="panel-header">
-          <h2 class="section-title">Links</h2>
+          <h2 class="section-title">Books</h2>
           <div class="header-actions">
-            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
+            <button class="icon-btn" onclick="loadBooks()" title="Refresh Books" id="books-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <a href="anybox://" class="app-link" title="Open Anybox">
+          </div>
+        </div>
+        <div class="panel-body" id="books-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel tv-panel" data-panel="games">
+        <div class="panel-header">
+          <h2 class="section-title">Video Games</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadGames()" title="Refresh Games" id="games-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-            </a>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body" id="games-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel links-panel" data-panel="readLater">
+        <div class="panel-header">
+          <h2 class="section-title">Read Later</h2>
+          <div class="header-actions">
             <a href="goodlinks://" class="app-link" title="Open GoodLinks">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -323,33 +375,31 @@
             </a>
           </div>
         </div>
-        <div class="panel-body anybox-body">
-          <div class="anybox-stats" id="anybox-stats-container">
-            <a href="anybox://show?id=all" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-all">--</span>
-              <span class="stat-label">Total</span>
-            </a>
-            <a href="anybox://filter/FB4D031C-C37E-4A39-95BD-E6C2CB2B12A7" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-last7">--</span>
-              <span class="stat-label">Last 7 Days</span>
-            </a>
-            <a href="anybox://show?id=untagged" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-untagged">--</span>
-              <span class="stat-label">Untagged</span>
+        <div class="panel-body">
+          <div id="readlater-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel wisdom-panel" data-panel="wisdom">
+        <div class="panel-header">
+          <h2 class="section-title">Wisdom</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshWisdom()" title="Get new wisdom" id="wisdom-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="https://github.com/merlinmann/wisdom" class="app-link" title="Merlin's Wisdom Project" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
             </a>
           </div>
-          <div class="anybox-section">
-            <h3 class="anybox-section-title">Random Links</h3>
-            <div id="links-container">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
-          <div class="anybox-section">
-            <a href="goodlinks://" class="anybox-section-title-link"><h3 class="anybox-section-title">Read Later</h3></a>
-            <div id="readlater-container">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
+        </div>
+        <div class="panel-body" id="wisdom-container">
+          <div class="panel-empty">Loading...</div>
         </div>
       </div>
 
@@ -678,7 +728,7 @@
       tasks: {
         id: 'tasks',
         name: 'Tasks',
-        dataSource: { type: 'file', path: 'todos.json', dataPath: 'todos' },
+        dataSource: { type: 'api', path: '/api/todoist/tasks' },
         displayTemplate: 'list',
         fields: [
           { key: 'title', type: 'text', display: 'primary' },
@@ -731,47 +781,39 @@
 
     async function loadLinks() {
       try {
-        const response = await fetch('daily-links.json');
-        let text = await response.text();
-        // Strip trailing EOF if present (artifact from source)
-        text = text.replace(/EOF\s*$/, '');
-        const data = JSON.parse(text);
+        const response = await fetch('/api/raindrop/links');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
         renderLinks(data.links);
       } catch (error) {
         console.error('Error loading links:', error);
         document.getElementById('links-container').innerHTML =
-          '<div class="empty-state">Error loading links. Make sure daily-links.json exists.</div>';
+          '<div class="panel-empty">Error loading links from Raindrop.io</div>';
       }
     }
 
     async function loadAnyboxStats() {
       try {
-        const response = await fetch('anyboxStats.json');
+        const response = await fetch('/api/raindrop/stats');
         const data = await response.json();
-        document.getElementById('stat-all').textContent = data.all || '--';
-        document.getElementById('stat-last7').textContent = data.last7 || '--';
-        document.getElementById('stat-untagged').textContent = data.untagged || '--';
+        if (data.success === false) throw new Error(data.error);
+        document.getElementById('stat-all').textContent = data.total ?? '--';
+        document.getElementById('stat-untagged').textContent = data.unsorted ?? '--';
       } catch (error) {
-        console.error('Error loading anybox stats:', error);
+        console.error('Error loading Raindrop stats:', error);
         document.getElementById('stat-all').textContent = '--';
-        document.getElementById('stat-last7').textContent = '--';
         document.getElementById('stat-untagged').textContent = '--';
       }
     }
 
     function renderStarredLinks(links) {
-      // Render in header (compact horizontal format)
-      const headerContainer = document.getElementById('header-starred-links');
-      if (headerContainer) {
+      const container = document.getElementById('header-starred-links');
+      if (container) {
         if (!links || links.length === 0) {
-          headerContainer.innerHTML = '';
+          container.innerHTML = '';
         } else {
-          headerContainer.innerHTML = `
-            <span class="starred-label">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            </span>
+          container.innerHTML = `
+            <span class="quick-links-label">Starred Links</span>
             ${links.map(link => `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="starred-link-chip" title="${link.comment || link.title || 'Untitled'}">${link.title || 'Untitled'}</a>`).join('')}
           `;
         }
@@ -780,61 +822,171 @@
 
     async function loadStarredLinks() {
       try {
-        const response = await fetch('starredLinks.json');
-        let text = await response.text();
-        // Fix malformed JSON with unescaped quotes inside strings
-        // Handle curly quotes first
-        text = text.replace(/[\u201C\u201D\u2018\u2019]/g, "'");
-        // Fix lines with title/comment that have inner quotes
-        // Match the value portion and replace inner quotes
-        text = text.split('\n').map(line => {
-          const match = line.match(/^(\s*"(?:title|comment)":\s*")(.*)(",?\s*)$/);
-          if (match) {
-            const [, prefix, value, suffix] = match;
-            // Replace unescaped quotes in the value with single quotes
-            const fixed = value.replace(/"/g, "'");
-            return prefix + fixed + suffix;
-          }
-          return line;
-        }).join('\n');
-        const data = JSON.parse(text);
+        const response = await fetch('/api/raindrop/favorites');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
         renderStarredLinks(data.links);
       } catch (error) {
         console.error('Error loading starred links:', error);
-        document.getElementById('starred-links-container').innerHTML =
-          '<div class="panel-empty">No starred links</div>';
+        const el = document.getElementById('header-starred-links');
+        if (el) el.innerHTML = '';
       }
     }
 
-    function renderTodos(todos) {
-      const container = document.getElementById('todos-container');
-
-      if (!todos || todos.length === 0) {
-        container.innerHTML = '<div class="panel-empty">No tasks for today</div>';
-        return;
+    async function loadFavouriteLinks() {
+      const container = document.getElementById('favourites-container');
+      if (!container) return;
+      try {
+        const response = await fetch('/api/raindrop/favorites');
+        const data = await response.json();
+        if (data.success === false) throw new Error(data.error);
+        if (!data.links || data.links.length === 0) {
+          container.innerHTML = '<div class="panel-empty">No favourites</div>';
+          return;
+        }
+        container.innerHTML = data.links.map(link => `
+          <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="favourite-link-item">
+            <span class="favourite-link-domain">${new URL(link.url).hostname.replace('www.', '')}</span>
+            <span class="favourite-link-title">${link.title || link.url}</span>
+          </a>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading favourite links:', error);
+        container.innerHTML = '<div class="panel-empty">Error loading favourites</div>';
       }
+    }
 
-      container.innerHTML = todos.map(todo => {
-        const isCompleted = todo.status === 'Completed';
+    function renderTodoItems(tasks) {
+      if (!tasks || tasks.length === 0) return '';
+      const sorted = [...tasks].sort((a, b) => a.priority === b.priority ? 0 : a.priority > b.priority ? 1 : -1);
+      return sorted.map(todo => {
+        const priorityClass = todo.priority > 1 ? ` priority-${todo.priority}` : '';
         return `
-          <div class="todo-item${isCompleted ? ' completed' : ''}">
-            <span class="todo-bullet"></span>
-            <span class="todo-text">${todo.title}</span>
+          <div class="todo-item${priorityClass}" data-task-id="${todo.id}">
+            <button class="todo-checkbox" onclick="completeTodoistTask('${todo.id}')" title="Mark complete">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="9"/>
+              </svg>
+            </button>
+            <a href="https://todoist.com/app/task/${todo.id}" target="_blank" class="todo-text" title="Open in Todoist">${todo.content}</a>
           </div>
         `;
       }).join('');
     }
 
-    async function loadTodos(bustCache = false) {
+    function renderTodos(data) {
+      const container = document.getElementById('todos-container');
+
+      // Support both old array format and new { today, inbox } format
+      const todayTasks = Array.isArray(data) ? data : (data.today || []);
+      const inboxTasks = Array.isArray(data) ? [] : (data.inbox || []);
+
+      if (todayTasks.length === 0 && inboxTasks.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No tasks</div>';
+        return;
+      }
+
+      let html = '';
+
+      if (todayTasks.length > 0) {
+        html += `<div class="todo-section-label">Today</div>`;
+        html += renderTodoItems(todayTasks);
+      } else {
+        html += '<div class="panel-empty" style="padding: 6px 0 8px">No tasks for today</div>';
+      }
+
+      html += `<div class="todo-section-label todo-section-inbox">Inbox</div>`;
+      if (inboxTasks.length > 0) {
+        html += renderTodoItems(inboxTasks);
+      } else {
+        html += '<div class="panel-empty" style="padding: 4px 0 2px; font-size: 0.8rem;">Empty</div>';
+      }
+
+      html += `
+        <div class="todo-add-form" id="todo-add-form" style="display:none;">
+          <input type="text" id="todo-add-input" class="todo-add-input" placeholder="Add to inbox…" maxlength="500" />
+          <button class="todo-add-submit" onclick="submitInboxTask()" title="Add task">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button class="todo-add-cancel" onclick="hideInboxForm()" title="Cancel">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      `;
+
+      container.innerHTML = html;
+
+      // Re-attach keydown listener after render
+      const input = document.getElementById('todo-add-input');
+      if (input) {
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') submitInboxTask();
+          if (e.key === 'Escape') hideInboxForm();
+        });
+      }
+    }
+
+    async function loadTodos() {
       try {
-        const url = bustCache ? `todos.json?t=${Date.now()}` : 'todos.json';
-        const response = await fetch(url);
+        const response = await fetch('/api/todoist/tasks');
         const data = await response.json();
-        renderTodos(data.todos);
+        if (data.success === false) throw new Error(data.error);
+        window._todos = data;
+        renderTodos(data);
+        if (window._calendarEvents) {
+          renderCalendar(window._calendarEvents);
+          renderSmartSchedule(window._calendarEvents);
+        }
       } catch (error) {
         console.error('Error loading todos:', error);
         document.getElementById('todos-container').innerHTML =
-          '<div class="empty-state">Error loading todos. Make sure todos.json exists.</div>';
+          `<div class="panel-empty">Error loading tasks: ${error.message}</div>`;
+      }
+    }
+
+    async function completeTodoistTask(taskId) {
+      const item = document.querySelector(`.todo-item[data-task-id="${taskId}"]`);
+      if (!item) return;
+
+      // Animate completion
+      item.classList.add('completing');
+      const checkbox = item.querySelector('.todo-checkbox');
+      checkbox.disabled = true;
+
+      try {
+        const response = await fetch(`/api/todoist/tasks/${taskId}/close`, { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          item.classList.add('completed');
+          setTimeout(() => {
+            item.style.height = item.offsetHeight + 'px';
+            requestAnimationFrame(() => {
+              item.style.height = '0';
+              item.style.opacity = '0';
+              item.style.padding = '0';
+              item.style.margin = '0';
+              item.style.overflow = 'hidden';
+              setTimeout(() => {
+                item.remove();
+                // Refresh to keep inbox section accurate
+                loadTodos();
+              }, 300);
+            });
+          }, 600);
+        } else {
+          item.classList.remove('completing');
+          checkbox.disabled = false;
+          console.error('Failed to complete task:', result.error);
+        }
+      } catch (error) {
+        item.classList.remove('completing');
+        checkbox.disabled = false;
+        console.error('Error completing task:', error);
       }
     }
 
@@ -844,62 +996,116 @@
       btn.style.opacity = '0.5';
 
       try {
-        const response = await fetch('/api/refresh-todos', { method: 'POST' });
-        const result = await response.json();
-
-        if (result.success) {
-          btn.textContent = 'Syncing...';
-          // Wait for file to sync, then reload with cache-bust
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          await loadTodos(true);
-        } else {
-          console.error('Refresh failed:', result.error);
-          alert('Failed to refresh todos: ' + result.error);
-        }
+        await loadTodos();
       } catch (error) {
         console.error('Error refreshing todos:', error);
-        alert('Error refreshing todos');
       } finally {
         btn.disabled = false;
         btn.style.opacity = '1';
       }
     }
 
-    // Refresh combined Links panel (Anybox + GoodLinks)
+    function showInboxForm() {
+      const form = document.getElementById('todo-add-form');
+      if (!form) return;
+      form.style.display = 'flex';
+      const input = document.getElementById('todo-add-input');
+      if (input) { input.value = ''; input.focus(); }
+    }
+
+    function hideInboxForm() {
+      const form = document.getElementById('todo-add-form');
+      if (form) form.style.display = 'none';
+    }
+
+    async function submitInboxTask() {
+      const input = document.getElementById('todo-add-input');
+      const content = input ? input.value.trim() : '';
+      if (!content) return;
+
+      const submitBtn = document.querySelector('.todo-add-submit');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.5'; }
+
+      try {
+        const response = await fetch('/api/todoist/tasks/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        const result = await response.json();
+        if (result.success) {
+          hideInboxForm();
+          await loadTodos();
+        } else {
+          console.error('Failed to add task:', result.error);
+          alert('Failed to add task: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error adding task:', error);
+        alert('Error adding task');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+      }
+    }
+
+    async function puntAllTodos() {
+      const btn = document.getElementById('todos-punt-btn');
+      const items = document.querySelectorAll('.todo-item');
+      if (!items.length) return;
+
+      if (!confirm('Punt all tasks to tomorrow?')) return;
+
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      try {
+        const taskIds = Array.from(items).map(el => el.dataset.taskId);
+        const response = await fetch('/api/todoist/tasks/punt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task_ids: taskIds })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          items.forEach(item => {
+            item.style.transition = 'all 0.3s ease';
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(30px)';
+          });
+          setTimeout(() => {
+            document.getElementById('todos-container').innerHTML =
+              '<div class="panel-empty">All tasks punted to tomorrow</div>';
+          }, 300);
+        } else {
+          console.error('Failed to punt tasks:', result.error);
+          alert('Failed to punt tasks: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error punting tasks:', error);
+        alert('Error punting tasks');
+      } finally {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    // Refresh combined Links panel (Raindrop.io + GoodLinks)
     async function refreshLinks() {
       const btn = document.getElementById('links-refresh-btn');
       if (btn) {
         btn.disabled = true;
         btn.style.opacity = '0.5';
       }
-
       try {
-        // Refresh both Anybox and GoodLinks in parallel
-        const [anyboxResult, goodlinksResult] = await Promise.all([
-          fetch('/api/refresh/anybox', { method: 'POST' }).then(r => r.json()),
-          fetch('/api/refresh/goodlinks', { method: 'POST' }).then(r => r.json())
-        ]);
-
-        // Wait for files to sync
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Reload all links data
         await Promise.all([
           loadLinks(),
           loadAnyboxStats(),
           loadStarredLinks(),
           loadReadLater()
         ]);
-
-        if (!anyboxResult.success) {
-          console.error('Anybox refresh failed:', anyboxResult.error);
-        }
-        if (!goodlinksResult.success) {
-          console.error('GoodLinks refresh failed:', goodlinksResult.error);
-        }
       } catch (error) {
         console.error('Error refreshing links:', error);
-        alert('Error refreshing links');
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -912,12 +1118,14 @@
     async function refreshPanel(panelType) {
       // Map panel types to button IDs and reload functions
       const panelConfig = {
-        tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos(true) },
+        tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos() },
         bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
         calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
         anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
         tvShows: { btnId: 'tvshows-refresh-btn', reload: () => loadTvShows() },
         movies: { btnId: 'movies-refresh-btn', reload: () => loadMovies() },
+        books: { btnId: 'books-refresh-btn', reload: () => loadBooks() },
+        games: { btnId: 'games-refresh-btn', reload: () => loadGames() },
         goodlinks: { btnId: 'links-refresh-btn', reload: () => loadReadLater() }
       };
 
@@ -980,6 +1188,43 @@
       return { time, isToday, isTomorrow, daysAway, eventDate };
     }
 
+    function parseTimeToMinutes(timeStr) {
+      if (!timeStr) return 9999;
+      const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!m) return 9999;
+      let h = parseInt(m[1]);
+      const min = parseInt(m[2]);
+      const ap = m[3].toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return h * 60 + min;
+    }
+
+    function getTodayTimedTodosAsEvents() {
+      if (!window._todos) return [];
+      const todayList = Array.isArray(window._todos) ? window._todos : (window._todos.today || []);
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const todayStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      return todayList
+        .filter(t => {
+          const due = t.due && t.due.date;
+          return due && due.includes('T') && due.startsWith(todayStr);
+        })
+        .map(t => {
+          const dt = new Date(t.due.date);
+          const h = dt.getHours(), mn = dt.getMinutes();
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const dh = h % 12 || 12;
+          const timeStr = `${dh}:${mn.toString().padStart(2, '0')} ${ampm}`;
+          return {
+            title: t.content, calendar: 'Tasks', allday: 'No',
+            time: timeStr, isToday: true, isTomorrow: false, daysAway: 0,
+            eventDate: dt, sortMinutes: h * 60 + mn, isTodo: true, todoId: t.id
+          };
+        });
+    }
+
     function renderCalendar(events) {
       const container = document.getElementById('calendar-container');
 
@@ -992,8 +1237,14 @@
       const parsedEvents = events.map(e => ({ ...e, ...parseEventDate(e.start) }));
 
       // Group events by today/tomorrow/upcoming (within 7 days)
-      const todayEvents = parsedEvents.filter(e => e.isToday);
-      const tomorrowEvents = parsedEvents.filter(e => e.isTomorrow);
+      const rawTodayEvents = parsedEvents.filter(e => e.isToday).map(e => ({
+        ...e, sortMinutes: e.allday === 'Yes' ? -1 : parseTimeToMinutes(e.time)
+      }));
+      const timedTodos = getTodayTimedTodosAsEvents();
+      const todayEvents = [...rawTodayEvents, ...timedTodos]
+        .sort((a, b) => a.sortMinutes - b.sortMinutes)
+        .slice(0, 3);
+      const tomorrowEvents = parsedEvents.filter(e => e.isTomorrow).slice(0, 3);
       const upcomingEvents = parsedEvents.filter(e => e.daysAway >= 2 && e.daysAway <= 7);
 
       let html = '';
@@ -1001,7 +1252,7 @@
       if (todayEvents.length > 0) {
         html += '<div class="calendar-day-label">Today</div>';
         html += todayEvents.map(event => `
-          <div class="calendar-event">
+          <div class="calendar-event${event.isTodo ? ' todo-event' : ''}">
             <div class="event-time">${event.allday === 'Yes' ? 'All day' : event.time}</div>
             <div class="event-details">
               <div class="event-title">${event.title}</div>
@@ -1053,10 +1304,13 @@
           .split('\n')
           .filter(line => line.trim())
           .map(line => JSON.parse(line))
-          .filter(event => event.title !== 'Focus Time');
+          .filter(event => event.title !== 'Focus Time')
+          .filter(event => event.title.trim().toLowerCase() !== 'busy');
 
         renderSmartSchedule(events);
         renderCalendar(events);
+        window._calendarEvents = events;
+        updateShedHeatBanner();
       } catch (error) {
         console.error('Error loading calendar:', error);
         document.getElementById('calendar-container').innerHTML =
@@ -1112,6 +1366,21 @@
         const endDate = parseFullEventTime(e.end);
         return { ...e, startDate, endDate };
       }).filter(e => e.startDate && e.endDate);
+
+      // Inject timed Todoist tasks (treat as 30-min blocks)
+      if (window._todos) {
+        const todoList = Array.isArray(window._todos) ? window._todos : (window._todos.today || []);
+        const d = now;
+        const pad = n => String(n).padStart(2, '0');
+        const todayStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        todoList.forEach(t => {
+          const due = t.due && t.due.date;
+          if (!due || !due.includes('T') || !due.startsWith(todayStr)) return;
+          const startDate = new Date(due);
+          const endDate = new Date(startDate.getTime() + 30 * 60000);
+          parsedEvents.push({ title: t.content, calendar: 'Tasks', allday: 'No', startDate, endDate, isTodo: true });
+        });
+      }
 
       let relevantEvents;
       let emptyMessage;
@@ -1172,6 +1441,9 @@
         seen.add(key);
         return true;
       });
+
+      // Cap at 3 events
+      relevantEvents = relevantEvents.slice(0, 3);
 
       // If no relevant events, show empty state
       if (relevantEvents.length === 0) {
@@ -1430,39 +1702,47 @@
       renderWeather(location, weather, forecast);
     }
 
+    function renderAiSummary(summaryText) {
+      const el = document.getElementById('ai-summary-text');
+      if (!summaryText || summaryText.startsWith('Click the refresh')) {
+        el.textContent = 'Click the refresh button to generate your daily summary.';
+        return;
+      }
+      el.textContent = summaryText;
+    }
+
     async function loadAiSummary() {
       try {
         const response = await fetch('daily-summary.json?t=' + Date.now());
         if (!response.ok) {
-          document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+          renderAiSummary(null);
           return;
         }
 
         const data = await response.json();
-        document.getElementById('ai-summary-text').textContent = data.summary;
+        renderAiSummary(data.summary);
       } catch (error) {
-        document.getElementById('ai-summary-text').textContent = 'Click the refresh button to generate your daily summary.';
+        renderAiSummary(null);
       }
     }
 
     async function refreshSummary() {
       const btn = document.getElementById('summary-refresh-btn');
-      const textEl = document.getElementById('ai-summary-text');
 
       btn.disabled = true;
-      textEl.textContent = 'Generating your summary...';
+      document.getElementById('ai-summary-text').textContent = 'Generating your summary...';
 
       try {
         const response = await fetch('/api/refresh-summary', { method: 'POST' });
         const result = await response.json();
 
         if (result.success) {
-          textEl.textContent = result.summary;
+          renderAiSummary(result.summary);
         } else {
-          textEl.textContent = 'Failed to generate summary. Try again.';
+          renderAiSummary(null);
         }
       } catch (error) {
-        textEl.textContent = 'Error generating summary. Try again.';
+        renderAiSummary(null);
       } finally {
         btn.disabled = false;
       }
@@ -1494,18 +1774,38 @@
 
       const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
       const wfhOn = workingFromHome?.state === 'on';
+      window._wfhOn = wfhOn;
       const thermostatState = thermostat?.state || 'unknown';
+      const thermostatTargetTemp = thermostat?.attributes?.temperature || '--';
+      const thermostatHvacAction = thermostat?.attributes?.hvac_action || 'idle';
       const deskLampOn = deskLamp?.state === 'on';
       const shelfLightOn = shelfLight?.state === 'on';
 
       // Determine thermostat display and class
-      let thermostatDisplay = thermostatState === 'heat' ? 'Heat' : 'Off';
-      let thermostatClass = thermostatState === 'heat' ? 'stat-warn' : 'stat-ok';
+      let thermostatDisplay = thermostatState === 'heat' ? `Heat ${thermostatTargetTemp}°` : 'Off';
+      let thermostatClass = thermostatHvacAction === 'heating' ? 'stat-warn' : (thermostatState === 'heat' ? 'stat-ok' : 'stat-neutral');
 
-      // Heater runtime
+      // Heater runtime and cost
       const heaterRuntime = data.heater_runtime || {};
-      const heatToday = formatRuntime(heaterRuntime.today);
-      const heatYesterday = formatRuntime(heaterRuntime.yesterday);
+      const heatTodaySecs = heaterRuntime.today || 0;
+      const heatYesterdaySameTimeSecs = heaterRuntime.yesterday_by_same_time || 0;
+      const heatYesterdayTotalSecs = heaterRuntime.yesterday || 0;
+      const heatToday = formatRuntime(heatTodaySecs);
+      const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
+      const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_by_same_time_cost || 0).toFixed(2);
+
+      // Determine heat today color based on runtime comparison
+      let heatTodayClass = 'stat-ok'; // green by default
+      if (heatYesterdayTotalSecs === 0) {
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs) {
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs * 1.25) {
+        heatTodayClass = 'stat-warn';
+      } else {
+        heatTodayClass = 'stat-alert';
+      }
 
       container.innerHTML = `
         <div class="home-temp">
@@ -1514,8 +1814,8 @@
         </div>
 
         <div class="pi-stats-grid shed-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${thermostatState === 'heat' ? '🔥' : '❄️'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="openThermostatControl('shed', 'climate.shed_thermostat', '${thermostatState}', ${thermostatTargetTemp || 18})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${thermostatHvacAction === 'heating' ? '🔥' : (thermostatState === 'heat' ? '🌡️' : '○')}</span>
             <span class="pi-stat-label">${thermostatDisplay}</span>
           </div>
           <div class="pi-stat-box ${wfhOn ? 'stat-ok' : 'stat-neutral'}" onclick="toggleWorkingFromHome()" style="cursor:pointer" title="Toggle working from home">
@@ -1533,13 +1833,15 @@
         </div>
 
         <div class="pi-stats-grid shed-runtime-grid" onclick="openHeaterChart()" style="cursor:pointer" title="View heater history">
-          <div class="pi-stat-box stat-info">
-            <span class="pi-stat-value">${heatToday}</span>
-            <span class="pi-stat-label">Heat Today</span>
+          <div class="pi-stat-box ${heatTodayClass}">
+            <span class="pi-stat-value">$${heatTodayCost}</span>
+            <span class="pi-stat-label">Today</span>
+            <span class="pi-stat-secondary">${heatToday}</span>
           </div>
           <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatYesterday}</span>
-            <span class="pi-stat-label">Heat Yesterday</span>
+            <span class="pi-stat-value">$${heatYesterdayCost}</span>
+            <span class="pi-stat-label">Yesterday</span>
+            <span class="pi-stat-secondary">${heatYesterdaySameTime}</span>
           </div>
         </div>
 
@@ -1558,6 +1860,60 @@
           </button>
         </div>
       `;
+      updateShedHeatBanner();
+    }
+
+    function updateShedHeatBanner() {
+      const banner = document.getElementById('shed-heat-banner');
+      if (!banner) return;
+
+      // Need both data sources to render
+      if (window._calendarEvents === undefined || window._wfhOn === undefined) return;
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const tomorrowDay = tomorrow.getDay(); // 0=Sun, 6=Sat
+
+      let willHeat = false;
+      let reason = '';
+
+      // Simulate what the automation (server.py run_wfh_automation) would do
+      // if it ran at 12:01am tomorrow - same phrase list, checking tomorrow's events
+
+      if (tomorrowDay === 0 || tomorrowDay === 6) {
+        willHeat = false;
+        reason = 'weekend';
+      } else {
+        // Check tomorrow's events with the same phrases the automation uses
+        const noWfhPhrases = ['in office', 'tom office', 'tom in office', 'out of office', 'away', 'holiday', 'vacation'];
+        const tomorrowEvents = (window._calendarEvents || []).filter(e => {
+          const parsed = parseEventDate(e.start);
+          return parsed.isTomorrow;
+        });
+
+        const conflictingEvent = tomorrowEvents.find(e => {
+          const title = e.title.toLowerCase();
+          return noWfhPhrases.some(phrase => title.includes(phrase));
+        });
+
+        if (conflictingEvent) {
+          willHeat = false;
+          reason = conflictingEvent.title;
+        } else if (window._wfhOn) {
+          willHeat = true;
+          reason = 'WFH is on';
+        } else {
+          willHeat = false;
+          reason = 'WFH is off';
+        }
+      }
+
+      banner.style.display = '';
+      banner.className = 'tomorrow-forecast ' + (willHeat ? 'forecast-on' : 'forecast-off');
+      banner.innerHTML = willHeat
+        ? `<span class="forecast-icon">\uD83C\uDF21\uFE0F</span> Tomorrow: Shed heating ON <span class="forecast-reason">(${reason})</span>`
+        : `<span class="forecast-icon">\uD83C\uDF21\uFE0F</span> Tomorrow: Shed heating OFF <span class="forecast-reason">(${reason})</span>`;
     }
 
     async function loadShedStatus() {
@@ -1598,6 +1954,120 @@
       }
     }
 
+    // Thermostat Control Functions
+    let currentThermostatEntity = null;
+    let currentThermostatLocation = null;
+    let currentThermostatMode = 'off';
+    let currentThermostatTemp = 20;
+
+    function openThermostatControl(location, entityId, mode, temp) {
+      currentThermostatEntity = entityId;
+      currentThermostatLocation = location;
+      currentThermostatMode = mode || 'off';
+      currentThermostatTemp = temp || 20;
+
+      const overlay = document.getElementById('thermostat-control-overlay');
+      const title = document.getElementById('thermostat-control-title');
+      const tempValue = document.getElementById('thermostat-temp-value');
+      const tempSection = document.getElementById('thermostat-temp-section');
+      const modeButtons = document.getElementById('thermostat-mode-buttons');
+
+      title.textContent = location === 'shed' ? 'Shed Thermostat' : 'Home Thermostat';
+      tempValue.textContent = currentThermostatTemp;
+
+      // Different modes for shed vs home
+      const modes = location === 'shed'
+        ? [{ value: 'heat', label: 'Heat', icon: '🔥' }, { value: 'off', label: 'Off', icon: '○' }]
+        : [{ value: 'heat', label: 'Heat', icon: '🔥' }, { value: 'cool', label: 'Cool', icon: '❄️' }, { value: 'heat_cool', label: 'Auto', icon: '🔄' }, { value: 'off', label: 'Off', icon: '○' }];
+
+      modeButtons.innerHTML = modes.map(m =>
+        `<button class="thermostat-mode-btn ${currentThermostatMode === m.value ? 'active' : ''}"
+                 data-mode="${m.value}"
+                 onclick="selectThermostatMode('${m.value}', this)">
+          <span class="thermostat-mode-icon">${m.icon}</span>
+          <span class="thermostat-mode-label">${m.label}</span>
+        </button>`
+      ).join('');
+
+      // Show/hide temp section based on mode
+      tempSection.style.display = currentThermostatMode === 'off' ? 'none' : 'block';
+
+      overlay.classList.add('visible');
+      document.addEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControl() {
+      const overlay = document.getElementById('thermostat-control-overlay');
+      overlay.classList.remove('visible');
+      document.removeEventListener('keydown', handleThermostatEscape);
+    }
+
+    function closeThermostatControlOnOverlay(event) {
+      if (event.target.id === 'thermostat-control-overlay') {
+        closeThermostatControl();
+      }
+    }
+
+    function handleThermostatEscape(event) {
+      if (event.key === 'Escape') {
+        closeThermostatControl();
+      }
+    }
+
+    function selectThermostatMode(mode, btnElement) {
+      currentThermostatMode = mode;
+      const buttons = document.querySelectorAll('.thermostat-mode-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      // Show/hide temp section based on mode
+      const tempSection = document.getElementById('thermostat-temp-section');
+      tempSection.style.display = mode === 'off' ? 'none' : 'block';
+    }
+
+    function adjustThermostatTemp(delta) {
+      currentThermostatTemp = Math.max(10, Math.min(30, currentThermostatTemp + delta));
+      document.getElementById('thermostat-temp-value').textContent = currentThermostatTemp;
+    }
+
+    async function applyThermostatSettings() {
+      const applyBtn = document.querySelector('.thermostat-apply-btn');
+      applyBtn.textContent = 'Applying...';
+      applyBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/home-assistant/climate/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entity_id: currentThermostatEntity,
+            hvac_mode: currentThermostatMode,
+            temperature: currentThermostatMode !== 'off' ? currentThermostatTemp : null
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          closeThermostatControl();
+          // Refresh the appropriate panel
+          if (currentThermostatLocation === 'shed') {
+            setTimeout(() => loadShedStatus(), 500);
+          } else {
+            setTimeout(() => loadHomeStatus(), 500);
+          }
+        } else {
+          alert('Failed to update thermostat: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error updating thermostat:', error);
+        alert('Error updating thermostat');
+      } finally {
+        applyBtn.textContent = 'Apply';
+        applyBtn.disabled = false;
+      }
+    }
+
     async function loadHeaterHistory() {
       const container = document.getElementById('heater-chart-container');
       container.innerHTML = '<div class="panel-empty">Loading heater history...</div>';
@@ -1627,7 +2097,7 @@
       }
 
       // Find max values for scaling
-      const maxHours = Math.max(...days.map(d => d.runtime_hours), 1);
+      const maxCost = Math.max(...days.map(d => d.cost || 0), 0.01);
       const temps = days.map(d => d.outdoor_temp).filter(t => t !== null);
       const minTemp = temps.length > 0 ? Math.min(...temps) : 0;
       const maxTemp = temps.length > 0 ? Math.max(...temps) : 20;
@@ -1635,23 +2105,49 @@
 
       // Calculate totals (avg excludes days when thermostat was off)
       const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
       const enabledDays = days.filter(d => d.thermostat_enabled);
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
       const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+
+      // This month's cost
+      const now = new Date();
+      const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const thisMonthCost = days.filter(d => d.date.startsWith(thisMonthStr)).reduce((sum, d) => sum + (d.cost || 0), 0);
+
+      // Avg time to target
+      const targetReachedDays = days.filter(d => d.target_reached === true && d.time_to_target_minutes != null);
+      const avgTimeToTarget = targetReachedDays.length > 0
+        ? targetReachedDays.reduce((sum, d) => sum + d.time_to_target_minutes, 0) / targetReachedDays.length
+        : null;
 
       // Build chart HTML
       let html = `
         <div class="heater-chart-summary">
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${totalHours.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Total (${days.length} days)</span>
+            <span class="heater-chart-stat-secondary">${totalHours.toFixed(1)}h</span>
           </div>
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${avgHoursPerDay.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
+            <span class="heater-chart-stat-secondary">${avgHoursPerDay.toFixed(1)}h</span>
           </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${thisMonthCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">This Month</span>
+          </div>
+          ${avgTimeToTarget !== null ? `
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">${Math.round(avgTimeToTarget)}m</span>
+            <span class="heater-chart-stat-label">Avg to Target</span>
+            <span class="heater-chart-stat-secondary">${targetReachedDays.length} days</span>
+          </div>
+          ` : ''}
         </div>
         <div class="heater-chart-legend">
-          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Hours</span>
+          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Cost</span>
           <span class="heater-chart-legend-item"><span class="legend-line"></span> Outdoor Temp</span>
           <span class="heater-chart-legend-item"><span class="legend-wfh"></span> WFH Day</span>
           <span class="heater-chart-legend-item"><span class="legend-weekend"></span> Weekend</span>
@@ -1662,7 +2158,7 @@
 
       // Add bars and temperature line points
       days.forEach((day, i) => {
-        const barHeight = maxHours > 0 ? (day.runtime_hours / maxHours) * 100 : 0;
+        const barHeight = maxCost > 0 ? ((day.cost || 0) / maxCost) * 100 : 0;
         const tempY = day.outdoor_temp !== null
           ? 100 - ((day.outdoor_temp - minTemp) / tempRange) * 80 - 10
           : null;
@@ -1671,8 +2167,30 @@
         if (day.is_weekend) dayClasses.push('weekend');
         if (day.is_wfh) dayClasses.push('wfh');
 
+        // Build tooltip content
+        const dayCost = (day.cost || 0).toFixed(2);
+        let tooltipLines = [`<strong>${day.day_of_week} ${day.day_label}</strong>`];
+        tooltipLines.push(`Cost: $${dayCost} &middot; Runtime: ${day.runtime_hours.toFixed(1)}h`);
+        if (day.outdoor_temp !== null) tooltipLines.push(`Outdoor avg: ${day.outdoor_temp}\u00B0C`);
+        if (day.heating_start_time) {
+          tooltipLines.push(`Heat start: ${day.heating_start_time}`);
+          if (day.indoor_start_temp !== null) tooltipLines.push(`Indoor at start: ${day.indoor_start_temp}\u00B0C`);
+          if (day.outdoor_start_temp !== null) tooltipLines.push(`Outdoor at start: ${day.outdoor_start_temp}\u00B0C`);
+          if (day.target_temp !== null) {
+            if (day.target_reached === true) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C reached: ${day.target_reached_time} (${day.time_to_target_minutes}m)`);
+            } else if (day.target_reached === false) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: NOT reached`);
+            } else {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: in progress`);
+            }
+          }
+        }
+        if (day.is_wfh) tooltipLines.push('WFH day');
+        const tooltipHtml = tooltipLines.join('<br>');
+
         html += `
-          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}${day.is_wfh ? ' (WFH)' : ''}">
+          <div class="${dayClasses.join(' ')}" data-tooltip="${tooltipHtml.replace(/"/g, '&quot;')}">
             <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
             ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
             <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
@@ -1683,9 +2201,9 @@
       html += `
           </div>
           <div class="heater-chart-y-axis">
-            <span>${maxHours.toFixed(0)}h</span>
-            <span>${(maxHours / 2).toFixed(0)}h</span>
-            <span>0h</span>
+            <span>$${maxCost.toFixed(2)}</span>
+            <span>$${(maxCost / 2).toFixed(2)}</span>
+            <span>$0</span>
           </div>
           <div class="heater-chart-temp-axis">
             <span>${maxTemp.toFixed(0)}°</span>
@@ -1697,8 +2215,48 @@
 
       container.innerHTML = html;
 
+      // Initialize custom tooltips on bar containers
+      initHeaterChartTooltips(container);
+
       // Draw temperature line using SVG overlay
       drawTempLine(days, minTemp, tempRange);
+    }
+
+    function initHeaterChartTooltips(container) {
+      let tooltip = document.getElementById('heater-chart-tooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'heater-chart-tooltip';
+        tooltip.className = 'heater-chart-tooltip';
+        document.body.appendChild(tooltip);
+      }
+
+      const bars = container.querySelectorAll('.heater-chart-bar-container[data-tooltip]');
+      bars.forEach(bar => {
+        bar.addEventListener('mouseenter', (e) => {
+          tooltip.innerHTML = bar.getAttribute('data-tooltip');
+          tooltip.classList.add('visible');
+          positionHeaterTooltip(e, tooltip);
+        });
+        bar.addEventListener('mousemove', (e) => {
+          positionHeaterTooltip(e, tooltip);
+        });
+        bar.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('visible');
+        });
+      });
+    }
+
+    function positionHeaterTooltip(e, tooltip) {
+      const pad = 12;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      // Keep tooltip within viewport
+      const rect = tooltip.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
     }
 
     function drawTempLine(days, minTemp, tempRange) {
@@ -1775,8 +2333,10 @@
       const tempRange = Math.max(maxTemp - minTemp, 10);
 
       const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
       const enabledDays = days.filter(d => d.thermostat_enabled);
       const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
 
       let html = `
         <div class="heater-chart-summary">
@@ -1785,7 +2345,11 @@
             <span class="heater-chart-stat-label">Total (${days.length} days)</span>
           </div>
           <div class="heater-chart-stat">
-            <span class="heater-chart-stat-value">${avgHoursPerDay.toFixed(1)}h</span>
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Total Cost</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
             <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
           </div>
         </div>
@@ -1808,7 +2372,7 @@
         if (day.is_weekend) dayClasses.push('weekend');
 
         html += `
-          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}">
+          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.cost ? ' ($' + day.cost.toFixed(2) + ')' : ''}${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}">
             <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
             ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
             <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
@@ -1874,9 +2438,17 @@
 
       const states = data.states;
       const ecobee = states['climate.my_ecobee'];
+      const occupancy = states['input_boolean.422_occupancy'];
+      const ecobeeAux = states['input_boolean.ecobee_aux'];
       const lock = states['lock.back_door_lock'];
       const shedDoor = states['binary_sensor.contact_sensor_2'];
       const garageDoor = states['binary_sensor.contact_sensor'];
+
+      // Aux heat state
+      const isAuxHeat = ecobeeAux?.state === 'on';
+
+      // Occupancy info
+      const isOccupied = occupancy?.state === 'on';
 
       // Ecobee info
       const currentTemp = ecobee?.attributes?.current_temperature;
@@ -1887,8 +2459,29 @@
 
       // Heater runtime
       const heaterRuntime = data.heater_runtime || {};
-      const heatToday = formatRuntime(heaterRuntime.today);
-      const heatYesterday = formatRuntime(heaterRuntime.yesterday);
+      const heatTodaySecs = heaterRuntime.today || 0;
+      const heatYesterdaySameTimeSecs = heaterRuntime.yesterday_by_same_time || 0;
+      const heatYesterdayTotalSecs = heaterRuntime.yesterday || 0;
+      const heatToday = formatRuntime(heatTodaySecs);
+      const heatYesterdaySameTime = formatRuntime(heatYesterdaySameTimeSecs);
+      const heatTodayCost = (heaterRuntime.today_cost || 0).toFixed(2);
+      const heatYesterdayCost = (heaterRuntime.yesterday_by_same_time_cost || 0).toFixed(2);
+
+      // Determine heat today color based on comparison
+      let heatTodayClass = 'stat-ok'; // green by default
+      if (heatYesterdayTotalSecs === 0) {
+        // Yesterday was zero all day - just show green
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs) {
+        // Less than or equal to yesterday by same time - green
+        heatTodayClass = 'stat-ok';
+      } else if (heatTodaySecs <= heatYesterdaySameTimeSecs * 1.25) {
+        // Up to 25% more - yellow
+        heatTodayClass = 'stat-warn';
+      } else {
+        // Way more - red
+        heatTodayClass = 'stat-alert';
+      }
 
       // Format HVAC display
       let hvacDisplay = hvacState;
@@ -1927,9 +2520,13 @@
         </div>
 
         <div class="pi-stats-grid">
-          <div class="pi-stat-box ${thermostatClass}">
-            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : '○'}</span>
+          <div class="pi-stat-box ${thermostatClass}" onclick="openThermostatControl('home', 'climate.my_ecobee', '${hvacState}', ${targetTemp || 20})" style="cursor:pointer" title="Adjust thermostat">
+            <span class="pi-stat-value">${hvacAction === 'heating' ? '🔥' : hvacAction === 'cooling' ? '❄️' : hvacState === 'off' ? '○' : '🌡️'}</span>
             <span class="pi-stat-label">${hvacDisplay}</span>
+          </div>
+          <div class="pi-stat-box ${isOccupied ? 'stat-ok' : 'stat-warn'}" onclick="toggleHomeOccupancy()" style="cursor:pointer" title="Toggle occupancy">
+            <span class="pi-stat-value">${isOccupied ? '🏠' : '○'}</span>
+            <span class="pi-stat-label">${isOccupied ? 'Occupied' : 'Unoccupied'}</span>
           </div>
           <div class="pi-stat-box ${isLocked ? 'stat-ok' : 'stat-alert'}" onclick="toggleBackDoorLock()" style="cursor:pointer" title="Click to ${isLocked ? 'unlock' : 'lock'}">
             <span class="pi-stat-value">${isLocked ? '🔒' : '🔓'}</span>
@@ -1939,20 +2536,22 @@
             <span class="pi-stat-value">${isShedDoorOpen ? '🚪' : '○'}</span>
             <span class="pi-stat-label">Shed</span>
           </div>
-          <div class="pi-stat-box ${isGarageUnavailable ? 'stat-neutral' : isGarageDoorOpen ? 'stat-alert' : 'stat-ok'}">
-            <span class="pi-stat-value">${isGarageUnavailable ? '?' : isGarageDoorOpen ? '🚗' : '○'}</span>
-            <span class="pi-stat-label">Garage</span>
+          <div class="pi-stat-box ${isAuxHeat ? 'stat-warn' : 'stat-ok'}" onclick="toggleEcobeeAux()" style="cursor:pointer" title="Toggle aux/gas heat">
+            <span class="pi-stat-value">${isAuxHeat ? '🔥' : '♨️'}</span>
+            <span class="pi-stat-label">${isAuxHeat ? 'Aux' : 'HP'}</span>
           </div>
         </div>
 
         <div class="pi-stats-grid shed-runtime-grid" onclick="openHomeHeaterChart()" style="cursor:pointer" title="Click for history">
-          <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatToday}</span>
-            <span class="pi-stat-label">Heat Today</span>
+          <div class="pi-stat-box ${heatTodayClass}">
+            <span class="pi-stat-value">$${heatTodayCost}</span>
+            <span class="pi-stat-label">Today</span>
+            <span class="pi-stat-secondary">${heatToday}</span>
           </div>
           <div class="pi-stat-box stat-neutral">
-            <span class="pi-stat-value">${heatYesterday}</span>
-            <span class="pi-stat-label">Heat Yesterday</span>
+            <span class="pi-stat-value">$${heatYesterdayCost}</span>
+            <span class="pi-stat-label">Yesterday</span>
+            <span class="pi-stat-secondary">${heatYesterdaySameTime}</span>
           </div>
         </div>
       `;
@@ -1971,6 +2570,38 @@
       } catch (error) {
         console.error('Error toggling lock:', error);
         alert('Error toggling lock');
+      }
+    }
+
+    async function toggleHomeOccupancy() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/home_occupancy', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadHomeStatus(), 500);
+        } else {
+          alert('Failed to toggle occupancy: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling occupancy:', error);
+        alert('Error toggling occupancy');
+      }
+    }
+
+    async function toggleEcobeeAux() {
+      try {
+        const response = await fetch('/api/home-assistant/toggle/ecobee_aux', { method: 'POST' });
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => loadHomeStatus(), 500);
+        } else {
+          alert('Failed to toggle aux heat: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error toggling aux heat:', error);
+        alert('Error toggling aux heat');
       }
     }
 
@@ -2181,6 +2812,7 @@
       const bills = data.bills_due_before_payday || [];
       const remaining = data.spending_money_left || 0;
       const balance = data.checking_balance || 0;
+      currentBalance = balance;
       const totalDue = data.total_due || 0;
       const daysLeft = data.days_until_payday;
       const vibe = data.vibe || '';
@@ -2209,7 +2841,7 @@
           ${vibe ? `<div class="remaining-vibe">${vibe}</div>` : ''}
         </div>
         <div class="remaining-balance">
-          <span>Balance: ${formatCAD(balance)}</span>
+          <span class="balance-display" onclick="openBalanceModal()" title="Click to update balance">Balance: ${formatCAD(balance)} <span class="balance-edit-icon">✏️</span></span>
           <span>Due: ${formatCAD(totalDue)}</span>
         </div>
         ${bills.length > 0 ? `
@@ -2247,6 +2879,8 @@
     async function payBill(billId) {
       const billItem = document.querySelector(`.bill-item[data-bill-id="${billId}"]`);
       const checkBtn = billItem?.querySelector('.bill-check');
+      const billAmountEl = billItem?.querySelector('.bill-amount');
+      const billAmount = billAmountEl ? parseFloat(billAmountEl.textContent.replace(/[^0-9.-]/g, '')) : 0;
 
       if (checkBtn) {
         checkBtn.disabled = true;
@@ -2259,6 +2893,15 @@
         });
 
         if (response.ok) {
+          // Deduct bill amount from balance
+          if (billAmount > 0) {
+            const newBalance = currentBalance - billAmount;
+            await fetch('http://100.125.128.51:8111/api/balance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ checking_balance: newBalance })
+            });
+          }
           if (billItem) {
             billItem.classList.add('paid');
             setTimeout(() => loadMoney(), 500);
@@ -2276,6 +2919,47 @@
           checkBtn.disabled = false;
           checkBtn.classList.remove('paying');
         }
+      }
+    }
+
+    function openBalanceModal() {
+      const input = document.getElementById('balance-modal-input');
+      if (input) input.value = currentBalance.toFixed(2);
+      const overlay = document.getElementById('balance-modal-overlay');
+      if (overlay) {
+        overlay.classList.add('visible');
+        setTimeout(() => input?.focus(), 50);
+      }
+    }
+
+    function closeBalanceModal() {
+      const overlay = document.getElementById('balance-modal-overlay');
+      if (overlay) overlay.classList.remove('visible');
+    }
+
+    async function submitBalanceModal(event) {
+      event.preventDefault();
+      const input = document.getElementById('balance-modal-input');
+      const newBalance = parseFloat(input.value);
+      if (isNaN(newBalance)) return;
+
+      const saveBtn = document.getElementById('balance-modal-save');
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+      try {
+        const response = await fetch('http://100.125.128.51:8111/api/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checking_balance: newBalance })
+        });
+        if (response.ok) {
+          closeBalanceModal();
+          await loadMoney();
+        }
+      } catch (error) {
+        console.error('Error updating balance:', error);
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
       }
     }
 
@@ -2325,6 +3009,36 @@
       ).join('')}</div>`;
     }
 
+    async function markAsWatched(traktId, mediaType, btn) {
+      btn.disabled = true;
+      btn.classList.add('loading');
+      try {
+        const resp = await fetch('/api/media/watched', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({trakt_id: traktId, media_type: mediaType})
+        });
+        if (resp.ok) {
+          const item = btn.closest('.tv-show-item');
+          const wrapper = item.closest('.tv-show-link') || item;
+          wrapper.style.transition = 'opacity 0.3s ease';
+          wrapper.style.opacity = '0';
+          setTimeout(() => {
+            wrapper.remove();
+          }, 300);
+          // Refresh media panels after a short delay to let Trakt update
+          setTimeout(() => { loadTvShows(); loadMovies(); }, 3000);
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+        }
+      } catch (e) {
+        console.error('Error marking watched:', e);
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    }
+
     function renderMediaItem(item, type) {
       let poster = '';
       let title = '';
@@ -2333,13 +3047,14 @@
       let providers = '';
       let link = '';
 
+      const mtBase = `http://${location.hostname}:8100`;
       if (type === 'dvr') {
         poster = item.poster || '';
         title = item.title;
         const episodeCode = item.season ? `S${item.season}E${item.episode || '?'}` : '';
         meta = episodeCode ? `${episodeCode}${item.episode_title ? ' - ' + item.episode_title : ''}` : (item.episode_title || '');
         badge = '<span class="tv-show-source channels">DVR</span>';
-        link = item.channels_url || (item.recording_id ? `channels://play/recording/${item.recording_id}` : 'channels://');
+        link = `${mtBase}#show=${encodeURIComponent(title)}`;
       } else if (type === 'tv' || type === 'coming_soon') {
         poster = item.show?.poster_url || '';
         title = item.show?.title || item.title || 'Unknown';
@@ -2354,7 +3069,7 @@
           badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
         }
         providers = renderProviderIcons(item.watch_providers);
-        if (item.on_channels) link = 'channels://';
+        link = `${mtBase}#show=${encodeURIComponent(title)}`;
       } else if (type === 'movie' || type === 'coming_soon_movie') {
         poster = item.poster_url || '';
         title = item.title;
@@ -2368,7 +3083,7 @@
           badge = item.on_channels ? '<span class="tv-show-source channels">DVR</span>' : '';
         }
         providers = renderProviderIcons(item.watch_providers);
-        if (item.on_channels) link = 'channels://';
+        link = `${mtBase}#movie=${encodeURIComponent(title)}`;
       } else if (type === 'game') {
         poster = item.poster_url || item.cover_url || '';
         title = item.title || item.name;
@@ -2389,6 +3104,16 @@
         link = item.url || 'https://www.foxtheatre.ca';
       }
 
+      // Determine if item can be marked as watched
+      let watchedBtn = '';
+      if (type === 'dvr' && item.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.trakt_id}, 'episode', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      } else if (type === 'tv' && item.episode?.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.episode.trakt_id}, 'episode', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      } else if (type === 'movie' && item.trakt_id) {
+        watchedBtn = `<button class="mark-watched-btn" onclick="event.preventDefault(); event.stopPropagation(); markAsWatched(${item.trakt_id}, 'movie', this)" title="Mark as watched"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>`;
+      }
+
       const content = `
         <div class="tv-show-item${link ? ' clickable' : ''}">
           ${poster ? `<img class="tv-show-poster" src="${poster}" alt="${title}" onerror="this.style.display='none'">` : ''}
@@ -2399,11 +3124,13 @@
           <div class="tv-show-badges">
             ${providers}
             ${badge}
+            ${watchedBtn}
           </div>
         </div>
       `;
 
-      return link ? `<a href="${link}" class="tv-show-link">${content}</a>` : content;
+      const target = link && link.startsWith('http') ? ' target="_blank"' : '';
+      return link ? `<a href="${link}" class="tv-show-link"${target}>${content}</a>` : content;
     }
 
     function renderEntertainmentSection(title, items, type) {
@@ -2418,59 +3145,30 @@
 
     function renderEntertainment(data, disk) {
       const container = document.getElementById('entertainment-container');
-      let html = renderStorage(disk);
+      let html = '';
 
-      // Build Watching section (DVR + Up Next + New Episodes)
-      const watchingItems = [];
-      (data.channels_recent || []).forEach(item => watchingItems.push(renderMediaItem(item, 'dvr')));
-      (data.up_next || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
-      (data.new_episodes || []).forEach(item => watchingItems.push(renderMediaItem(item, 'tv')));
+      // Combine DVR + Up Next + New Episodes, show top 3
+      const allItems = [];
+      (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
+      (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
 
-      if (watchingItems.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">Watching</h3>
-            ${watchingItems.join('')}
-          </div>
-        `;
-      }
-
-      html += renderEntertainmentSection('Movies', data.movies, 'movie');
-      html += renderEntertainmentSection('Games', data.games, 'game');
-      html += renderEntertainmentSection('Reading', data.books, 'book');
-
-      // Coming Soon section - combine episodes and movies
-      const comingSoonItems = [];
-      (data.coming_soon?.episodes || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon')));
-      (data.coming_soon?.movies || []).forEach(item => comingSoonItems.push(renderMediaItem(item, 'coming_soon_movie')));
-      if (comingSoonItems.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">Coming Soon</h3>
-            ${comingSoonItems.join('')}
-          </div>
-        `;
-      }
-
-      // Fox Theatre section - movies on your list playing at Fox Theatre
-      if (data.fox_theatre && data.fox_theatre.length > 0) {
-        html += `
-          <div class="entertainment-section">
-            <h3 class="entertainment-section-title">
-              <a href="https://www.foxtheatre.ca" target="_blank" style="color: inherit; text-decoration: none;">
-                At Fox Theatre 🦊
-              </a>
-            </h3>
-            ${data.fox_theatre.map(item => renderMediaItem(item, 'fox_theatre')).join('')}
-          </div>
-        `;
-      }
-
-      // Check if everything is empty
-      const hasComingSoon = data.coming_soon?.episodes?.length || data.coming_soon?.movies?.length;
-      const hasFoxTheatre = data.fox_theatre?.length;
-      if (!watchingItems.length && !data.movies?.length && !data.games?.length && !data.books?.length && !hasComingSoon && !hasFoxTheatre) {
+      const top3 = allItems.slice(0, 3);
+      if (top3.length > 0) {
+        html += top3.map(({ item, type }) => renderMediaItem(item, type)).join('');
+      } else {
         html += '<div class="panel-empty">Nothing new to watch</div>';
+      }
+
+      // Link to full media tracker app
+      const totalItems = (data.summary?.channels_recent_count || 0)
+        + (data.summary?.up_next_episodes || 0)
+        + (data.summary?.total_new_episodes || 0)
+        + (data.summary?.coming_soon_episodes || 0)
+        + (data.summary?.total_movies || 0)
+        + (data.summary?.fox_theatre_matches || 0);
+      if (totalItems > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalItems} items</a>`;
       }
 
       container.innerHTML = html;
@@ -2504,25 +3202,42 @@
       const container = document.getElementById('tv-shows-container');
       let html = renderStorage(disk);
 
-      // Build TV section (DVR + Up Next + New Episodes)
-      const tvItems = [];
-      (data.channels_recent || []).forEach(item => tvItems.push(renderMediaItem(item, 'dvr')));
-      (data.up_next || []).forEach(item => tvItems.push(renderMediaItem(item, 'tv')));
-      (data.new_episodes || []).forEach(item => tvItems.push(renderMediaItem(item, 'tv')));
+      // Build TV section (DVR + Up Next + New Episodes) - top 3
+      const allItems = [];
+      (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
+      (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
 
-      if (tvItems.length > 0) {
-        html += tvItems.join('');
+      const top3 = allItems.slice(0, 3);
+      if (top3.length > 0) {
+        html += top3.map(({ item, type }) => renderMediaItem(item, type)).join('');
       }
 
-      // Coming Soon episodes
-      const comingEpisodes = data.coming_soon?.episodes || [];
+      // Coming Soon episodes — one per show, strictly future release dates only
+      const now = new Date();
+      const seenShows = new Set();
+      const comingEpisodes = (data.coming_soon?.episodes || [])
+        .filter(ep => ep.release_date && new Date(ep.release_date) > now)
+        .filter(ep => {
+          const showTitle = ep.show?.title || ep.title;
+          if (seenShows.has(showTitle)) return false;
+          seenShows.add(showTitle);
+          return true;
+        })
+        .slice(0, 5);
       if (comingEpisodes.length > 0) {
         html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
         html += comingEpisodes.map(item => renderMediaItem(item, 'coming_soon')).join('');
       }
 
-      if (!tvItems.length && !comingEpisodes.length) {
+      if (!top3.length && !comingEpisodes.length) {
         html += '<div class="panel-empty">No shows to watch</div>';
+      }
+
+      // Link to full app
+      const totalItems = allItems.length + (data.coming_soon?.episodes || []).length;
+      if (totalItems > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalItems} items in Media Tracker</a>`;
       }
 
       container.innerHTML = html;
@@ -2555,17 +3270,10 @@
       const container = document.getElementById('movies-container');
       let html = '';
 
-      // Current movies to watch
-      const movies = data.movies || [];
+      // Current movies to watch - top 3, newest first
+      const movies = (data.movies || []).slice(0, 3);
       if (movies.length > 0) {
         html += movies.map(item => renderMediaItem(item, 'movie')).join('');
-      }
-
-      // Coming Soon movies
-      const comingMovies = data.coming_soon?.movies || [];
-      if (comingMovies.length > 0) {
-        html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
-        html += comingMovies.map(item => renderMediaItem(item, 'coming_soon_movie')).join('');
       }
 
       // Fox Theatre section
@@ -2580,8 +3288,14 @@
         html += data.fox_theatre.map(item => renderMediaItem(item, 'fox_theatre')).join('');
       }
 
-      if (!movies.length && !comingMovies.length && !data.fox_theatre?.length) {
+      if (!movies.length && !data.fox_theatre?.length) {
         html += '<div class="panel-empty">No movies to watch</div>';
+      }
+
+      // Link to full app
+      const totalMovies = (data.movies || []).length + (data.coming_soon?.movies || []).length + (data.fox_theatre || []).length;
+      if (totalMovies > 3) {
+        html += `<a href="http://${location.hostname}:8100" target="_blank" class="media-tracker-link">View all ${totalMovies} items in Media Tracker</a>`;
       }
 
       container.innerHTML = html;
@@ -2596,6 +3310,50 @@
         console.error('Error loading movies:', error);
         document.getElementById('movies-container').innerHTML =
           '<div class="panel-empty">Error loading movies</div>';
+      }
+    }
+
+    function renderBooks(data) {
+      const container = document.getElementById('books-container');
+      const books = data.books || [];
+      if (books.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No books to read</div>';
+        return;
+      }
+      container.innerHTML = books.map(item => renderMediaItem(item, 'book')).join('');
+    }
+
+    async function loadBooks() {
+      try {
+        const response = await fetch('new_releases.json');
+        const data = await response.json();
+        renderBooks(data);
+      } catch (error) {
+        console.error('Error loading books:', error);
+        document.getElementById('books-container').innerHTML =
+          '<div class="panel-empty">Error loading books</div>';
+      }
+    }
+
+    function renderGames(data) {
+      const container = document.getElementById('games-container');
+      const games = data.games || [];
+      if (games.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No games to play</div>';
+        return;
+      }
+      container.innerHTML = games.map(item => renderMediaItem(item, 'game')).join('');
+    }
+
+    async function loadGames() {
+      try {
+        const response = await fetch('new_releases.json');
+        const data = await response.json();
+        renderGames(data);
+      } catch (error) {
+        console.error('Error loading games:', error);
+        document.getElementById('games-container').innerHTML =
+          '<div class="panel-empty">Error loading games</div>';
       }
     }
 
@@ -2703,6 +3461,7 @@
     let currentSettings = null;
     let currentConfig = null;
     let autoRefreshInterval = null;
+    let currentBalance = 0;
 
     const panelNames = {
       weather: 'Weather',
@@ -2716,6 +3475,8 @@
       wisdom: 'Wisdom',
       tvShows: 'TV Shows',
       movies: 'Movies',
+      books: 'Books',
+      games: 'Video Games',
       links: 'Links'
     };
 
@@ -2781,6 +3542,8 @@
       }
       loadTvShows();
       loadMovies();
+      loadBooks();
+      loadGames();
       loadAnyboxStats();
     }
 
@@ -2811,6 +3574,7 @@
       updateKeyStatus('gemini', config.hasGeminiKey, config.geminiApiKeyMasked);
       updateKeyStatus('homeassistant', config.hasHomeAssistantKey, config.homeAssistantApiKeyMasked);
       updateKeyStatus('tmdb', config.hasTmdbKey, config.tmdbApiKeyMasked);
+      updateKeyStatus('raindrop', config.hasRaindropKey, config.raindropApiKeyMasked);
     }
 
     function updateKeyStatus(service, hasKey, maskedKey) {
@@ -2861,6 +3625,7 @@
       const geminiKey = document.getElementById('key-gemini').value;
       const haKey = document.getElementById('key-homeassistant').value;
       const tmdbKey = document.getElementById('key-tmdb').value;
+      const raindropKey = document.getElementById('key-raindrop').value;
 
       if (name) updates.name = name;
       if (openweatherKey) updates.openWeatherApiKey = openweatherKey;
@@ -2869,6 +3634,7 @@
       if (geminiKey) updates.geminiApiKey = geminiKey;
       if (haKey) updates.homeAssistantApiKey = haKey;
       if (tmdbKey) updates.tmdbApiKey = tmdbKey;
+      if (raindropKey) updates.raindropApiKey = raindropKey;
 
       if (Object.keys(updates).length === 0) return true;
 
@@ -2888,6 +3654,7 @@
           document.getElementById('key-gemini').value = '';
           document.getElementById('key-homeassistant').value = '';
           document.getElementById('key-tmdb').value = '';
+          document.getElementById('key-raindrop').value = '';
           return true;
         } else {
           console.error('Failed to save config:', result.error);
@@ -3971,7 +4738,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         }
 
         // Update panel visibility in settings
-        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'movies', 'links', 'piStatus', 'shed', 'home'];
+        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'movies', 'books', 'games', 'links', 'piStatus', 'shed', 'home'];
         allPanels.forEach(panel => {
           if (currentSettings.panels[panel]) {
             currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
@@ -4048,15 +4815,11 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadAiSummary();
       loadWeather();
       loadCalendar();
-      // Use generic renderer for tasks panel if enabled
-      if (currentSettings?.useGenericRenderer?.tasks) {
-        GenericPanelRenderer.render('todos-container', builtInPanelConfigs.tasks);
-      } else {
-        loadTodos();
-      }
+      loadTodos();
       loadLinks();
       loadAnyboxStats();
       loadStarredLinks();
+      loadFavouriteLinks();
       loadShedStatus();
       loadHomeStatus();
       loadPiStatus();
@@ -4075,6 +4838,8 @@ Add your own custom rules here for smart home devices, routines, or other person
       }
       loadTvShows();
       loadMovies();
+      loadBooks();
+      loadGames();
 
       // Load any custom panels defined in settings
       loadCustomPanels();
@@ -4122,6 +4887,27 @@ Add your own custom rules here for smart home devices, routines, or other person
     init();
   </script>
 
+  <!-- Balance Update Modal -->
+  <div class="heater-chart-overlay" id="balance-modal-overlay" onclick="if(event.target.id==='balance-modal-overlay')closeBalanceModal()">
+    <div class="balance-modal">
+      <div class="balance-modal-header">
+        <h2>Update Balance</h2>
+        <button class="heater-chart-close-btn" onclick="closeBalanceModal()">&times;</button>
+      </div>
+      <form class="balance-modal-body" onsubmit="submitBalanceModal(event)">
+        <label class="balance-modal-label">Checking Balance (CAD)</label>
+        <div class="balance-modal-input-row">
+          <span class="balance-modal-currency">$</span>
+          <input type="number" id="balance-modal-input" step="0.01" class="balance-modal-input" placeholder="0.00">
+        </div>
+        <div class="balance-modal-actions">
+          <button type="button" class="balance-modal-cancel" onclick="closeBalanceModal()">Cancel</button>
+          <button type="submit" id="balance-modal-save" class="balance-modal-save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Heater Chart Modal (Shed) -->
   <div class="heater-chart-overlay" id="heater-chart-overlay" onclick="closeHeaterChartOnOverlay(event)">
     <div class="heater-chart-modal">
@@ -4147,6 +4933,36 @@ Add your own custom rules here for smart home devices, routines, or other person
       <div class="heater-chart-body">
         <div id="home-heater-chart-container">
           <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermostat Control Modal -->
+  <div class="heater-chart-overlay" id="thermostat-control-overlay">
+    <div class="thermostat-control-modal">
+      <div class="thermostat-control-header">
+        <h2 id="thermostat-control-title">Thermostat Control</h2>
+      </div>
+      <div class="thermostat-control-body">
+        <div class="thermostat-mode-section">
+          <label>Mode</label>
+          <div class="thermostat-mode-buttons" id="thermostat-mode-buttons">
+            <!-- Mode buttons populated by JS -->
+          </div>
+        </div>
+        <div class="thermostat-temp-section" id="thermostat-temp-section">
+          <label>Temperature</label>
+          <div class="thermostat-temp-control">
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(-0.5)">−</button>
+            <span class="thermostat-temp-value" id="thermostat-temp-value">20</span>
+            <span class="thermostat-temp-unit">°C</span>
+            <button class="thermostat-temp-btn" onclick="adjustThermostatTemp(0.5)">+</button>
+          </div>
+        </div>
+        <div class="thermostat-actions">
+          <button class="thermostat-cancel-btn" onclick="closeThermostatControl()">Cancel</button>
+          <button class="thermostat-apply-btn" onclick="applyThermostatSettings()">Save</button>
         </div>
       </div>
     </div>
@@ -4261,6 +5077,17 @@ Add your own custom rules here for smart home devices, routines, or other person
                 <div class="api-key-input-row">
                   <input type="password" id="key-tmdb" class="settings-input" placeholder="Enter API key">
                   <button class="settings-btn-secondary small" onclick="testApiKey('tmdb')">Test</button>
+                </div>
+              </div>
+
+              <div class="api-key-item">
+                <div class="api-key-header">
+                  <label>Raindrop.io</label>
+                  <span class="api-key-status" id="status-raindrop">Not configured</span>
+                </div>
+                <p class="api-key-help">Bookmark manager. Use your test token from <a href="https://app.raindrop.io/settings/integrations" target="_blank">Raindrop integrations</a>.</p>
+                <div class="api-key-input-row">
+                  <input type="password" id="key-raindrop" class="settings-input" placeholder="Enter test token">
                 </div>
               </div>
 
@@ -4413,7 +5240,7 @@ Add your own custom rules here for smart home devices, routines, or other person
               </div>
               <div class="settings-form-group">
                 <label for="url-pi">Pi Monitor URL</label>
-                <input type="text" id="url-pi" class="settings-input" placeholder="http://100.125.128.51:5001">
+                <input type="text" id="url-pi" class="settings-input" placeholder="http://100.115.42.106:5001">
               </div>
             </div>
           </div>
@@ -4441,7 +5268,8 @@ Add your own custom rules here for smart home devices, routines, or other person
                   <input type="radio" name="theme" value="default" id="pref-theme-default">
                   <span>Default</span>
                 </label>
-                <label class="settings-radio">
+                <!-- LCARS theme deprecated - hidden but code preserved -->
+                <label class="settings-radio" style="display:none">
                   <input type="radio" name="theme" value="lcars" id="pref-theme-lcars">
                   <span>LCARS</span>
                 </label>
@@ -4687,6 +5515,14 @@ Add your own custom rules here for smart home devices, routines, or other person
             <span>Movies</span>
           </label>
           <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="books">
+            <span>Books</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="games">
+            <span>Video Games</span>
+          </label>
+          <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="links" checked>
             <span>Links</span>
           </label>
@@ -4702,7 +5538,7 @@ Add your own custom rules here for smart home devices, routines, or other person
           <p><strong>Next steps:</strong></p>
           <ul>
             <li>Add events to <code>calendar.json</code> for your schedule</li>
-            <li>Add tasks to <code>todos.json</code> for your task list</li>
+            <li>Add a Todoist API key in Settings to sync your tasks</li>
             <li>Check <strong>Settings</strong> for more customization</li>
           </ul>
         </div>

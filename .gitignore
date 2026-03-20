@@ -9,7 +9,6 @@ daily-summary.json
 location.json
 sequelEpisodes.json
 starredLinks.json
-todos.json
 money.txt
 summary.log
 untaggedLinks.txt
@@ -17,6 +16,23 @@ readlater.json
 wisdom.json
 wisdom.log
 
+# TLS certificates (private keys)
+certs/
+
 # External repos and reference material
 wisdom/
 LCARS-24.2/
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
+# Runtime data / logs
+heater_history.json
+home_heater_history.json
+new_releases.json
+new-releases.log
+wfh-check.log
+wisdom_history.json
+time-to-target-summary.md
