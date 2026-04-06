@@ -164,6 +164,130 @@ test('shed thermostat modal opens when thermostat control is clicked', async ({ 
   }
 });
 
+// ── Raindrop link modal (shared helper) ──────────────────────────────────────
+
+async function openModalFromPanel(page, containerSelector, itemSelector) {
+  await page.waitForTimeout(3_000);
+  const item = page.locator(containerSelector).locator(itemSelector).first();
+  if (await item.count() === 0) return false;
+  await item.click();
+  await expect(page.locator('#fav-link-overlay')).toHaveClass(/visible/, { timeout: 5_000 });
+  return true;
+}
+
+// ── Favourites panel modal ────────────────────────────────────────────────────
+
+test('tapping a favourite link opens the action modal', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-favourites-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  await expect(page.locator('#fav-modal-title')).not.toBeEmpty();
+  await expect(page.locator('#fav-modal-open-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-edit-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-todoist-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-fav-btn')).toBeVisible();
+});
+
+test('favourite modal closes when backdrop is clicked', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-favourites-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  await page.locator('#fav-link-overlay').click({ position: { x: 10, y: 10 } });
+  await expect(page.locator('#fav-link-overlay')).not.toHaveClass(/visible/);
+});
+
+test('favourite modal "Open Link" has valid href', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-favourites-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  const href = await page.locator('#fav-modal-open-btn').getAttribute('href');
+  expect(href).toMatch(/^https?:\/\//);
+});
+
+test('favourite modal "Edit in Raindrop" has raindrop.io href', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-favourites-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  const href = await page.locator('#fav-modal-edit-btn').getAttribute('href');
+  expect(href).toMatch(/raindrop\.io/);
+});
+
+test('favourite modal "Remove Favourite" button removes item optimistically', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+  const container = page.locator('#links-favourites-container');
+  const items = container.locator('.raindrop-link-btn');
+  if (await items.count() === 0) return;
+
+  const firstId = await items.first().getAttribute('data-id');
+  await items.first().click();
+  await expect(page.locator('#fav-link-overlay')).toHaveClass(/visible/);
+
+  // Click Remove — modal should close immediately
+  await page.locator('#fav-modal-fav-btn').click();
+  await expect(page.locator('#fav-link-overlay')).not.toHaveClass(/visible/);
+
+  // Item should be gone from DOM immediately (optimistic removal)
+  await expect(container.locator(`[data-id="${firstId}"]`)).toHaveCount(0);
+});
+
+test('favourite modal action buttons meet 44px touch target', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-favourites-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  for (const id of ['#fav-modal-open-btn', '#fav-modal-edit-btn', '#fav-modal-todoist-btn', '#fav-modal-fav-btn']) {
+    const box = await page.locator(id).boundingBox();
+    expect(box, `${id} must have a bounding box`).not.toBeNull();
+    expect(box.height, `${id} height`).toBeGreaterThanOrEqual(44);
+  }
+});
+
+// ── Random links modal ────────────────────────────────────────────────────────
+
+test('tapping a random link opens the action modal', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-random-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  await expect(page.locator('#fav-modal-title')).not.toBeEmpty();
+  await expect(page.locator('#fav-modal-open-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-edit-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-todoist-btn')).toBeVisible();
+  await expect(page.locator('#fav-modal-fav-btn')).toBeVisible();
+});
+
+test('random link modal shows correct favourite toggle label', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+  const btn = page.locator('#links-container .raindrop-link-btn').first();
+  if (await btn.count() === 0) return;
+
+  const isFav = (await btn.getAttribute('data-is-fav')) === 'true';
+  await btn.click();
+  await expect(page.locator('#fav-link-overlay')).toHaveClass(/visible/);
+
+  const favBtnText = await page.locator('#fav-modal-fav-btn').textContent();
+  if (isFav) {
+    expect(favBtnText).toContain('Remove');
+  } else {
+    expect(favBtnText).toContain('Add');
+  }
+});
+
+test('random link modal closes when backdrop is clicked', async ({ page }) => {
+  await waitForDashboard(page);
+  const opened = await openModalFromPanel(page, '#links-random-container', '.raindrop-link-btn');
+  if (!opened) return;
+
+  await page.locator('#fav-link-overlay').click({ position: { x: 10, y: 10 } });
+  await expect(page.locator('#fav-link-overlay')).not.toHaveClass(/visible/);
+});
+
 // ── No JS errors on load ─────────────────────────────────────────────────────
 
 test('no uncaught JS errors on initial load', async ({ page }) => {
@@ -171,5 +295,78 @@ test('no uncaught JS errors on initial load', async ({ page }) => {
   page.on('pageerror', (err) => errors.push(err.message));
   await waitForDashboard(page);
   await page.waitForTimeout(3_000);
+  expect(errors).toHaveLength(0);
+});
+
+// ── Home Stats page ───────────────────────────────────────────────────────────
+
+async function waitForHomeStats(page) {
+  await page.goto('/home-stats.html');
+  await expect(page.locator('.stats-header')).toBeVisible({ timeout: 10_000 });
+}
+
+test('home-stats page loads with header and back button', async ({ page }) => {
+  await waitForHomeStats(page);
+  await expect(page.locator('.back-btn')).toBeVisible();
+  await expect(page.locator('.stats-header h1')).toContainText('Home Stats');
+});
+
+test('home-stats both chart sections are present', async ({ page }) => {
+  await waitForHomeStats(page);
+  await expect(page.locator('#shed-section')).toBeVisible();
+  await expect(page.locator('#home-section')).toBeVisible();
+});
+
+test('home-stats shed chart renders bars (not just loading)', async ({ page }) => {
+  await waitForHomeStats(page);
+  await page.waitForTimeout(5_000);
+  const container = page.locator('#heater-chart-container');
+  await expect(container).not.toBeEmpty();
+  // Should have actual bar elements, not just a loading/error message
+  const bars = container.locator('.heater-chart-bar-container');
+  expect(await bars.count()).toBeGreaterThan(0);
+});
+
+test('home-stats home chart renders bars (not just loading)', async ({ page }) => {
+  await waitForHomeStats(page);
+  await page.waitForTimeout(5_000);
+  const container = page.locator('#home-heater-chart-container');
+  await expect(container).not.toBeEmpty();
+  const bars = container.locator('.heater-chart-bar-container');
+  expect(await bars.count()).toBeGreaterThan(0);
+});
+
+test('home-stats chart bars have non-zero rendered height on mobile', async ({ page }) => {
+  await waitForHomeStats(page);
+  await page.waitForTimeout(5_000);
+
+  // The .heater-chart-bars wrapper must have measurable height
+  const shedBarsBox = await page.locator('#shed-heater-chart-bars').boundingBox();
+  expect(shedBarsBox, 'shed chart bars must be in viewport').not.toBeNull();
+  expect(shedBarsBox.height).toBeGreaterThan(50);
+
+  const homeBarsBox = await page.locator('#home-heater-chart-bars').boundingBox();
+  expect(homeBarsBox, 'home chart bars must be in viewport').not.toBeNull();
+  expect(homeBarsBox.height).toBeGreaterThan(50);
+});
+
+test('home-stats temp SVG line is rendered in shed chart', async ({ page }) => {
+  await waitForHomeStats(page);
+  await page.waitForTimeout(5_000);
+  const svg = page.locator('#shed-heater-chart-bars .heater-chart-temp-line');
+  expect(await svg.count()).toBeGreaterThan(0);
+});
+
+test('home-stats back button navigates to dashboard', async ({ page }) => {
+  await waitForHomeStats(page);
+  await page.locator('.back-btn').click();
+  await expect(page).toHaveURL('/');
+});
+
+test('home-stats no uncaught JS errors', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  await waitForHomeStats(page);
+  await page.waitForTimeout(5_000);
   expect(errors).toHaveLength(0);
 });

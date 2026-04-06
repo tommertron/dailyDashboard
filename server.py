@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import base64
+import hashlib
+import hmac
 import http.server
 import json
 import os
@@ -9,6 +12,7 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
+import uuid
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1793,6 +1797,10 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_raindrop_stats()
         elif self.path == '/api/raindrop/favorites':
             self.get_raindrop_favorites()
+        elif self.path == '/api/raindrop/latest':
+            self.get_raindrop_latest()
+        elif self.path == '/api/instapaper':
+            self.get_instapaper_articles()
         else:
             super().do_GET()
 
@@ -1947,7 +1955,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': False, 'error': 'Task content is required'}).encode())
                 return
 
-            payload = json.dumps({'content': content}).encode()
+            task_body = {'content': content}
+            description = data.get('description', '').strip()
+            if description:
+                task_body['description'] = description
+            payload = json.dumps(task_body).encode()
             req = urllib.request.Request(
                 'https://api.todoist.com/api/v1/tasks',
                 data=payload,
@@ -2044,6 +2056,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode()), None
 
+    def _raindrop_put(self, path, body):
+        """Make an authenticated PUT request to the Raindrop.io API."""
+        config = load_config()
+        api_key = config.get('raindropApiKey', '')
+        if not api_key:
+            return None, 'Raindrop API key not configured'
+        url = f'https://api.raindrop.io/rest/v1{path}'
+        data = json.dumps(body).encode()
+        req = urllib.request.Request(url, data=data, method='PUT',
+                                     headers={'Authorization': f'Bearer {api_key}',
+                                              'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode()), None
+
     def get_raindrop_links(self):
         """Fetch random raindrops for the links panel."""
         try:
@@ -2064,11 +2090,14 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 return
             links = [
                 {
+                    'id': item.get('_id'),
+                    'collectionId': item.get('collection', {}).get('$id'),
                     'url': item.get('link', ''),
                     'title': item.get('title', 'Untitled'),
                     'tags': ', '.join(item.get('tags', [])),
                     'comment': item.get('note', ''),
                     'important': item.get('important', False),
+                    'added': self._format_raindrop_date(item.get('created', '')),
                 }
                 for item in data.get('items', [])
                 if item.get('link')
@@ -2101,13 +2130,167 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(400, {'success': False, 'error': err})
                 return
             links = [
-                {'url': item.get('link', ''), 'title': item.get('title', 'Untitled')}
+                {
+                    'id': item.get('_id'),
+                    'collectionId': item.get('collection', {}).get('$id'),
+                    'url': item.get('link', ''),
+                    'title': item.get('title', 'Untitled'),
+                }
                 for item in data.get('items', [])
                 if item.get('link')
             ]
             self.send_json_response(200, {'success': True, 'links': links})
         except Exception as e:
             print(f"Error fetching Raindrop favorites: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def _format_raindrop_date(self, created_str):
+        """Format a Raindrop ISO date string to 'Mon D' (e.g. 'Mar 5')."""
+        if not created_str:
+            return ''
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(created_str.replace('Z', '+00:00'))
+            return dt.strftime('%b ') + str(dt.day)
+        except Exception:
+            return ''
+
+    def get_raindrop_latest(self):
+        """Fetch the 10 most recently added raindrops."""
+        try:
+            data, err = self._raindrop_request('/raindrops/0', {'sort': '-created', 'perpage': 10})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            links = [
+                {
+                    'id': item.get('_id'),
+                    'collectionId': item.get('collection', {}).get('$id'),
+                    'url': item.get('link', ''),
+                    'title': item.get('title', 'Untitled'),
+                    'tags': ', '.join(item.get('tags', [])),
+                    'comment': item.get('note', ''),
+                    'important': item.get('important', False),
+                    'added': self._format_raindrop_date(item.get('created', '')),
+                }
+                for item in data.get('items', [])
+                if item.get('link')
+            ]
+            self.send_json_response(200, {'success': True, 'links': links})
+        except Exception as e:
+            print(f"Error fetching Raindrop latest: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def _instapaper_sign(self, method, url, params, consumer_secret, token_secret=''):
+        """Generate OAuth 1.0a HMAC-SHA1 signature."""
+        encoded = '&'.join(
+            f'{urllib.parse.quote(k, safe="")}={urllib.parse.quote(str(params[k]), safe="")}'
+            for k in sorted(params.keys())
+        )
+        base_string = f'{method}&{urllib.parse.quote(url, safe="")}&{urllib.parse.quote(encoded, safe="")}'
+        signing_key = f'{urllib.parse.quote(consumer_secret, safe="")}&{urllib.parse.quote(token_secret, safe="")}'
+        raw = hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1).digest()
+        return base64.b64encode(raw).decode()
+
+    def _instapaper_xauth(self, consumer_key, consumer_secret, username, password):
+        """Exchange username/password for an Instapaper OAuth access token via xAuth."""
+        url = 'https://www.instapaper.com/api/1/oauth/access_token'
+        params = {
+            'oauth_consumer_key': consumer_key,
+            'oauth_nonce': uuid.uuid4().hex,
+            'oauth_signature_method': 'HMAC-SHA1',
+            'oauth_timestamp': str(int(time.time())),
+            'oauth_version': '1.0',
+            'x_auth_mode': 'client_auth',
+            'x_auth_password': password,
+            'x_auth_username': username,
+        }
+        params['oauth_signature'] = self._instapaper_sign('POST', url, params, consumer_secret)
+        body = urllib.parse.urlencode(params).encode()
+        req = urllib.request.Request(url, data=body, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            response_body = resp.read().decode()
+        parsed = dict(pair.split('=', 1) for pair in response_body.split('&'))
+        return parsed['oauth_token'], parsed['oauth_token_secret']
+
+    def get_instapaper_articles(self):
+        """Fetch latest unread articles from Instapaper using xAuth."""
+        try:
+            creds_path = os.path.join(DIRECTORY, 'instacreds.json')
+            with open(creds_path) as f:
+                creds = json.load(f)
+            consumer_key = creds.get('consumerKey', '')
+            consumer_secret = creds.get('consumerSecret', '') or creds.get('consumerSecrete', '')
+            username = creds.get('username', '')
+            password = creds.get('password', '')
+            if not all([consumer_key, consumer_secret, username, password]):
+                self.send_json_response(400, {'success': False, 'error': 'Instapaper credentials not fully configured'})
+                return
+
+            access_token, access_secret = self._instapaper_xauth(consumer_key, consumer_secret, username, password)
+
+            url = 'https://www.instapaper.com/api/1/bookmarks/list'
+            post_params = {'limit': '5'}
+            oauth_params = {
+                'oauth_consumer_key': consumer_key,
+                'oauth_nonce': uuid.uuid4().hex,
+                'oauth_signature_method': 'HMAC-SHA1',
+                'oauth_timestamp': str(int(time.time())),
+                'oauth_token': access_token,
+                'oauth_version': '1.0',
+            }
+            all_params = {**oauth_params, **post_params}
+            oauth_params['oauth_signature'] = self._instapaper_sign('POST', url, all_params, consumer_secret, access_secret)
+
+            auth_header = 'OAuth ' + ', '.join(
+                f'{k}="{urllib.parse.quote(str(v), safe="")}"'
+                for k, v in sorted(oauth_params.items())
+            )
+            body = urllib.parse.urlencode(post_params).encode()
+            req = urllib.request.Request(url, data=body, method='POST', headers={
+                'Authorization': auth_header,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+
+            bookmarks = [item for item in data if item.get('type') == 'bookmark']
+            articles = [
+                {
+                    'title': b.get('title') or b.get('url', 'Untitled'),
+                    'url': b.get('url', ''),
+                    'instapaper_url': f"https://www.instapaper.com/read/{b['bookmark_id']}",
+                }
+                for b in bookmarks
+                if b.get('url')
+            ]
+            self.send_json_response(200, {'success': True, 'articles': articles})
+        except Exception as e:
+            print(f"Error fetching Instapaper articles: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def unfavorite_raindrop(self, raindrop_id):
+        """Remove the important flag from a raindrop."""
+        try:
+            data, err = self._raindrop_put(f'/raindrop/{raindrop_id}', {'important': False})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            self.send_json_response(200, {'success': True})
+        except Exception as e:
+            print(f"Error unfavoriting raindrop: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def favorite_raindrop(self, raindrop_id):
+        """Set the important flag on a raindrop."""
+        try:
+            data, err = self._raindrop_put(f'/raindrop/{raindrop_id}', {'important': True})
+            if err:
+                self.send_json_response(400, {'success': False, 'error': err})
+                return
+            self.send_json_response(200, {'success': True})
+        except Exception as e:
+            print(f"Error favouriting raindrop: {e}")
             self.send_json_response(500, {'success': False, 'error': str(e)})
 
     def get_money(self):
@@ -2722,6 +2905,12 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/api/todoist/tasks/') and self.path.endswith('/close'):
             task_id = self.path.split('/api/todoist/tasks/')[1].rsplit('/close', 1)[0]
             self.close_todoist_task(task_id)
+        elif self.path.startswith('/api/raindrop/unfavorite/'):
+            raindrop_id = self.path.split('/api/raindrop/unfavorite/')[1]
+            self.unfavorite_raindrop(raindrop_id)
+        elif self.path.startswith('/api/raindrop/favorite/'):
+            raindrop_id = self.path.split('/api/raindrop/favorite/')[1]
+            self.favorite_raindrop(raindrop_id)
         # Test endpoints with provided key
         elif self.path == '/api/test/openweather':
             content_length = int(self.headers.get('Content-Length', 0))

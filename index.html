@@ -116,27 +116,6 @@
       </div>
 
       <div class="stacked-column center-column">
-        <div class="panel" data-panel="raindropFavourites">
-          <div class="panel-header">
-            <h2 class="section-title">Favourites</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="loadFavouriteLinks()" title="Refresh Favourites" id="favourites-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="favourites-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
-        </div>
-
         <div class="panel" data-panel="smartSchedule">
           <div class="panel-header">
             <h2 class="section-title">Smart Schedule</h2>
@@ -185,6 +164,32 @@
           </div>
           <div class="panel-body" id="money-container">
             <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="links">
+          <div class="panel-header">
+            <h2 class="section-title">Links</h2>
+            <div class="header-actions">
+              <button class="icon-btn" onclick="loadCombinedLinks()" title="Refresh Links" id="links-refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <a href="https://app.raindrop.io/my/0" target="_blank" class="app-link" title="Open Raindrop.io">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+          <div class="panel-body links-combined-body">
+            <h3 class="links-section-label">Favourites</h3>
+            <div id="links-favourites-container"><div class="panel-empty">Loading...</div></div>
+            <h3 class="links-section-label">Latest</h3>
+            <div id="links-latest-container"><div class="panel-empty">Loading...</div></div>
+            <h3 class="links-section-label">Random</h3>
+            <div id="links-random-container"><div class="panel-empty">Loading...</div></div>
           </div>
         </div>
 
@@ -259,41 +264,6 @@
         </div>
       </div>
 
-      <div class="panel links-panel" data-panel="links">
-        <div class="panel-header">
-          <h2 class="section-title">Raindrop</h2>
-          <div class="header-actions">
-            <button class="icon-btn" onclick="refreshLinks()" title="Refresh Links" id="links-refresh-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <a href="https://app.raindrop.io" target="_blank" class="app-link" title="Open Raindrop.io">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div class="panel-body anybox-body">
-          <div class="anybox-stats" id="anybox-stats-container">
-            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-all">--</span>
-              <span class="stat-label">Total</span>
-            </a>
-            <a href="https://app.raindrop.io" target="_blank" class="anybox-stat anybox-stat-link">
-              <span class="stat-value" id="stat-untagged">--</span>
-              <span class="stat-label">Unsorted</span>
-            </a>
-          </div>
-          <div class="anybox-section">
-            <h3 class="anybox-section-title">Random Links</h3>
-            <div id="links-container">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div class="panel tv-panel" data-panel="tvShows">
         <div class="panel-header">
@@ -368,7 +338,7 @@
         <div class="panel-header">
           <h2 class="section-title">Read Later</h2>
           <div class="header-actions">
-            <a href="goodlinks://" class="app-link" title="Open GoodLinks">
+            <a href="https://www.instapaper.com/u" id="instapaper-app-link" class="app-link" title="Open Instapaper" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
@@ -763,7 +733,7 @@
       container.innerHTML = randomLinks.map((link) => {
         const diceNum = Math.floor(Math.random() * 6) + 1;
         return `
-          <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="anybox-link-item">
+          <button class="anybox-link-item raindrop-link-btn" data-id="${link.id}" data-collection-id="${link.collectionId || ''}" data-url="${link.url.replace(/"/g, '&quot;')}" data-title="${(link.title || 'Untitled').replace(/"/g, '&quot;')}" data-is-fav="${link.important ? 'true' : 'false'}">
             <span class="anybox-link-icon dice-icon">${getDiceIcon(diceNum)}</span>
             <div class="anybox-link-text">
               <div class="anybox-link-title">${link.title || 'Untitled'}</div>
@@ -774,37 +744,103 @@
               </div>
               ${link.tags ? `<span class="anybox-link-tag">${link.tags}</span>` : ''}
             </div>
-          </a>
+            <span class="anybox-link-chevron">›</span>
+          </button>
         `;
       }).join('');
+
+      container.querySelectorAll('.raindrop-link-btn').forEach(btn => {
+        btn.addEventListener('click', () => openFavouriteModal(btn.dataset.id, btn.dataset.collectionId, btn.dataset.title, btn.dataset.url, btn.dataset.isFav === 'true'));
+      });
     }
 
+    async function loadCombinedLinks() {
+      const favCont = document.getElementById('links-favourites-container');
+      const randCont = document.getElementById('links-random-container');
+      const latCont = document.getElementById('links-latest-container');
+      if (favCont) favCont.innerHTML = '<div class="panel-empty">Loading...</div>';
+      if (randCont) randCont.innerHTML = '<div class="panel-empty">Loading...</div>';
+      if (latCont) latCont.innerHTML = '<div class="panel-empty">Loading...</div>';
+
+      const [favsRes, randomRes, latestRes] = await Promise.allSettled([
+        fetch('/api/raindrop/favorites').then(r => r.json()),
+        fetch('/api/raindrop/links').then(r => r.json()),
+        fetch('/api/raindrop/latest').then(r => r.json()),
+      ]);
+
+      const favs = (favsRes.status === 'fulfilled' && favsRes.value.links) ? favsRes.value.links.slice(0, 3) : [];
+      const favIds = new Set(favs.map(l => String(l.id)));
+
+      const allLatest = (latestRes.status === 'fulfilled' && latestRes.value.links) ? latestRes.value.links : [];
+      const latest = allLatest.filter(l => !favIds.has(String(l.id))).slice(0, 3);
+      const latestIds = new Set(latest.map(l => String(l.id)));
+
+      const allRandom = (randomRes.status === 'fulfilled' && randomRes.value.links) ? randomRes.value.links : [];
+      const random = shuffleArray(allRandom.filter(l => !favIds.has(String(l.id)) && !latestIds.has(String(l.id)))).slice(0, 3);
+
+      renderLinkItems(favs, 'links-favourites-container', true, 'heart');
+      renderLinkItems(random, 'links-random-container', false, 'dice');
+      renderLinkItems(latest, 'links-latest-container', false, 'clock');
+      loadStarredLinks();
+    }
+
+    function getLinkIcon(iconType) {
+      if (iconType === 'heart') {
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>';
+      }
+      if (iconType === 'clock') {
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M13 7h-2v5.414l3.293 3.293 1.414-1.414L13 11.586z"/></svg>';
+      }
+      return getDiceIcon(Math.floor(Math.random() * 6) + 1);
+    }
+
+    function renderLinkItems(links, containerId, isFavourite, iconType = 'dice') {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!links || links.length === 0) {
+        container.innerHTML = '<div class="panel-empty">None</div>';
+        return;
+      }
+      container.innerHTML = links.map(link => {
+        const icon = getLinkIcon(iconType);
+        return `
+          <button class="anybox-link-item raindrop-link-btn" data-id="${link.id}" data-collection-id="${link.collectionId || ''}" data-url="${link.url.replace(/"/g, '&quot;')}" data-title="${(link.title || 'Untitled').replace(/"/g, '&quot;')}" data-is-fav="${isFavourite || link.important ? 'true' : 'false'}">
+            <span class="anybox-link-icon dice-icon">${icon}</span>
+            <div class="anybox-link-text">
+              <div class="anybox-link-title">${link.title || 'Untitled'}</div>
+              ${link.comment ? `<div class="anybox-link-comment">${link.comment}</div>` : ''}
+              <div class="anybox-link-meta">
+                <span class="anybox-link-domain">${extractDomain(link.url)}</span>
+                ${link.added ? `<span class="anybox-link-date">${link.added}</span>` : ''}
+              </div>
+              ${link.tags ? `<span class="anybox-link-tag">${link.tags}</span>` : ''}
+            </div>
+            <span class="anybox-link-chevron">›</span>
+          </button>
+        `;
+      }).join('');
+      container.querySelectorAll('.raindrop-link-btn').forEach(btn => {
+        btn.addEventListener('click', () => openFavouriteModal(btn.dataset.id, btn.dataset.collectionId, btn.dataset.title, btn.dataset.url, btn.dataset.isFav === 'true'));
+      });
+    }
+
+    // Legacy: keep loadLinks for any remaining callers
     async function loadLinks() {
+      const container = document.getElementById('links-random-container');
+      if (!container) return;
       try {
         const response = await fetch('/api/raindrop/links');
         const data = await response.json();
         if (data.success === false) throw new Error(data.error);
-        renderLinks(data.links);
+        renderLinkItems(shuffleArray(data.links).slice(0, 3), 'links-random-container', false);
       } catch (error) {
         console.error('Error loading links:', error);
-        document.getElementById('links-container').innerHTML =
-          '<div class="panel-empty">Error loading links from Raindrop.io</div>';
+        container.innerHTML = '<div class="panel-empty">Error loading</div>';
       }
     }
 
-    async function loadAnyboxStats() {
-      try {
-        const response = await fetch('/api/raindrop/stats');
-        const data = await response.json();
-        if (data.success === false) throw new Error(data.error);
-        document.getElementById('stat-all').textContent = data.total ?? '--';
-        document.getElementById('stat-untagged').textContent = data.unsorted ?? '--';
-      } catch (error) {
-        console.error('Error loading Raindrop stats:', error);
-        document.getElementById('stat-all').textContent = '--';
-        document.getElementById('stat-untagged').textContent = '--';
-      }
-    }
+    // No-op: stats removed
+    async function loadAnyboxStats() {}
 
     function renderStarredLinks(links) {
       const container = document.getElementById('header-starred-links');
@@ -833,26 +869,110 @@
       }
     }
 
-    async function loadFavouriteLinks() {
-      const container = document.getElementById('favourites-container');
-      if (!container) return;
+    function loadFavouriteLinks() {
+      // Favourites now loaded via loadCombinedLinks()
+      loadCombinedLinks();
+    }
+
+    // ── Raindrop link modal ───────────────────────────────────────────────────
+    let _favModal = { id: null, collectionId: null, title: '', url: '', isFavourite: false };
+
+    function openFavouriteModal(id, collectionId, title, url, isFavourite) {
+      _favModal = { id, collectionId, title, url, isFavourite };
+      document.getElementById('fav-modal-domain').textContent = (() => {
+        try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
+      })();
+      document.getElementById('fav-modal-title').textContent = title;
+      document.getElementById('fav-modal-open-btn').href = url;
+      document.getElementById('fav-modal-edit-btn').href = collectionId
+        ? `https://app.raindrop.io/my/${collectionId}/item/${id}/edit`
+        : `https://app.raindrop.io/my/0`;
+      const todoistBtn = document.getElementById('fav-modal-todoist-btn');
+      todoistBtn.innerHTML = '<span class="fav-link-action-icon">✓</span><span>Add to Todoist</span>';
+      todoistBtn.disabled = false;
+      const favBtn = document.getElementById('fav-modal-fav-btn');
+      if (isFavourite) {
+        favBtn.innerHTML = '<span class="fav-link-action-icon">♥</span><span>Remove Favourite</span>';
+        favBtn.className = 'fav-link-action-btn danger';
+      } else {
+        favBtn.innerHTML = '<span class="fav-link-action-icon">♡</span><span>Add to Favourites</span>';
+        favBtn.className = 'fav-link-action-btn';
+      }
+      favBtn.disabled = false;
+      document.getElementById('fav-link-overlay').classList.add('visible');
+    }
+
+    function closeFavouriteModal() {
+      document.getElementById('fav-link-overlay').classList.remove('visible');
+    }
+
+    async function favModalSendToTodoist() {
+      const btn = document.getElementById('fav-modal-todoist-btn');
+      btn.innerHTML = '<span class="fav-link-action-icon">…</span><span>Adding…</span>';
+      btn.disabled = true;
       try {
-        const response = await fetch('/api/raindrop/favorites');
-        const data = await response.json();
-        if (data.success === false) throw new Error(data.error);
-        if (!data.links || data.links.length === 0) {
-          container.innerHTML = '<div class="panel-empty">No favourites</div>';
-          return;
+        const response = await fetch('/api/todoist/tasks/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: _favModal.title, description: _favModal.url })
+        });
+        const result = await response.json();
+        if (result.success) {
+          btn.innerHTML = '<span class="fav-link-action-icon">✓</span><span>Added!</span>';
+          loadTodos();
+          setTimeout(closeFavouriteModal, 800);
+        } else {
+          btn.innerHTML = '<span class="fav-link-action-icon">✕</span><span>Failed</span>';
+          btn.disabled = false;
         }
-        container.innerHTML = data.links.map(link => `
-          <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="favourite-link-item">
-            <span class="favourite-link-domain">${new URL(link.url).hostname.replace('www.', '')}</span>
-            <span class="favourite-link-title">${link.title || link.url}</span>
-          </a>
-        `).join('');
       } catch (error) {
-        console.error('Error loading favourite links:', error);
-        container.innerHTML = '<div class="panel-empty">Error loading favourites</div>';
+        console.error('Error sending to Todoist:', error);
+        btn.innerHTML = '<span class="fav-link-action-icon">✕</span><span>Failed</span>';
+        btn.disabled = false;
+      }
+    }
+
+    function favModalToggleFavourite() {
+      if (_favModal.isFavourite) {
+        favModalUnfavourite();
+      } else {
+        favModalAddFavourite();
+      }
+    }
+
+    function favModalUnfavourite() {
+      // Optimistic: close and remove from DOM immediately
+      closeFavouriteModal();
+      const item = document.querySelector(`#links-favourites-container [data-id="${_favModal.id}"]`);
+      if (item) item.remove();
+      loadStarredLinks();
+      // Fire API in background
+      fetch(`/api/raindrop/unfavorite/${_favModal.id}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { if (!data.success) loadCombinedLinks(); })
+        .catch(() => loadCombinedLinks());
+    }
+
+    async function favModalAddFavourite() {
+      const btn = document.getElementById('fav-modal-fav-btn');
+      btn.innerHTML = '<span class="fav-link-action-icon">…</span><span>Adding…</span>';
+      btn.disabled = true;
+      try {
+        const resp = await fetch(`/api/raindrop/favorite/${_favModal.id}`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+          btn.innerHTML = '<span class="fav-link-action-icon">♥</span><span>Added!</span>';
+          loadCombinedLinks();
+          loadStarredLinks();
+          setTimeout(closeFavouriteModal, 800);
+        } else {
+          btn.innerHTML = '<span class="fav-link-action-icon">♡</span><span>Add to Favourites</span>';
+          btn.disabled = false;
+        }
+      } catch (error) {
+        console.error('Error adding favourite:', error);
+        btn.innerHTML = '<span class="fav-link-action-icon">♡</span><span>Add to Favourites</span>';
+        btn.disabled = false;
       }
     }
 
@@ -1006,11 +1126,42 @@
     }
 
     function showInboxForm() {
-      const form = document.getElementById('todo-add-form');
-      if (!form) return;
+      let form = document.getElementById('todo-add-form');
+      if (!form) {
+        // Tasks not loaded yet — inject a standalone form at the bottom of the container
+        const container = document.getElementById('todos-container');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'todo-add-form';
+        div.id = 'todo-add-form';
+        div.style.display = 'none';
+        div.innerHTML = `
+          <input type="text" id="todo-add-input" class="todo-add-input" placeholder="Add to inbox…" maxlength="500" />
+          <button class="todo-add-submit" onclick="submitInboxTask()" title="Add task">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button class="todo-add-cancel" onclick="hideInboxForm()" title="Cancel">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        `;
+        container.appendChild(div);
+        form = div;
+        form.querySelector('input').addEventListener('keydown', e => {
+          if (e.key === 'Enter') submitInboxTask();
+          if (e.key === 'Escape') hideInboxForm();
+        });
+      }
       form.style.display = 'flex';
       const input = document.getElementById('todo-add-input');
-      if (input) { input.value = ''; input.focus(); }
+      if (input) {
+        input.value = '';
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
 
     function hideInboxForm() {
@@ -1099,9 +1250,7 @@
       }
       try {
         await Promise.all([
-          loadLinks(),
-          loadAnyboxStats(),
-          loadStarredLinks(),
+          loadCombinedLinks(),
           loadReadLater()
         ]);
       } catch (error) {
@@ -1121,7 +1270,7 @@
         tasks: { btnId: 'todos-refresh-btn', reload: () => loadTodos() },
         bills: { btnId: 'money-refresh-btn', reload: () => loadMoney() },
         calendar: { btnId: 'calendar-refresh-btn', reload: () => loadCalendar() },
-        anybox: { btnId: 'links-refresh-btn', reload: () => { loadLinks(); loadAnyboxStats(); loadStarredLinks(); } },
+        anybox: { btnId: 'links-refresh-btn', reload: () => loadCombinedLinks() },
         tvShows: { btnId: 'tvshows-refresh-btn', reload: () => loadTvShows() },
         movies: { btnId: 'movies-refresh-btn', reload: () => loadMovies() },
         books: { btnId: 'books-refresh-btn', reload: () => loadBooks() },
@@ -1772,6 +1921,9 @@
       const deskLamp = states['light.smart_rgb_bulb_2208114772038152050448e1e9a17678'];
       const shelfLight = states['light.govee_h617a_501b'];
 
+      const humidity = states['sensor.temperature_sensor_humidity_sensor_2'];
+      const humidityValue = humidity ? parseInt(humidity.state) : null;
+
       const tempValue = temp ? parseFloat(temp.state).toFixed(1) : '--';
       const wfhOn = workingFromHome?.state === 'on';
       window._wfhOn = wfhOn;
@@ -1784,6 +1936,15 @@
       // Determine thermostat display and class
       let thermostatDisplay = thermostatState === 'heat' ? `Heat ${thermostatTargetTemp}°` : 'Off';
       let thermostatClass = thermostatHvacAction === 'heating' ? 'stat-warn' : (thermostatState === 'heat' ? 'stat-ok' : 'stat-neutral');
+
+      // Humidity color coding (ideal: 30-50%)
+      let humidityClass = 'stat-neutral';
+      let humidityDisplay = humidityValue !== null ? `${humidityValue}%` : '--';
+      if (humidityValue !== null) {
+        if (humidityValue >= 30 && humidityValue <= 50) humidityClass = 'stat-ok';
+        else if ((humidityValue >= 20 && humidityValue < 30) || (humidityValue > 50 && humidityValue <= 60)) humidityClass = 'stat-warn';
+        else humidityClass = 'stat-alert';
+      }
 
       // Heater runtime and cost
       const heaterRuntime = data.heater_runtime || {};
@@ -1822,6 +1983,10 @@
             <span class="pi-stat-value">${wfhOn ? '💼' : '○'}</span>
             <span class="pi-stat-label">WFH</span>
           </div>
+          <div class="pi-stat-box ${humidityClass}" title="Humidity (ideal: 30–50%)">
+            <span class="pi-stat-value">${humidityDisplay}</span>
+            <span class="pi-stat-label">Humidity</span>
+          </div>
           <div class="pi-stat-box ${deskLampOn ? 'stat-warn' : 'stat-ok'}" onclick="toggleShedDeskLamp()" style="cursor:pointer" title="Toggle desk lamp">
             <span class="pi-stat-value">${deskLampOn ? '💡' : '○'}</span>
             <span class="pi-stat-label">Desk</span>
@@ -1832,7 +1997,7 @@
           </div>
         </div>
 
-        <div class="pi-stats-grid shed-runtime-grid" onclick="openHeaterChart()" style="cursor:pointer" title="View heater history">
+        <div class="pi-stats-grid shed-runtime-grid" onclick="window.location.href='/home-stats.html'" style="cursor:pointer" title="View heater history">
           <div class="pi-stat-box ${heatTodayClass}">
             <span class="pi-stat-value">$${heatTodayCost}</span>
             <span class="pi-stat-label">Today</span>
@@ -2513,10 +2678,19 @@
       if (hvacAction === 'heating') thermostatClass = 'stat-warn';
       else if (hvacAction === 'cooling') thermostatClass = 'stat-info';
 
+      // Humidity color coding (ideal: 30-50%)
+      const humidityInt = humidity ? parseInt(humidity) : null;
+      let humidityClass = 'stat-neutral';
+      if (humidityInt !== null) {
+        if (humidityInt >= 30 && humidityInt <= 50) humidityClass = 'stat-ok';
+        else if ((humidityInt >= 20 && humidityInt < 30) || (humidityInt > 50 && humidityInt <= 60)) humidityClass = 'stat-warn';
+        else humidityClass = 'stat-alert';
+      }
+
       container.innerHTML = `
         <div class="home-temp">
           <span class="home-temp-value">${currentTemp ? currentTemp.toFixed(1) : '--'}°C</span>
-          <span class="home-temp-label">Inside${humidity ? ` • ${humidity}% humidity` : ''}</span>
+          <span class="home-temp-label">Inside</span>
         </div>
 
         <div class="pi-stats-grid">
@@ -2527,6 +2701,10 @@
           <div class="pi-stat-box ${isOccupied ? 'stat-ok' : 'stat-warn'}" onclick="toggleHomeOccupancy()" style="cursor:pointer" title="Toggle occupancy">
             <span class="pi-stat-value">${isOccupied ? '🏠' : '○'}</span>
             <span class="pi-stat-label">${isOccupied ? 'Occupied' : 'Unoccupied'}</span>
+          </div>
+          <div class="pi-stat-box ${humidityClass}" title="Humidity (ideal: 30–50%)">
+            <span class="pi-stat-value">${humidityInt !== null ? `${humidityInt}%` : '--'}</span>
+            <span class="pi-stat-label">Humidity</span>
           </div>
           <div class="pi-stat-box ${isLocked ? 'stat-ok' : 'stat-alert'}" onclick="toggleBackDoorLock()" style="cursor:pointer" title="Click to ${isLocked ? 'unlock' : 'lock'}">
             <span class="pi-stat-value">${isLocked ? '🔒' : '🔓'}</span>
@@ -2542,7 +2720,7 @@
           </div>
         </div>
 
-        <div class="pi-stats-grid shed-runtime-grid" onclick="openHomeHeaterChart()" style="cursor:pointer" title="Click for history">
+        <div class="pi-stats-grid shed-runtime-grid" onclick="window.location.href='/home-stats.html'" style="cursor:pointer" title="View heater history">
           <div class="pi-stat-box ${heatTodayClass}">
             <span class="pi-stat-value">$${heatTodayCost}</span>
             <span class="pi-stat-label">Today</span>
@@ -3224,7 +3402,7 @@
           seenShows.add(showTitle);
           return true;
         })
-        .slice(0, 5);
+        .slice(0, 3);
       if (comingEpisodes.length > 0) {
         html += `<h3 class="entertainment-section-title" style="margin-top: 1rem;">Coming Soon</h3>`;
         html += comingEpisodes.map(item => renderMediaItem(item, 'coming_soon')).join('');
@@ -3357,26 +3535,25 @@
       }
     }
 
-    function renderReadLater(links) {
+    function renderReadLater(articles) {
       const container = document.getElementById('readlater-container');
 
-      if (!links || links.length === 0) {
+      if (!articles || articles.length === 0) {
         container.innerHTML = '<div class="panel-empty">No articles to read</div>';
         return;
       }
 
-      container.innerHTML = links.map(link => {
-        const goodlinksUrl = `goodlinks://x-callback-url/open?url=${encodeURIComponent(link.url)}`;
+      container.innerHTML = articles.map(article => {
         return `
-          <a href="${goodlinksUrl}" class="anybox-link-item">
+          <a href="${article.instapaper_url}" class="anybox-link-item" target="_blank">
             <span class="anybox-link-icon readlater-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
               </svg>
             </span>
             <div class="anybox-link-text">
-              <div class="anybox-link-title">${link.title || 'Untitled'}</div>
-              <div class="anybox-link-domain">${extractDomain(link.url)}</div>
+              <div class="anybox-link-title">${article.title || 'Untitled'}</div>
+              <div class="anybox-link-domain">${extractDomain(article.url)}</div>
             </div>
           </a>
         `;
@@ -3385,9 +3562,14 @@
 
     async function loadReadLater() {
       try {
-        const response = await fetch('readlater.json');
+        const response = await fetch('/api/instapaper');
         const data = await response.json();
-        renderReadLater(data.links);
+        if (data.success) {
+          renderReadLater(data.articles);
+        } else {
+          document.getElementById('readlater-container').innerHTML =
+            '<div class="panel-empty">Error loading articles</div>';
+        }
       } catch (error) {
         console.error('Error loading read later:', error);
         document.getElementById('readlater-container').innerHTML =
@@ -4816,10 +4998,8 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadWeather();
       loadCalendar();
       loadTodos();
-      loadLinks();
-      loadAnyboxStats();
+      loadCombinedLinks();
       loadStarredLinks();
-      loadFavouriteLinks();
       loadShedStatus();
       loadHomeStatus();
       loadPiStatus();
@@ -5553,5 +5733,37 @@ Add your own custom rules here for smart home devices, routines, or other person
       </div>
     </div>
   </div>
+
+  <!-- Raindrop Link Action Modal -->
+  <div class="heater-chart-overlay" id="fav-link-overlay" onclick="if(event.target.id==='fav-link-overlay')closeFavouriteModal()">
+    <div class="fav-link-modal">
+      <div class="fav-link-modal-header">
+        <div class="fav-link-modal-meta">
+          <span class="fav-link-modal-domain" id="fav-modal-domain"></span>
+          <span class="fav-link-modal-title" id="fav-modal-title"></span>
+        </div>
+        <button class="heater-chart-close-btn" onclick="closeFavouriteModal()">&times;</button>
+      </div>
+      <div class="fav-link-modal-actions">
+        <a id="fav-modal-open-btn" href="#" target="_blank" rel="noopener noreferrer" class="fav-link-action-btn primary" onclick="closeFavouriteModal()">
+          <span class="fav-link-action-icon">↗</span>
+          <span>Open Link</span>
+        </a>
+        <a id="fav-modal-edit-btn" href="#" target="_blank" rel="noopener noreferrer" class="fav-link-action-btn" onclick="closeFavouriteModal()">
+          <span class="fav-link-action-icon">✏</span>
+          <span>Edit in Raindrop</span>
+        </a>
+        <button id="fav-modal-todoist-btn" class="fav-link-action-btn" onclick="favModalSendToTodoist()">
+          <span class="fav-link-action-icon">✓</span>
+          <span>Add to Todoist</span>
+        </button>
+        <button id="fav-modal-fav-btn" class="fav-link-action-btn danger" onclick="favModalToggleFavourite()">
+          <span class="fav-link-action-icon">♥</span>
+          <span>Remove Favourite</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

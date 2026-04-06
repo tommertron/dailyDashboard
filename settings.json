@@ -35,10 +35,10 @@
       "visible": true
     },
     "books": {
-      "visible": true
+      "visible": false
     },
     "games": {
-      "visible": true
+      "visible": false
     },
     "links": {
       "visible": true
@@ -56,6 +56,12 @@
             "displayName": "Temperature",
             "type": "sensor",
             "unit": "\u00b0C"
+          },
+          {
+            "entityId": "sensor.temperature_sensor_humidity_sensor_2",
+            "displayName": "Humidity",
+            "type": "sensor",
+            "unit": "%"
           },
           {
             "entityId": "input_boolean.working_from_home",
