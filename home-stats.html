@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Home Stats – Daily Dashboard</title>
+  <link rel="stylesheet" href="themes/default.css" id="theme-stylesheet">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('dashboard-theme') || 'default';
+      if (savedTheme !== 'default') {
+        document.getElementById('theme-stylesheet').href = 'themes/' + savedTheme + '.css';
+      }
+    })();
+  </script>
+  <style>
+    /* ─── Page layout ─── */
+    body { margin: 0; padding: 0; }
+
+    .stats-page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem 1.25rem 3rem;
+    }
+
+    .stats-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 0 1.25rem;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+      margin-bottom: 1.5rem;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      background: var(--panel-bg, #fff);
+      border: 1px solid var(--border-color, #e5e7eb);
+      color: var(--text-secondary, #6b7280);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .back-btn:hover {
+      background: var(--hover-bg, #f3f4f6);
+      color: var(--text-primary, #111827);
+    }
+
+    .stats-header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary, #111827);
+      flex: 1;
+    }
+
+    .stats-header-date {
+      font-size: 0.8rem;
+      color: var(--text-secondary, #6b7280);
+    }
+
+    /* ─── Two-column chart grid ─── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .stats-section {
+      background: var(--panel-bg, #fff);
+      border: 1px solid var(--border-color, #e5e7eb);
+      border-radius: 10px;
+      padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .stats-section-title {
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary, #111827);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Override modal chart sizing for inline display */
+    .stats-section .heater-chart-bars {
+      height: 220px;
+    }
+
+    /* Summary & legend: allow wrapping so they don't overflow on narrow screens */
+    .stats-section .heater-chart-summary {
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .stats-section .heater-chart-legend {
+      flex-wrap: wrap;
+      gap: 0.6rem 1rem;
+    }
+    .stats-section .heater-chart-stat {
+      flex: 1 1 auto;
+      min-width: 80px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    @media (max-width: 600px) {
+      .stats-section .heater-chart-bars { height: 160px; }
+      .stats-section .heater-chart-stat { padding: 0.4rem 0.6rem; }
+      .stats-section .heater-chart-stat-value { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stats-page">
+    <header class="stats-header">
+      <a href="/" class="back-btn">← Dashboard</a>
+      <h1>🏠 Home Stats</h1>
+      <span class="stats-header-date" id="stats-date"></span>
+    </header>
+
+    <div class="stats-grid">
+      <!-- Shed heater -->
+      <section class="stats-section" id="shed-section">
+        <h2 class="stats-section-title">🏚 Shed Heater &mdash; 30 days</h2>
+        <div id="heater-chart-container"><div class="panel-empty">Loading…</div></div>
+      </section>
+
+      <!-- Home heater -->
+      <section class="stats-section" id="home-section">
+        <h2 class="stats-section-title">🏠 Home Heater &mdash; 30 days</h2>
+        <div id="home-heater-chart-container"><div class="panel-empty">Loading…</div></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Tooltip shared between both charts -->
+  <div id="heater-chart-tooltip" class="heater-chart-tooltip"></div>
+
+  <script>
+    // ── Date badge ──────────────────────────────────────────────────────────
+    (function() {
+      const d = new Date();
+      const opts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+      document.getElementById('stats-date').textContent = d.toLocaleDateString('en-CA', opts);
+    })();
+
+    // ── Shed heater history ─────────────────────────────────────────────────
+    async function loadHeaterHistory() {
+      const container = document.getElementById('heater-chart-container');
+      container.innerHTML = '<div class="panel-empty">Loading shed heater history…</div>';
+      try {
+        const response = await fetch('/api/heater-history');
+        const data = await response.json();
+        if (!data.success) {
+          container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+          return;
+        }
+        renderHeaterChart(data.days);
+      } catch (e) {
+        container.innerHTML = '<div class="panel-empty">Error loading shed heater history</div>';
+      }
+    }
+
+    function renderHeaterChart(allDays) {
+      const container = document.getElementById('heater-chart-container');
+
+      if (!allDays || allDays.length === 0) {
+        container.innerHTML = '<div class="panel-empty">No heater history available</div>';
+        return;
+      }
+
+      // On narrow screens show last 14 days so bars are wide enough to read
+      const isMobile = window.innerWidth <= 600;
+      const days = isMobile ? allDays.slice(-14) : allDays;
+      if (isMobile) {
+        const title = document.querySelector('#shed-section .stats-section-title');
+        if (title) title.textContent = '🏚 Shed Heater \u2014 14 days';
+      }
+
+      const maxCost = Math.max(...days.map(d => d.cost || 0), 0.01);
+      const temps = days.map(d => d.outdoor_temp).filter(t => t !== null);
+      const minTemp = temps.length > 0 ? Math.min(...temps) : 0;
+      const maxTemp = temps.length > 0 ? Math.max(...temps) : 20;
+      const tempRange = Math.max(maxTemp - minTemp, 10);
+
+      const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
+      const enabledDays = days.filter(d => d.thermostat_enabled);
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
+      const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+
+      const now = new Date();
+      const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const thisMonthCost = days.filter(d => d.date.startsWith(thisMonthStr)).reduce((sum, d) => sum + (d.cost || 0), 0);
+
+      const targetReachedDays = days.filter(d => d.target_reached === true && d.time_to_target_minutes != null);
+      const avgTimeToTarget = targetReachedDays.length > 0
+        ? targetReachedDays.reduce((sum, d) => sum + d.time_to_target_minutes, 0) / targetReachedDays.length
+        : null;
+
+      let html = `
+        <div class="heater-chart-summary">
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Total (${days.length}d)</span>
+            <span class="heater-chart-stat-secondary">${totalHours.toFixed(1)}h</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
+            <span class="heater-chart-stat-secondary">${avgHoursPerDay.toFixed(1)}h</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${thisMonthCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">This Month</span>
+          </div>
+          ${avgTimeToTarget !== null ? `
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">${Math.round(avgTimeToTarget)}m</span>
+            <span class="heater-chart-stat-label">Avg to Target</span>
+            <span class="heater-chart-stat-secondary">${targetReachedDays.length} days</span>
+          </div>` : ''}
+        </div>
+        <div class="heater-chart-legend">
+          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Cost</span>
+          <span class="heater-chart-legend-item"><span class="legend-line"></span> Outdoor Temp</span>
+          <span class="heater-chart-legend-item"><span class="legend-wfh"></span> WFH Day</span>
+          <span class="heater-chart-legend-item"><span class="legend-weekend"></span> Weekend</span>
+        </div>
+        <div class="heater-chart">
+          <div class="heater-chart-bars" id="shed-heater-chart-bars">
+      `;
+
+      days.forEach(day => {
+        const barHeight = maxCost > 0 ? ((day.cost || 0) / maxCost) * 100 : 0;
+        const tempY = day.outdoor_temp !== null
+          ? 100 - ((day.outdoor_temp - minTemp) / tempRange) * 80 - 10
+          : null;
+
+        const dayClasses = ['heater-chart-bar-container'];
+        if (day.is_weekend) dayClasses.push('weekend');
+        if (day.is_wfh) dayClasses.push('wfh');
+
+        const dayCost = (day.cost || 0).toFixed(2);
+        let tooltipLines = [`<strong>${day.day_of_week} ${day.day_label}</strong>`];
+        tooltipLines.push(`Cost: $${dayCost} &middot; Runtime: ${day.runtime_hours.toFixed(1)}h`);
+        if (day.outdoor_temp !== null) tooltipLines.push(`Outdoor avg: ${day.outdoor_temp}\u00B0C`);
+        if (day.heating_start_time) {
+          tooltipLines.push(`Heat start: ${day.heating_start_time}`);
+          if (day.indoor_start_temp !== null) tooltipLines.push(`Indoor at start: ${day.indoor_start_temp}\u00B0C`);
+          if (day.outdoor_start_temp !== null) tooltipLines.push(`Outdoor at start: ${day.outdoor_start_temp}\u00B0C`);
+          if (day.target_temp !== null) {
+            if (day.target_reached === true) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C reached: ${day.target_reached_time} (${day.time_to_target_minutes}m)`);
+            } else if (day.target_reached === false) {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: NOT reached`);
+            } else {
+              tooltipLines.push(`Target ${day.target_temp}\u00B0C: in progress`);
+            }
+          }
+        }
+        if (day.is_wfh) tooltipLines.push('WFH day');
+        const tooltipHtml = tooltipLines.join('<br>');
+
+        html += `
+          <div class="${dayClasses.join(' ')}" data-tooltip="${tooltipHtml.replace(/"/g, '&quot;')}">
+            <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
+            ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
+            <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+          <div class="heater-chart-y-axis">
+            <span>$${maxCost.toFixed(2)}</span>
+            <span>$${(maxCost / 2).toFixed(2)}</span>
+            <span>$0</span>
+          </div>
+          <div class="heater-chart-temp-axis">
+            <span>${maxTemp.toFixed(0)}°</span>
+            <span>${((maxTemp + minTemp) / 2).toFixed(0)}°</span>
+            <span>${minTemp.toFixed(0)}°</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      initHeaterChartTooltips(container);
+      drawTempLine(document.getElementById('shed-heater-chart-bars'), days, minTemp, tempRange);
+    }
+
+    // ── Home heater history ─────────────────────────────────────────────────
+    async function loadHomeHeaterHistory() {
+      const container = document.getElementById('home-heater-chart-container');
+      container.innerHTML = '<div class="panel-empty">Loading home heater history…</div>';
+      try {
+        const response = await fetch('/api/home-heater-history');
+        const data = await response.json();
+        if (data.success) {
+          renderHomeHeaterChart(data.days);
+        } else {
+          container.innerHTML = `<div class="panel-empty">Error: ${data.error}</div>`;
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="panel-empty">Error loading home heater history</div>';
+      }
+    }
+
+    function renderHomeHeaterChart(allDays) {
+      const container = document.getElementById('home-heater-chart-container');
+
+      // On narrow screens show last 14 days so bars are wide enough to read
+      const isMobile = window.innerWidth <= 600;
+      const days = isMobile ? allDays.slice(-14) : allDays;
+      if (isMobile) {
+        const title = document.querySelector('#home-section .stats-section-title');
+        if (title) title.textContent = '🏠 Home Heater \u2014 14 days';
+      }
+
+      const maxHours = Math.max(...days.map(d => d.runtime_hours), 1);
+      const temps = days.filter(d => d.outdoor_temp !== null).map(d => d.outdoor_temp);
+      const minTemp = temps.length > 0 ? Math.min(...temps) : 0;
+      const maxTemp = temps.length > 0 ? Math.max(...temps) : 20;
+      const tempRange = Math.max(maxTemp - minTemp, 10);
+
+      const totalHours = days.reduce((sum, d) => sum + d.runtime_hours, 0);
+      const totalCost = days.reduce((sum, d) => sum + (d.cost || 0), 0);
+      const enabledDays = days.filter(d => d.thermostat_enabled);
+      const avgHoursPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + d.runtime_hours, 0) / enabledDays.length : 0;
+      const avgCostPerDay = enabledDays.length > 0 ? enabledDays.reduce((sum, d) => sum + (d.cost || 0), 0) / enabledDays.length : 0;
+
+      let html = `
+        <div class="heater-chart-summary">
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">${totalHours.toFixed(1)}h</span>
+            <span class="heater-chart-stat-label">Total (${days.length}d)</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${totalCost.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Total Cost</span>
+          </div>
+          <div class="heater-chart-stat">
+            <span class="heater-chart-stat-value">$${avgCostPerDay.toFixed(2)}</span>
+            <span class="heater-chart-stat-label">Avg/Day (${enabledDays.length} on)</span>
+          </div>
+        </div>
+        <div class="heater-chart-legend">
+          <span class="heater-chart-legend-item"><span class="legend-bar"></span> Heater Hours</span>
+          <span class="heater-chart-legend-item"><span class="legend-line"></span> Outdoor Temp</span>
+          <span class="heater-chart-legend-item"><span class="legend-weekend"></span> Weekend</span>
+        </div>
+        <div class="heater-chart">
+          <div class="heater-chart-bars" id="home-heater-chart-bars">
+      `;
+
+      days.forEach(day => {
+        const barHeight = maxHours > 0 ? (day.runtime_hours / maxHours) * 100 : 0;
+        const tempY = day.outdoor_temp !== null
+          ? 100 - ((day.outdoor_temp - minTemp) / tempRange) * 80 - 10
+          : null;
+
+        const dayClasses = ['heater-chart-bar-container'];
+        if (day.is_weekend) dayClasses.push('weekend');
+
+        html += `
+          <div class="${dayClasses.join(' ')}" title="${day.day_of_week} ${day.day_label}: ${day.runtime_hours.toFixed(1)}h${day.cost ? ' ($' + day.cost.toFixed(2) + ')' : ''}${day.outdoor_temp !== null ? ', ' + day.outdoor_temp + '°C' : ''}">
+            <div class="heater-chart-bar" style="height: ${barHeight}%"></div>
+            ${tempY !== null ? `<div class="heater-chart-temp-dot" style="bottom: ${100 - tempY}%"></div>` : ''}
+            <div class="heater-chart-label">${day.day_of_week}<br>${day.day_label.split(' ')[1]}</div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+          <div class="heater-chart-y-axis">
+            <span>${maxHours.toFixed(0)}h</span>
+            <span>${(maxHours / 2).toFixed(0)}h</span>
+            <span>0h</span>
+          </div>
+          <div class="heater-chart-temp-axis">
+            <span>${maxTemp.toFixed(0)}°</span>
+            <span>${((maxTemp + minTemp) / 2).toFixed(0)}°</span>
+            <span>${minTemp.toFixed(0)}°</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      drawTempLine(document.getElementById('home-heater-chart-bars'), days, minTemp, tempRange);
+    }
+
+    // ── Shared helpers ──────────────────────────────────────────────────────
+    function initHeaterChartTooltips(container) {
+      let tooltip = document.getElementById('heater-chart-tooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'heater-chart-tooltip';
+        tooltip.className = 'heater-chart-tooltip';
+        document.body.appendChild(tooltip);
+      }
+      container.querySelectorAll('.heater-chart-bar-container[data-tooltip]').forEach(bar => {
+        bar.addEventListener('mouseenter', e => {
+          tooltip.innerHTML = bar.getAttribute('data-tooltip');
+          tooltip.classList.add('visible');
+          positionTooltip(e, tooltip);
+        });
+        bar.addEventListener('mousemove', e => positionTooltip(e, tooltip));
+        bar.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+      });
+    }
+
+    function positionTooltip(e, tooltip) {
+      const pad = 12;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      const rect = tooltip.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth) x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    }
+
+    function drawTempLine(chartBars, days, minTemp, tempRange) {
+      if (!chartBars) return;
+      const width = chartBars.offsetWidth;
+      const height = chartBars.offsetHeight;
+      if (!width || !height) return;
+      const barWidth = width / days.length;
+
+      const pathPoints = [];
+      days.forEach((day, i) => {
+        if (day.outdoor_temp !== null) {
+          const x = (i + 0.5) * barWidth;
+          const y = height - ((day.outdoor_temp - minTemp) / tempRange) * (height * 0.8) - (height * 0.1);
+          pathPoints.push({ x, y });
+        }
+      });
+
+      if (pathPoints.length < 2) return;
+
+      const pathD = pathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'heater-chart-temp-line');
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.innerHTML = `<path d="${pathD}" fill="none" stroke="var(--status-info-text, #3b82f6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+      chartBars.appendChild(svg);
+    }
+
+    // ── Init ────────────────────────────────────────────────────────────────
+    loadHeaterHistory();
+    loadHomeHeaterHistory();
+  </script>
+</body>
+</html>

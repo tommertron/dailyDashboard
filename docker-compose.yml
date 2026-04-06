@@ -11,6 +11,8 @@ services:
     volumes:
       # Config file with API keys
       - ./config.json:/app/config.json:ro
+      # Instapaper credentials
+      - ./instacreds.json:/app/instacreds.json:ro
       # Script files
       - ./generate_summary.py:/app/generate_summary.py:ro
       - ./server.py:/app/server.py:ro
@@ -39,6 +41,7 @@ services:
       # HTML files (mount to avoid rebuild)
       - ./index.html:/app/index.html:ro
       - ./lcars.html:/app/lcars.html:ro
+      - ./home-stats.html:/app/home-stats.html:ro
       # Themes directory
       - ./themes:/app/themes:ro
       # TLS certificates (Tailscale)
