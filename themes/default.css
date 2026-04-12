@@ -2264,6 +2264,15 @@ a.todo-text:hover {
   color: #22c55e;
 }
 
+.readlater-section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0.35rem 0.5rem 0.1rem;
+}
+
 /* Wisdom */
 .wisdom-content {
   padding: 0.5rem 0;

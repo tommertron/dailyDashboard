@@ -3535,34 +3535,45 @@
       }
     }
 
-    function renderReadLater(articles) {
+    function renderReadLater(inbox, later) {
       const container = document.getElementById('readlater-container');
 
-      if (!articles || articles.length === 0) {
+      if ((!inbox || inbox.length === 0) && (!later || later.length === 0)) {
         container.innerHTML = '<div class="panel-empty">No articles to read</div>';
         return;
       }
 
-      container.innerHTML = articles.map(article => `
-        <a href="${article.reader_url}" class="anybox-link-item" target="_blank">
-          <span class="anybox-link-icon readlater-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </span>
-          <div class="anybox-link-text">
-            <div class="anybox-link-title">${article.title || 'Untitled'}</div>
-            <div class="anybox-link-domain">${extractDomain(article.source_url || article.reader_url)}</div>
-          </div>
-        </a>
-      `).join('');
+      function renderArticles(articles) {
+        return articles.map(article => `
+          <a href="${article.reader_url}" class="anybox-link-item" target="_blank">
+            <span class="anybox-link-icon readlater-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+            </span>
+            <div class="anybox-link-text">
+              <div class="anybox-link-title">${article.title || 'Untitled'}</div>
+              <div class="anybox-link-domain">${extractDomain(article.source_url || article.reader_url)}</div>
+            </div>
+          </a>
+        `).join('');
+      }
+
+      let html = '';
+      if (inbox && inbox.length > 0) {
+        html += '<div class="readlater-section-label">Inbox</div>' + renderArticles(inbox);
+      }
+      if (later && later.length > 0) {
+        html += '<div class="readlater-section-label">Later</div>' + renderArticles(later);
+      }
+      container.innerHTML = html;
     }
 
     async function loadReadLater() {
       try {
         const response = await fetch('/api/reader');
         const data = await response.json();
-        renderReadLater(data.articles || []);
+        renderReadLater(data.inbox || [], data.later || []);
       } catch (error) {
         console.error('Error loading read later:', error);
         document.getElementById('readlater-container').innerHTML =

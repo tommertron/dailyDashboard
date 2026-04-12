@@ -2214,7 +2214,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         return parsed['oauth_token'], parsed['oauth_token_secret']
 
     def get_reader_articles(self):
-        """Fetch articles from Readwise Reader API (inbox/new location)."""
+        """Fetch articles from Readwise Reader API (inbox + later, top 3 each)."""
         try:
             config = load_config()
             token = config.get('readerApiKey', '')
@@ -2222,21 +2222,28 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(400, {'success': False, 'error': 'readerApiKey not configured'})
                 return
 
-            url = 'https://readwise.io/api/v3/list/?location=new&withHtmlContent=false'
-            req = urllib.request.Request(url, headers={'Authorization': f'Token {token}'})
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode())
+            def fetch_location(location):
+                url = f'https://readwise.io/api/v3/list/?location={location}&withHtmlContent=false'
+                req = urllib.request.Request(url, headers={'Authorization': f'Token {token}'})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
+                return [
+                    {
+                        'title': doc.get('title') or doc.get('source_url', 'Untitled'),
+                        'reader_url': doc.get('url', ''),
+                        'source_url': doc.get('source_url') or doc.get('url', ''),
+                    }
+                    for doc in data.get('results', [])
+                    if doc.get('url') or doc.get('source_url')
+                ][:3]
 
-            articles = [
-                {
-                    'title': doc.get('title') or doc.get('source_url', 'Untitled'),
-                    'reader_url': doc.get('url', ''),
-                    'source_url': doc.get('source_url') or doc.get('url', ''),
-                }
-                for doc in data.get('results', [])
-                if doc.get('url') or doc.get('source_url')
-            ][:10]
-            self.send_json_response(200, {'success': True, 'articles': articles})
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                inbox_future = executor.submit(fetch_location, 'new')
+                later_future = executor.submit(fetch_location, 'later')
+                inbox = inbox_future.result()
+                later = later_future.result()
+
+            self.send_json_response(200, {'success': True, 'inbox': inbox, 'later': later})
         except Exception as e:
             print(f"Error fetching Reader articles: {e}")
             self.send_json_response(500, {'success': False, 'error': str(e)})
