@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy application files
-COPY server.py generate_summary.py index.html ./
+COPY server.py generate_summary.py update_wisdom.py index.html ./
 
 EXPOSE 8000
 
