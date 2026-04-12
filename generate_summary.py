@@ -336,32 +336,67 @@ def gather_daily_data():
             'untagged': anybox_stats.get('untagged')
         }
 
-    # Load TV shows from Sequel
-    sequel_data = load_json_file('sequelEpisodes.json')
-    if sequel_data:
-        episodes = sequel_data.get('episodes', sequel_data.get('episoes', []))
-        data['upcoming_tv_shows'] = [
-            {
-                'show': ep.get('show'),
-                'season': ep.get('season'),
-                'episode': ep.get('episodeNumber'),
-                'title': ep.get('episodeTitle'),
-                'release_date': ep.get('releaseDate')
-            }
-            for ep in episodes[:5]
-        ]
+    # Load TV/movie data from Media Tracker
+    try:
+        req = Request('http://172.17.0.1:8100/api/releases')
+        with urlopen(req, timeout=10) as response:
+            releases = json.loads(response.read().decode('utf-8'))
 
-    # Load read later items from GoodLinks
-    readlater_data = load_json_file('readlater.json')
-    if readlater_data:
-        links = readlater_data.get('links', [])[:5]
-        data['read_later'] = [
+        data['channels_recent'] = [
             {
-                'title': l.get('title'),
-                'summary': l.get('summary', '')
+                'show': s.get('title'),
+                'episodes': [
+                    {'season': e.get('season'), 'episode': e.get('episode'), 'title': e.get('episode_title')}
+                    for e in s.get('episodes', [])[:2]
+                ]
             }
-            for l in links
+            for s in releases.get('channels_recent', [])[:5]
+            if not s.get('dashboard_hidden')
         ]
+        data['up_next'] = [
+            {
+                'show': item.get('show', {}).get('title'),
+                'season': item.get('season', {}).get('number'),
+                'episode': item.get('episode', {}).get('number'),
+                'title': item.get('episode', {}).get('title'),
+            }
+            for item in releases.get('up_next', [])[:5]
+            if not item.get('dashboard_hidden')
+        ]
+        data['new_episodes'] = [
+            {
+                'show': item.get('show', {}).get('title'),
+                'season': item.get('season', {}).get('number'),
+                'episode': item.get('episode', {}).get('number'),
+                'title': item.get('episode', {}).get('title'),
+            }
+            for item in releases.get('new_episodes', [])[:5]
+            if not item.get('dashboard_hidden')
+        ]
+    except Exception as e:
+        print(f"Error fetching media tracker data: {e}")
+
+    # Load read later items from Readwise Reader
+    try:
+        config = load_json_file('config.json') or {}
+        reader_token = config.get('readerApiKey', '')
+        if reader_token:
+            req = Request(
+                'https://readwise.io/api/v3/list/?location=new&withHtmlContent=false',
+                headers={'Authorization': f'Token {reader_token}'}
+            )
+            with urlopen(req, timeout=15) as response:
+                reader_data = json.loads(response.read().decode('utf-8'))
+            data['read_later'] = [
+                {
+                    'title': doc.get('title') or doc.get('source_url', 'Untitled'),
+                    'url': doc.get('source_url') or doc.get('url', ''),
+                }
+                for doc in reader_data.get('results', [])[:5]
+                if doc.get('title') or doc.get('source_url')
+            ]
+    except Exception as e:
+        print(f"Error fetching Reader articles: {e}")
 
     # Load current wisdom from Merlin Mann's Wisdom Project
     wisdom_data = load_json_file('wisdom.json')

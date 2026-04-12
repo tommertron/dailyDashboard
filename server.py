@@ -1799,8 +1799,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_raindrop_favorites()
         elif self.path == '/api/raindrop/latest':
             self.get_raindrop_latest()
-        elif self.path == '/api/instapaper':
-            self.get_instapaper_articles()
+        elif self.path == '/api/reader':
+            self.get_reader_articles()
         else:
             super().do_GET()
 
@@ -2213,60 +2213,32 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         parsed = dict(pair.split('=', 1) for pair in response_body.split('&'))
         return parsed['oauth_token'], parsed['oauth_token_secret']
 
-    def get_instapaper_articles(self):
-        """Fetch latest unread articles from Instapaper using xAuth."""
+    def get_reader_articles(self):
+        """Fetch articles from Readwise Reader API (inbox/new location)."""
         try:
-            creds_path = os.path.join(DIRECTORY, 'instacreds.json')
-            with open(creds_path) as f:
-                creds = json.load(f)
-            consumer_key = creds.get('consumerKey', '')
-            consumer_secret = creds.get('consumerSecret', '') or creds.get('consumerSecrete', '')
-            username = creds.get('username', '')
-            password = creds.get('password', '')
-            if not all([consumer_key, consumer_secret, username, password]):
-                self.send_json_response(400, {'success': False, 'error': 'Instapaper credentials not fully configured'})
+            config = load_config()
+            token = config.get('readerApiKey', '')
+            if not token:
+                self.send_json_response(400, {'success': False, 'error': 'readerApiKey not configured'})
                 return
 
-            access_token, access_secret = self._instapaper_xauth(consumer_key, consumer_secret, username, password)
-
-            url = 'https://www.instapaper.com/api/1/bookmarks/list'
-            post_params = {'limit': '5'}
-            oauth_params = {
-                'oauth_consumer_key': consumer_key,
-                'oauth_nonce': uuid.uuid4().hex,
-                'oauth_signature_method': 'HMAC-SHA1',
-                'oauth_timestamp': str(int(time.time())),
-                'oauth_token': access_token,
-                'oauth_version': '1.0',
-            }
-            all_params = {**oauth_params, **post_params}
-            oauth_params['oauth_signature'] = self._instapaper_sign('POST', url, all_params, consumer_secret, access_secret)
-
-            auth_header = 'OAuth ' + ', '.join(
-                f'{k}="{urllib.parse.quote(str(v), safe="")}"'
-                for k, v in sorted(oauth_params.items())
-            )
-            body = urllib.parse.urlencode(post_params).encode()
-            req = urllib.request.Request(url, data=body, method='POST', headers={
-                'Authorization': auth_header,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            })
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            url = 'https://readwise.io/api/v3/list/?location=new&withHtmlContent=false'
+            req = urllib.request.Request(url, headers={'Authorization': f'Token {token}'})
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode())
 
-            bookmarks = [item for item in data if item.get('type') == 'bookmark']
             articles = [
                 {
-                    'title': b.get('title') or b.get('url', 'Untitled'),
-                    'url': b.get('url', ''),
-                    'instapaper_url': f"https://www.instapaper.com/read/{b['bookmark_id']}",
+                    'title': doc.get('title') or doc.get('source_url', 'Untitled'),
+                    'reader_url': doc.get('url', ''),
+                    'source_url': doc.get('source_url') or doc.get('url', ''),
                 }
-                for b in bookmarks
-                if b.get('url')
-            ]
+                for doc in data.get('results', [])
+                if doc.get('url') or doc.get('source_url')
+            ][:10]
             self.send_json_response(200, {'success': True, 'articles': articles})
         except Exception as e:
-            print(f"Error fetching Instapaper articles: {e}")
+            print(f"Error fetching Reader articles: {e}")
             self.send_json_response(500, {'success': False, 'error': str(e)})
 
     def unfavorite_raindrop(self, raindrop_id):
