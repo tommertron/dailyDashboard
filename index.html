@@ -66,133 +66,100 @@
     <!-- Tomorrow Forecast Card -->
     <div id="shed-heat-banner" class="tomorrow-forecast" style="display:none"></div>
 
-    <!-- Dense top row: Weather/Tasks | Smart Schedule | Remaining/Wisdom -->
+    <!-- Favourites banner (top, above dense-top-row) -->
+    <div id="links-favourites-banner" class="links-banner" data-section="favourites" data-panel="linksFavourites" data-expanded="true" style="margin-bottom: 0.75rem;">
+      <div class="links-banner-header" onclick="toggleLinksBanner('favourites')">
+        <a href="https://app.raindrop.io/my/0/%E2%9D%A4%EF%B8%8F" target="_blank" rel="noopener noreferrer" class="links-banner-label-group links-banner-label-link" onclick="event.stopPropagation()" title="Open Raindrop favourites">
+          <span class="links-banner-icon heart-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>
+          </span>
+          <span class="links-banner-label">Favourites</span>
+        </a>
+        <div class="links-banner-inline" id="links-favourites-inline">
+          <span class="links-banner-loading">Loading…</span>
+        </div>
+        <button class="icon-btn links-banner-refresh" onclick="event.stopPropagation(); loadCombinedLinks()" title="Refresh Links" id="links-refresh-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+        <span class="links-banner-chevron">›</span>
+      </div>
+      <div class="links-banner-expanded">
+        <div id="links-favourites-container"></div>
+      </div>
+    </div>
+
+
+
+    <!-- Top row: Weather | Smart Schedule | Tasks (three equal columns) -->
     <div class="dense-top-row">
-      <div class="stacked-column">
-        <div class="panel" data-panel="weather">
-          <div class="panel-header">
-            <h2 class="section-title">Weather</h2>
-            <a href="weather://" class="app-link" title="Open Weather">
+      <div class="panel" data-panel="weather">
+        <div class="panel-header">
+          <h2 class="section-title">Weather</h2>
+          <a href="weather://" class="app-link" title="Open Weather">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </a>
+        </div>
+        <div class="panel-body" id="weather-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="smartSchedule">
+        <div class="panel-header">
+          <h2 class="section-title">Smart Schedule</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </a>
           </div>
-          <div class="panel-body" id="weather-container">
-            <div class="panel-empty">Loading...</div>
-          </div>
         </div>
-
-        <div class="panel" data-panel="tasks">
-          <div class="panel-header">
-            <h2 class="section-title">Tasks</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="showInboxForm()" title="Add to inbox" id="todos-add-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <button class="icon-btn" onclick="puntAllTodos()" title="Punt all to tomorrow" id="todos-punt-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-              </button>
-              <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Todoist" id="todos-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://todoist.com/app/today" class="app-link" title="Open Todoist" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="todos-container">
+        <div class="panel-body">
+          <div id="smart-schedule-timeline">
             <div class="panel-empty">Loading...</div>
           </div>
         </div>
       </div>
 
-      <div class="stacked-column center-column">
-        <div class="panel" data-panel="smartSchedule">
-          <div class="panel-header">
-            <h2 class="section-title">Smart Schedule</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshPanel('calendar')" title="Refresh Calendar" id="smart-schedule-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="x-fantastical3://show/calendar" class="app-link" title="Open Fantastical">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div id="smart-schedule-timeline">
-              <div class="panel-empty">Loading...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="stacked-column right-column">
-        <div class="panel" data-panel="bills">
-          <div class="panel-header">
-            <h2 class="section-title">Remaining</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-              </a>
-              <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body" id="money-container">
-            <div class="panel-empty">Loading...</div>
+      <div class="panel" data-panel="tasks">
+        <div class="panel-header">
+          <h2 class="section-title">Tasks</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="showInboxForm()" title="Add to inbox" id="todos-add-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button class="icon-btn" onclick="puntAllTodos()" title="Punt all to tomorrow" id="todos-punt-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button class="icon-btn" onclick="refreshTodos()" title="Refresh from Todoist" id="todos-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="https://todoist.com/app/today" class="app-link" title="Open Todoist" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </a>
           </div>
         </div>
-
-        <div class="panel" data-panel="links">
-          <div class="panel-header">
-            <h2 class="section-title">Links</h2>
-            <div class="header-actions">
-              <button class="icon-btn" onclick="loadCombinedLinks()" title="Refresh Links" id="links-refresh-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-              <a href="https://app.raindrop.io/my/0" target="_blank" class="app-link" title="Open Raindrop.io">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <div class="panel-body links-combined-body">
-            <h3 class="links-section-label">Favourites</h3>
-            <div id="links-favourites-container"><div class="panel-empty">Loading...</div></div>
-            <h3 class="links-section-label">Latest</h3>
-            <div id="links-latest-container"><div class="panel-empty">Loading...</div></div>
-            <h3 class="links-section-label">Random</h3>
-            <div id="links-random-container"><div class="panel-empty">Loading...</div></div>
-          </div>
+        <div class="panel-body" id="todos-container">
+          <div class="panel-empty">Loading...</div>
         </div>
-
       </div>
     </div>
 
@@ -200,6 +167,56 @@
     <div id="calendar-container" style="display:none"></div>
 
     <div class="three-column-grid">
+
+
+      <div id="links-combined-banner" class="links-banner" data-section="combined" data-panel="links" data-expanded="true">
+        <div class="links-banner-header">
+          <a href="https://app.raindrop.io/my/0" target="_blank" rel="noopener noreferrer" class="links-banner-label-group links-banner-label-link" onclick="event.stopPropagation()" title="Open Raindrop bookmarks">
+            <span class="links-banner-icon clock-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M13 7h-2v5.414l3.293 3.293 1.414-1.414L13 11.586z"/></svg>
+            </span>
+            <span class="links-banner-label">Links</span>
+          </a>
+          <button class="icon-btn links-banner-refresh" onclick="loadCombinedLinks()" title="Refresh Links">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+        <div class="links-banner-expanded">
+          <div class="readlater-section-label">Recent</div>
+          <div id="links-latest-container"></div>
+          <div class="readlater-section-label" style="margin-top: 0.5rem;">Random</div>
+          <div id="links-random-container"></div>
+        </div>
+      </div>
+
+
+      <div class="panel" data-panel="bills">
+        <div class="panel-header">
+          <h2 class="section-title">Remaining</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="refreshMoney()" title="Refresh" id="money-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <a href="http://100.125.128.51:5173" class="app-link" title="Asset Tracker" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+            </a>
+            <a href="http://100.125.128.51:8111" class="app-link" title="Open remaining" target="_blank">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="panel-body" id="money-container">
+          <div class="panel-empty">Loading...</div>
+        </div>
+      </div>
 
       <div class="panel" data-panel="shed">
         <div class="panel-header">
@@ -220,6 +237,7 @@
         <div class="panel-body" id="shed-container">
           <div class="panel-empty">Loading...</div>
         </div>
+        <div id="shed-heat-timeline"></div>
       </div>
 
       <div class="panel" data-panel="home">
@@ -241,6 +259,7 @@
         <div class="panel-body" id="home-container">
           <div class="panel-empty">Loading...</div>
         </div>
+        <div id="home-heat-timeline"></div>
       </div>
 
       <div class="panel" data-panel="piStatus">
@@ -347,6 +366,33 @@
         </div>
         <div class="panel-body">
           <div id="readlater-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel notes-panel" data-panel="notes">
+        <div class="panel-header">
+          <h2 class="section-title">Notes</h2>
+          <div class="header-actions">
+            <button class="icon-btn" onclick="loadNotes()" title="Refresh Notes" id="notes-refresh-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <form class="notes-capture" id="notes-capture-form" onsubmit="return captureNote(event)">
+            <input type="text" id="notes-capture-input" class="notes-capture-input" placeholder="Quick capture to inbox…" autocomplete="off" />
+            <button type="submit" class="notes-capture-btn" title="Capture to inbox">＋</button>
+          </form>
+          <div class="notes-section-label">Inbox</div>
+          <div id="notes-inbox-container">
+            <div class="panel-empty">Loading...</div>
+          </div>
+          <div class="notes-section-label">Favourites</div>
+          <div id="notes-favorites-container">
             <div class="panel-empty">Loading...</div>
           </div>
         </div>
@@ -754,13 +800,18 @@
       });
     }
 
+    const _linksCache = { favourites: [], latest: [], random: [] };
+    const _linksSectionMeta = {
+      favourites: { isFav: true, iconType: 'heart' },
+      latest: { isFav: false, iconType: 'clock' },
+      random: { isFav: false, iconType: 'dice' },
+    };
+
     async function loadCombinedLinks() {
-      const favCont = document.getElementById('links-favourites-container');
-      const randCont = document.getElementById('links-random-container');
-      const latCont = document.getElementById('links-latest-container');
-      if (favCont) favCont.innerHTML = '<div class="panel-empty">Loading...</div>';
-      if (randCont) randCont.innerHTML = '<div class="panel-empty">Loading...</div>';
-      if (latCont) latCont.innerHTML = '<div class="panel-empty">Loading...</div>';
+      ['favourites', 'latest', 'random'].forEach(section => {
+        const inline = document.getElementById(`links-${section}-inline`);
+        if (inline) inline.innerHTML = '<span class="links-banner-loading">Loading…</span>';
+      });
 
       const [favsRes, randomRes, latestRes] = await Promise.allSettled([
         fetch('/api/raindrop/favorites').then(r => r.json()),
@@ -771,17 +822,59 @@
       const favs = (favsRes.status === 'fulfilled' && favsRes.value.links) ? favsRes.value.links.slice(0, 3) : [];
       const favIds = new Set(favs.map(l => String(l.id)));
 
+      const hideTagsRaw = currentSettings?.linksHideRecentTags;
+      const hideTags = (typeof hideTagsRaw === 'string' ? hideTagsRaw : 'readwise')
+        .split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      const linkHasHiddenTag = (l) => {
+        if (!hideTags.length) return false;
+        const tagList = (l.tags || '').toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+        return tagList.some(t => hideTags.includes(t));
+      };
       const allLatest = (latestRes.status === 'fulfilled' && latestRes.value.links) ? latestRes.value.links : [];
-      const latest = allLatest.filter(l => !favIds.has(String(l.id))).slice(0, 3);
+      const latest = allLatest.filter(l => !favIds.has(String(l.id)) && !linkHasHiddenTag(l)).slice(0, 3);
       const latestIds = new Set(latest.map(l => String(l.id)));
 
       const allRandom = (randomRes.status === 'fulfilled' && randomRes.value.links) ? randomRes.value.links : [];
       const random = shuffleArray(allRandom.filter(l => !favIds.has(String(l.id)) && !latestIds.has(String(l.id)))).slice(0, 3);
 
-      renderLinkItems(favs, 'links-favourites-container', true, 'heart');
-      renderLinkItems(random, 'links-random-container', false, 'dice');
-      renderLinkItems(latest, 'links-latest-container', false, 'clock');
+      _linksCache.favourites = favs;
+      _linksCache.latest = latest;
+      _linksCache.random = random;
+
+      renderLinksBannerSection('favourites');
+      renderLinksBannerSection('latest');
+      renderLinksBannerSection('random');
       loadStarredLinks();
+    }
+
+    function renderLinksBannerSection(section) {
+      const meta = _linksSectionMeta[section];
+      const links = _linksCache[section] || [];
+      const inline = document.getElementById(`links-${section}-inline`);
+      if (inline) {
+        if (!links.length) {
+          inline.innerHTML = '<span class="links-banner-loading">None</span>';
+        } else {
+          inline.innerHTML = links.map(link => {
+            const title = (link.title || 'Untitled').replace(/"/g, '&quot;');
+            return `<button class="links-banner-inline-item" data-id="${link.id}" data-url="${link.url.replace(/"/g, '&quot;')}" title="${title}">${link.title || 'Untitled'}</button>`;
+          }).join('');
+          inline.querySelectorAll('.links-banner-inline-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              window.open(btn.dataset.url, '_blank', 'noopener');
+            });
+          });
+        }
+      }
+      renderLinkItems(links, `links-${section}-container`, meta.isFav, meta.iconType, { omitComment: section === 'latest' });
+    }
+
+    function toggleLinksBanner(section) {
+      const banner = document.getElementById(`links-${section}-banner`);
+      if (!banner) return;
+      const expanded = banner.dataset.expanded === 'true';
+      banner.dataset.expanded = expanded ? 'false' : 'true';
     }
 
     function getLinkIcon(iconType) {
@@ -794,13 +887,14 @@
       return getDiceIcon(Math.floor(Math.random() * 6) + 1);
     }
 
-    function renderLinkItems(links, containerId, isFavourite, iconType = 'dice') {
+    function renderLinkItems(links, containerId, isFavourite, iconType = 'dice', options = {}) {
       const container = document.getElementById(containerId);
       if (!container) return;
       if (!links || links.length === 0) {
         container.innerHTML = '<div class="panel-empty">None</div>';
         return;
       }
+      const omitComment = !!options.omitComment;
       container.innerHTML = links.map(link => {
         const icon = getLinkIcon(iconType);
         return `
@@ -808,7 +902,7 @@
             <span class="anybox-link-icon dice-icon">${icon}</span>
             <div class="anybox-link-text">
               <div class="anybox-link-title">${link.title || 'Untitled'}</div>
-              ${link.comment ? `<div class="anybox-link-comment">${link.comment}</div>` : ''}
+              ${(!omitComment && link.comment) ? `<div class="anybox-link-comment">${link.comment}</div>` : ''}
               <div class="anybox-link-meta">
                 <span class="anybox-link-domain">${extractDomain(link.url)}</span>
                 ${link.added ? `<span class="anybox-link-date">${link.added}</span>` : ''}
@@ -998,8 +1092,17 @@
       const container = document.getElementById('todos-container');
 
       // Support both old array format and new { today, inbox } format
-      const todayTasks = Array.isArray(data) ? data : (data.today || []);
+      const todayTasksRaw = Array.isArray(data) ? data : (data.today || []);
       const inboxTasks = Array.isArray(data) ? [] : (data.inbox || []);
+
+      // Hide tasks with a specific time that's already passed
+      const now = new Date();
+      const todayTasks = todayTasksRaw.filter(t => {
+        const dt = t.due && (t.due.datetime || t.due.date);
+        if (!dt || !dt.includes('T')) return true;
+        const taskTime = new Date(dt);
+        return isNaN(taskTime.getTime()) || taskTime <= now;
+      });
 
       if (todayTasks.length === 0 && inboxTasks.length === 0) {
         container.innerHTML = '<div class="panel-empty">No tasks</div>';
@@ -1757,6 +1860,46 @@
       }
     }
 
+    function getTodayForecast(forecastData, currentWeather) {
+      const todayDate = new Date().toDateString();
+
+      const todayForecasts = (forecastData && forecastData.list)
+        ? forecastData.list.filter(item => {
+            const itemDate = new Date(item.dt * 1000);
+            return itemDate.toDateString() === todayDate;
+          })
+        : [];
+
+      // Fall back to current conditions when no forecast slots remain today.
+      if (todayForecasts.length === 0) {
+        if (!currentWeather || !currentWeather.weather) return null;
+        return {
+          high: Math.round(currentWeather.main.temp),
+          low: Math.round(currentWeather.main.temp),
+          description: currentWeather.weather[0].description,
+          icon: currentWeather.weather[0].icon
+        };
+      }
+
+      const middayForecast = todayForecasts.find(f => {
+        const hour = new Date(f.dt * 1000).getHours();
+        return hour >= 12 && hour <= 15;
+      }) || todayForecasts[Math.floor(todayForecasts.length / 2)];
+
+      // Include the current temp so the range reflects now plus remaining slots.
+      const temps = todayForecasts.map(f => f.main.temp);
+      if (currentWeather && currentWeather.main) temps.push(currentWeather.main.temp);
+      const high = Math.round(Math.max(...temps));
+      const low = Math.round(Math.min(...temps));
+
+      return {
+        high,
+        low,
+        description: middayForecast.weather[0].description,
+        icon: middayForecast.weather[0].icon
+      };
+    }
+
     function getTomorrowForecast(forecastData) {
       if (!forecastData || !forecastData.list) return null;
 
@@ -1791,7 +1934,7 @@
       };
     }
 
-    function renderWeather(location, weather, forecast) {
+    function renderWeather(location, weather, forecast, backyardTemp) {
       const container = document.getElementById('weather-container');
 
       if (!location) {
@@ -1805,6 +1948,7 @@
       }
 
       const locationDisplay = [location.city, location.state].filter(Boolean).join(', ');
+      const todayForecast = getTodayForecast(forecast, weather);
       const tomorrowForecast = getTomorrowForecast(forecast);
 
       container.innerHTML = `
@@ -1814,8 +1958,18 @@
             <div class="weather-temp">${Math.round(weather.main.temp)}°C</div>
             <div class="weather-desc">${weather.weather[0].description}</div>
             <div class="weather-location">${locationDisplay}</div>
+            ${backyardTemp !== null ? `<div class="weather-backyard">Backyard: ${backyardTemp.toFixed(1)}°C</div>` : ''}
           </div>
         </div>
+        ${todayForecast ? `
+          <div class="weather-tomorrow">
+            <img class="weather-tomorrow-icon" src="https://openweathermap.org/img/wn/${todayForecast.icon}.png" alt="${todayForecast.description}">
+            <div class="weather-tomorrow-info">
+              <span class="weather-tomorrow-label">Today</span>
+              <span class="weather-tomorrow-temps">${todayForecast.high}° / ${todayForecast.low}°</span>
+            </div>
+          </div>
+        ` : ''}
         ${tomorrowForecast ? `
           <div class="weather-tomorrow">
             <img class="weather-tomorrow-icon" src="https://openweathermap.org/img/wn/${tomorrowForecast.icon}.png" alt="${tomorrowForecast.description}">
@@ -1837,9 +1991,10 @@
         return;
       }
 
-      const [weather, forecast] = await Promise.all([
+      const [weather, forecast, outdoorTempData] = await Promise.all([
         fetchWeather(location.lat, location.long),
-        fetchForecast(location.lat, location.long)
+        fetchForecast(location.lat, location.long),
+        fetch('/api/home-assistant/outdoor-temp').then(r => r.json()).catch(() => null)
       ]);
 
       if (!weather || weather.error) {
@@ -1848,7 +2003,8 @@
         return;
       }
 
-      renderWeather(location, weather, forecast);
+      const backyardTemp = (outdoorTempData && outdoorTempData.success) ? outdoorTempData.temp : null;
+      renderWeather(location, weather, forecast, backyardTemp);
     }
 
     function renderAiSummary(summaryText) {
@@ -1946,6 +2102,9 @@
         else humidityClass = 'stat-alert';
       }
 
+      // Thermostat activity log
+      const thermostatActivity = data.thermostat_activity || [];
+
       // Heater runtime and cost
       const heaterRuntime = data.heater_runtime || {};
       const heatTodaySecs = heaterRuntime.today || 0;
@@ -2010,6 +2169,42 @@
           </div>
         </div>
 
+        ${thermostatActivity.length > 0 ? `
+        <div class="thermostat-activity">
+          <div class="thermostat-activity-title">Thermostat Activity</div>
+          ${thermostatActivity.slice().reverse().map(entry => {
+            const dt = new Date(entry.at);
+            const now = new Date();
+            const diffMs = now - dt;
+            const diffMins = Math.round(diffMs / 60000);
+            let timeLabel;
+            if (diffMins < 1) timeLabel = 'just now';
+            else if (diffMins < 60) timeLabel = diffMins + 'm ago';
+            else {
+              const diffHrs = Math.floor(diffMins / 60);
+              const remMins = diffMins % 60;
+              timeLabel = diffHrs + 'h' + (remMins > 0 ? ' ' + remMins + 'm' : '') + ' ago';
+            }
+            const isOn = entry.state === 'heat';
+            const haBase = 'http://shedpi2.forest-fujita.ts.net:8123';
+            const autoUrl = entry.automation_config_id
+              ? `${haBase}/config/automation/edit/${entry.automation_config_id}`
+              : `${haBase}/config/automation/dashboard`;
+            const triggerHtml = entry.automation_entity_id
+              ? `<a class="activity-trigger activity-trigger-link" href="${autoUrl}" target="_blank" title="Edit automation in Home Assistant">${entry.trigger}</a>`
+              : `<span class="activity-trigger">${entry.trigger}</span>`;
+            return `<div class="thermostat-activity-row ${isOn ? 'activity-heating' : 'activity-idle'}">
+              <span class="activity-icon">${isOn ? '🔥' : '○'}</span>
+              <div class="activity-body">
+                <span class="activity-label">${isOn ? 'Turned on' : 'Turned off'}</span>
+                ${triggerHtml}
+              </div>
+              <span class="activity-time">${timeLabel}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        ` : ''}
+
         <div class="home-scenes">
           <button class="scene-btn" onclick="activateScene('heat_shed_in_morning')">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2031,6 +2226,12 @@
     function updateShedHeatBanner() {
       const banner = document.getElementById('shed-heat-banner');
       if (!banner) return;
+
+      // Respect the settings toggle
+      if (currentSettings && currentSettings.showShedHeatBanner === false) {
+        banner.style.display = 'none';
+        return;
+      }
 
       // Need both data sources to render
       if (window._calendarEvents === undefined || window._wfhOn === undefined) return;
@@ -2091,6 +2292,50 @@
         document.getElementById('shed-container').innerHTML =
           '<div class="panel-empty">Error loading shed status</div>';
       }
+    }
+
+    // Heat Timeline Bar
+    async function loadHeatTimeline() {
+      try {
+        const response = await fetch('/api/heat-timeline');
+        const data = await response.json();
+        if (!data.success) return;
+        renderHeatTimeline(data.shed, 'shed-heat-timeline');
+        renderHeatTimeline(data.home, 'home-heat-timeline');
+      } catch (error) {
+        console.error('Error loading heat timeline:', error);
+      }
+    }
+
+    function renderHeatTimeline(segments, containerId) {
+      const container = document.getElementById(containerId);
+      if (!container || !segments || segments.length === 0) return;
+
+      const segs = segments.map(seg => {
+        const heatW = Math.round(seg.heat_pct * 100);
+        const coolW = Math.round(seg.cool_pct * 100);
+        const title = `${seg.label}: ${heatW}% heat${coolW > 0 ? ', ' + coolW + '% cool' : ''}`;
+        const heatSlots = seg.heat_slots || [];
+        const coolSlots = seg.cool_slots || [];
+        let cells = '';
+        for (let i = 0; i < 12; i++) {
+          let cls = 'htl-slot';
+          if (heatSlots[i]) cls += ' htl-slot-heat';
+          else if (coolSlots[i]) cls += ' htl-slot-cool';
+          cells += `<div class="${cls}"></div>`;
+        }
+        return `<div class="htl-segment" title="${title}">${cells}</div>`;
+      }).join('');
+
+      const labels = segments.map(seg =>
+        `<span class="htl-label">${seg.label}</span>`
+      ).join('');
+
+      container.innerHTML = `
+        <div class="htl-container">
+          <div class="htl-bar">${segs}</div>
+          <div class="htl-labels">${labels}</div>
+        </div>`;
     }
 
     // Heater Chart Functions
@@ -3325,11 +3570,12 @@
       const container = document.getElementById('entertainment-container');
       let html = '';
 
-      // Combine DVR + Up Next + New Episodes, show top 3
+      // Combine DVR + Up Next + New Episodes, sort by recency of last watch, show top 3
       const allItems = [];
       (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
       (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
       (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      allItems.sort((a, b) => (b.item.last_watched_at || '').localeCompare(a.item.last_watched_at || ''));
 
       const top3 = allItems.slice(0, 3);
       if (top3.length > 0) {
@@ -3380,11 +3626,12 @@
       const container = document.getElementById('tv-shows-container');
       let html = renderStorage(disk);
 
-      // Build TV section (DVR + Up Next + New Episodes) - top 3
+      // Build TV section (DVR + Up Next + New Episodes), sort by recency of last watch, top 3
       const allItems = [];
       (data.channels_recent || []).forEach(item => allItems.push({ item, type: 'dvr' }));
       (data.up_next || []).forEach(item => allItems.push({ item, type: 'tv' }));
       (data.new_episodes || []).forEach(item => allItems.push({ item, type: 'tv' }));
+      allItems.sort((a, b) => (b.item.last_watched_at || '').localeCompare(a.item.last_watched_at || ''));
 
       const top3 = allItems.slice(0, 3);
       if (top3.length > 0) {
@@ -3535,50 +3782,514 @@
       }
     }
 
-    function renderReadLater(inbox, later) {
-      const container = document.getElementById('readlater-container');
+    const _readLaterCache = new Map();
 
-      if ((!inbox || inbox.length === 0) && (!later || later.length === 0)) {
+    function renderReadLater(shortlist, later) {
+      const container = document.getElementById('readlater-container');
+      const picked = [];
+      const seen = new Set();
+      const take = (arr) => {
+        for (const a of arr || []) {
+          if (picked.length >= 3) break;
+          if (!a || !a.id || seen.has(a.id)) continue;
+          seen.add(a.id);
+          picked.push(a);
+        }
+      };
+      take(shortlist);
+      take(later);
+
+      _readLaterCache.clear();
+      picked.forEach(a => _readLaterCache.set(String(a.id), a));
+
+      if (picked.length === 0) {
         container.innerHTML = '<div class="panel-empty">No articles to read</div>';
         return;
       }
 
-      function renderArticles(articles) {
-        return articles.map(article => `
-          <a href="${article.reader_url}" class="anybox-link-item" target="_blank">
+      container.innerHTML = picked.map(article => {
+        const inShortlist = article.location === 'shortlist';
+        const star = inShortlist ? '★' : '';
+        return `
+          <button class="anybox-link-item readlater-item-btn" data-id="${article.id}" data-in-shortlist="${inShortlist}">
             <span class="anybox-link-icon readlater-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
               </svg>
             </span>
             <div class="anybox-link-text">
-              <div class="anybox-link-title">${article.title || 'Untitled'}</div>
+              <div class="anybox-link-title">${star ? `<span class="readlater-shortlist-star" title="In Shortlist">${star}</span> ` : ''}${article.title || 'Untitled'}</div>
               <div class="anybox-link-domain">${extractDomain(article.source_url || article.reader_url)}</div>
             </div>
-          </a>
-        `).join('');
-      }
+          </button>
+        `;
+      }).join('');
 
-      let html = '';
-      if (inbox && inbox.length > 0) {
-        html += '<div class="readlater-section-label">Inbox</div>' + renderArticles(inbox);
-      }
-      if (later && later.length > 0) {
-        html += '<div class="readlater-section-label">Later</div>' + renderArticles(later);
-      }
-      container.innerHTML = html;
+      container.querySelectorAll('.readlater-item-btn').forEach(btn => {
+        btn.addEventListener('click', () => openReadLaterModal(btn.dataset.id));
+      });
     }
 
     async function loadReadLater() {
       try {
         const response = await fetch('/api/reader');
         const data = await response.json();
-        renderReadLater(data.inbox || [], data.later || []);
+        renderReadLater(data.shortlist || [], data.later || []);
       } catch (error) {
         console.error('Error loading read later:', error);
         document.getElementById('readlater-container').innerHTML =
           '<div class="panel-empty">Error loading articles</div>';
       }
+    }
+
+    // --- Notes panel (proxied to the notes-dashboard companion container) ---
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderNotesList(notes, containerId, kind) {
+      const container = document.getElementById(containerId);
+      if (!notes || notes.length === 0) {
+        container.innerHTML = `<div class="panel-empty">${kind === 'inbox' ? 'Inbox is empty' : 'No favourites'}</div>`;
+        return;
+      }
+      const items = kind === 'inbox' ? notes.slice(0, 5) : notes;
+      container.innerHTML = items.map(note => {
+        const fav = note.favorite;
+        return `
+          <div class="anybox-link-item notes-item">
+            <div class="anybox-link-text notes-item-open" data-path="${encodeURIComponent(note.path)}" title="Open note">
+              <div class="anybox-link-title">${escapeHtml(note.title || note.filename || 'Untitled')}</div>
+              <div class="anybox-link-domain">${escapeHtml(note.type || 'Note')}${note.organized ? ' · organized' : ''}</div>
+            </div>
+            <div class="notes-item-actions">
+              <button class="notes-action-btn notes-flag-btn" data-path="${note.path}" data-field="favorite" data-value="${!fav}" title="${fav ? 'Unfavourite' : 'Favourite'}">${fav ? '★' : '☆'}</button>
+              ${kind === 'inbox' ? `<button class="notes-action-btn notes-flag-btn notes-organize-btn" data-path="${note.path}" data-field="organized" data-value="true" title="Organize (remove from inbox)">✓</button>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      container.querySelectorAll('.notes-flag-btn').forEach(btn => {
+        btn.addEventListener('click', () =>
+          toggleNoteFlag(btn.dataset.path, btn.dataset.field, btn.dataset.value === 'true'));
+      });
+      container.querySelectorAll('.notes-item-open').forEach(el => {
+        el.addEventListener('click', () => openNoteModal(decodeURIComponent(el.dataset.path)));
+      });
+    }
+
+    async function loadNotes() {
+      try {
+        const [inboxResp, favResp] = await Promise.all([
+          fetch('/api/notes/inbox'),
+          fetch('/api/notes/favorites'),
+        ]);
+        const inboxData = await inboxResp.json();
+        const favData = await favResp.json();
+        const inbox = Array.isArray(inboxData) ? inboxData : [];
+        const favorites = Array.isArray(favData) ? favData : [];
+        // A note can be both in the inbox and favourited; show it only in the
+        // inbox so we don't list it twice.
+        const inboxPaths = new Set(inbox.map(n => n.path));
+        const favoritesOnly = favorites.filter(n => !inboxPaths.has(n.path));
+        renderNotesList(inbox, 'notes-inbox-container', 'inbox');
+        renderNotesList(favoritesOnly, 'notes-favorites-container', 'favorites');
+      } catch (error) {
+        console.error('Error loading notes:', error);
+        document.getElementById('notes-inbox-container').innerHTML =
+          '<div class="panel-empty">Error loading notes</div>';
+        document.getElementById('notes-favorites-container').innerHTML = '';
+      }
+    }
+
+    async function toggleNoteFlag(path, field, value) {
+      try {
+        await fetch('/api/notes/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path, field, value }),
+        });
+        loadNotes();
+      } catch (error) {
+        console.error('Error updating note:', error);
+      }
+    }
+
+    async function captureNote(event) {
+      event.preventDefault();
+      const input = document.getElementById('notes-capture-input');
+      const text = input.value.trim();
+      if (!text) return false;
+      input.disabled = true;
+      try {
+        await fetch('/api/notes/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        input.value = '';
+        loadNotes();
+      } catch (error) {
+        console.error('Error capturing note:', error);
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+      return false;
+    }
+
+    // --- Note editor modal -------------------------------------------------
+    let _noteModal = null; // { note, dirty }
+
+    async function openNoteModal(path) {
+      const overlay = document.getElementById('note-editor-overlay');
+      overlay.classList.add('visible');
+      document.addEventListener('keydown', handleNoteModalEscape);
+      // Reset to a loading state
+      document.getElementById('note-modal-title').textContent = 'Loading…';
+      document.getElementById('note-modal-type').textContent = '';
+      document.getElementById('note-modal-body').value = '';
+      document.getElementById('note-modal-relate-results').innerHTML = '';
+      _noteModal = null;
+      try {
+        const resp = await fetch('/api/notes/note?path=' + encodeURIComponent(path));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const note = await resp.json();
+        _noteModal = { note };
+        renderNoteModal();
+      } catch (error) {
+        console.error('Error loading note:', error);
+        document.getElementById('note-modal-title').textContent = 'Error loading note';
+      }
+    }
+
+    function renderNoteModal() {
+      if (!_noteModal) return;
+      const note = _noteModal.note;
+      document.getElementById('note-modal-title').textContent = note.title || note.filename || 'Untitled';
+      document.getElementById('note-modal-type').textContent = note.type || 'Note';
+      document.getElementById('note-modal-body').value = note.body || '';
+
+      // Organize / Unorganize
+      const orgBtn = document.getElementById('note-modal-organized-btn');
+      orgBtn.classList.toggle('active', !!note.organized);
+      orgBtn.innerHTML = note.organized ? '✓ Organized — Unorganize' : 'Organize';
+
+      // Favourite toggle
+      const favBtn = document.getElementById('note-modal-favorite-btn');
+      favBtn.classList.toggle('active', !!note.favorite);
+      favBtn.innerHTML = note.favorite ? '★ Favourited' : '☆ Favourite';
+
+      // Archive / Unarchive
+      const arcBtn = document.getElementById('note-modal-archived-btn');
+      arcBtn.classList.toggle('active', !!note.archived);
+      arcBtn.innerHTML = note.archived ? '🗄 Archived — Unarchive' : '🗄 Archive';
+
+      renderNoteRelations('belongs_to', note.belongs_to || []);
+      renderNoteRelations('related_to', note.related_to || []);
+      document.getElementById('note-modal-save').disabled = true;
+    }
+
+    function renderNoteRelations(field, links) {
+      const el = document.getElementById('note-modal-' + field);
+      if (!links.length) {
+        el.innerHTML = '<span class="note-rel-empty">None</span>';
+        return;
+      }
+      el.innerHTML = links.map(l => `<span class="note-rel-chip">${escapeHtml(l)}</span>`).join('');
+    }
+
+    function closeNoteModal() {
+      document.getElementById('note-editor-overlay').classList.remove('visible');
+      document.removeEventListener('keydown', handleNoteModalEscape);
+      document.getElementById('note-modal-relate-results').innerHTML = '';
+      document.getElementById('note-modal-relate-input').value = '';
+      _noteModal = null;
+    }
+
+    function handleNoteModalEscape(event) {
+      if (event.key !== 'Escape') return;
+      // If the delete confirmation is open, Escape dismisses that first.
+      if (document.getElementById('note-delete-overlay').classList.contains('visible')) {
+        closeNoteDeleteConfirm();
+        return;
+      }
+      closeNoteModal();
+    }
+
+    function noteBodyChanged() {
+      document.getElementById('note-modal-save').disabled = false;
+    }
+
+    async function saveNoteBody() {
+      if (!_noteModal) return;
+      const btn = document.getElementById('note-modal-save');
+      const body = document.getElementById('note-modal-body').value;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const resp = await fetch('/api/notes/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: _noteModal.note.path, body }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        _noteModal.note = await resp.json();
+        btn.textContent = 'Saved ✓';
+        setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+        loadNotes();
+      } catch (error) {
+        console.error('Error saving note:', error);
+        btn.textContent = 'Save failed';
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = 'Save'; }, 2000);
+      }
+    }
+
+    async function noteToggleFlagModal(field) {
+      if (!_noteModal) return;
+      const current = !!_noteModal.note[field];
+      try {
+        const resp = await fetch('/api/notes/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: _noteModal.note.path, field, value: !current }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        _noteModal.note = await resp.json();
+        renderNoteModal();
+        loadNotes();
+      } catch (error) {
+        console.error('Error updating flag:', error);
+      }
+    }
+
+    function openNoteDeleteConfirm() {
+      if (!_noteModal) return;
+      document.getElementById('note-delete-name').textContent =
+        _noteModal.note.title || _noteModal.note.filename || 'this note';
+      document.getElementById('note-delete-overlay').classList.add('visible');
+    }
+
+    function closeNoteDeleteConfirm() {
+      document.getElementById('note-delete-overlay').classList.remove('visible');
+    }
+
+    async function confirmDeleteNote() {
+      if (!_noteModal) return;
+      const path = _noteModal.note.path;
+      const btn = document.getElementById('note-delete-confirm-btn');
+      btn.disabled = true;
+      btn.textContent = 'Deleting…';
+      try {
+        const resp = await fetch('/api/notes/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        closeNoteDeleteConfirm();
+        closeNoteModal();
+        loadNotes();
+      } catch (error) {
+        console.error('Error deleting note:', error);
+        btn.textContent = 'Delete failed';
+      } finally {
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Delete'; }, 1500);
+      }
+    }
+
+    async function noteToTodoist() {
+      if (!_noteModal) return;
+      const btn = document.getElementById('note-modal-todoist-btn');
+      // First line of the (possibly edited) body is the title, with any leading
+      // markdown header hashes stripped; everything after becomes the description.
+      const text = document.getElementById('note-modal-body').value.replace(/^\s+/, '');
+      const nl = text.indexOf('\n');
+      const firstLine = nl === -1 ? text : text.slice(0, nl);
+      const rest = nl === -1 ? '' : text.slice(nl + 1);
+      const content = firstLine.replace(/^#+\s*/, '').trim()
+        || _noteModal.note.title || _noteModal.note.filename || 'Note';
+      const description = rest.trim();
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+      try {
+        const resp = await fetch('/api/todoist/tasks/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, description }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data.success === false) throw new Error(data.error || ('HTTP ' + resp.status));
+        btn.textContent = '✓ Added to Todoist';
+        loadTodos();
+      } catch (error) {
+        console.error('Error creating Todoist task:', error);
+        btn.textContent = 'Failed — try again';
+      } finally {
+        setTimeout(() => { btn.disabled = false; btn.textContent = '＋ Todoist task'; }, 1800);
+      }
+    }
+
+    let _relateSearchTimer = null;
+    function noteRelateSearch() {
+      clearTimeout(_relateSearchTimer);
+      _relateSearchTimer = setTimeout(runNoteRelateSearch, 250);
+    }
+
+    async function runNoteRelateSearch() {
+      const q = document.getElementById('note-modal-relate-input').value.trim();
+      const results = document.getElementById('note-modal-relate-results');
+      if (!q) { results.innerHTML = ''; return; }
+      try {
+        const resp = await fetch('/api/notes/list?q=' + encodeURIComponent(q));
+        const notes = await resp.json();
+        const list = (Array.isArray(notes) ? notes : [])
+          .filter(n => n.path !== _noteModal.note.path)
+          .slice(0, 8);
+        if (!list.length) { results.innerHTML = '<div class="note-rel-result note-rel-empty">No matches</div>'; return; }
+        results.innerHTML = list.map(n => `
+          <div class="note-rel-result">
+            <span class="note-rel-result-title">${escapeHtml(n.title || n.filename)}</span>
+            <span class="note-rel-result-actions">
+              <button class="note-rel-add-btn" data-file="${escapeHtml(n.filename)}" data-field="belongs_to">+ belongs to</button>
+              <button class="note-rel-add-btn" data-file="${escapeHtml(n.filename)}" data-field="related_to">+ related to</button>
+            </span>
+          </div>`).join('');
+        results.querySelectorAll('.note-rel-add-btn').forEach(b => {
+          b.addEventListener('click', () => addNoteRelation(b.dataset.field, b.dataset.file, b));
+        });
+      } catch (error) {
+        console.error('Error searching notes:', error);
+      }
+    }
+
+    async function addNoteRelation(field, target, btn) {
+      if (!_noteModal) return;
+      if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+      try {
+        const resp = await fetch('/api/notes/relate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: _noteModal.note.path, field, target }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        _noteModal.note = await resp.json();
+        renderNoteRelations('belongs_to', _noteModal.note.belongs_to || []);
+        renderNoteRelations('related_to', _noteModal.note.related_to || []);
+        if (btn) { btn.textContent = '✓ Added'; }
+      } catch (error) {
+        console.error('Error adding relation:', error);
+        if (btn) { btn.disabled = false; btn.textContent = '+ ' + field.replace('_', ' '); }
+      }
+    }
+
+    async function noteSuggestRelations() {
+      if (!_noteModal) return;
+      const btn = document.getElementById('note-modal-suggest-btn');
+      const box = document.getElementById('note-modal-suggestions');
+      btn.disabled = true;
+      btn.textContent = 'Thinking…';
+      box.innerHTML = '<div class="note-rel-empty">Asking Claude…</div>';
+      try {
+        const resp = await fetch('/api/notes/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: _noteModal.note.path }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+        renderNoteSuggestions(data);
+      } catch (error) {
+        console.error('Error getting suggestions:', error);
+        box.innerHTML = `<div class="note-rel-empty">${escapeHtml(error.message || 'Could not get suggestions')}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Suggest links';
+      }
+    }
+
+    function renderNoteSuggestions(data) {
+      const box = document.getElementById('note-modal-suggestions');
+      const rows = [];
+      (data.belongs_to || []).forEach(s => rows.push({ field: 'belongs_to', ...s }));
+      (data.related_to || []).forEach(s => rows.push({ field: 'related_to', ...s }));
+      if (!rows.length) { box.innerHTML = '<div class="note-rel-empty">No suggestions</div>'; return; }
+      box.innerHTML = rows.map((s, i) => `
+        <div class="note-rel-result" data-i="${i}">
+          <span class="note-rel-result-title">${escapeHtml(s.title || s.filename)}
+            <span class="note-rel-suggest-reason">${escapeHtml(s.reason || '')}</span></span>
+          <span class="note-rel-result-actions">
+            <button class="note-rel-add-btn" data-file="${escapeHtml(s.filename)}" data-field="${s.field}">+ ${s.field.replace('_', ' ')}</button>
+          </span>
+        </div>`).join('');
+      box.querySelectorAll('.note-rel-add-btn').forEach(b => {
+        b.addEventListener('click', () => addNoteRelation(b.dataset.field, b.dataset.file, b));
+      });
+    }
+
+    let _readLaterModal = null;
+
+    function openReadLaterModal(id) {
+      const article = _readLaterCache.get(String(id));
+      if (!article) return;
+      _readLaterModal = article;
+      document.getElementById('readlater-modal-domain').textContent = extractDomain(article.source_url || article.reader_url);
+      document.getElementById('readlater-modal-title').textContent = article.title || 'Untitled';
+      document.getElementById('readlater-modal-original').href = article.source_url || article.reader_url;
+      document.getElementById('readlater-modal-reader').href = article.reader_url || article.source_url;
+      const inShortlist = article.location === 'shortlist';
+      const shortlistBtn = document.getElementById('readlater-modal-shortlist-btn');
+      shortlistBtn.innerHTML = inShortlist
+        ? '<span class="fav-link-action-icon">★</span><span>Remove from Shortlist</span>'
+        : '<span class="fav-link-action-icon">☆</span><span>Add to Shortlist</span>';
+      shortlistBtn.disabled = false;
+      const archiveBtn = document.getElementById('readlater-modal-archive-btn');
+      archiveBtn.innerHTML = '<span class="fav-link-action-icon">🗄</span><span>Archive</span>';
+      archiveBtn.disabled = false;
+      document.getElementById('readlater-overlay').classList.add('visible');
+    }
+
+    function closeReadLaterModal() {
+      document.getElementById('readlater-overlay').classList.remove('visible');
+    }
+
+    async function readLaterUpdate(fields, optimisticRemove) {
+      if (!_readLaterModal) return;
+      const id = _readLaterModal.id;
+      if (optimisticRemove) {
+        closeReadLaterModal();
+        const item = document.querySelector(`#readlater-container [data-id="${id}"]`);
+        if (item) item.remove();
+      }
+      try {
+        const resp = await fetch('/api/reader/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, fields })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+          loadReadLater();
+        } else {
+          setTimeout(loadReadLater, 600);
+        }
+      } catch (e) {
+        console.error('Error updating reader doc:', e);
+        loadReadLater();
+      }
+    }
+
+    function readLaterToggleShortlist() {
+      if (!_readLaterModal) return;
+      const inShortlist = _readLaterModal.location === 'shortlist';
+      readLaterUpdate({ location: inShortlist ? 'later' : 'shortlist' }, true);
+    }
+
+    function readLaterArchive() {
+      readLaterUpdate({ location: 'archive' }, true);
     }
 
     function renderWisdom(data) {
@@ -3652,7 +4363,6 @@
     const panelNames = {
       weather: 'Weather',
       smartSchedule: 'Smart Schedule',
-      schedule: 'Schedule',
       tasks: 'Tasks',
       shed: 'Shed',
       home: 'Home',
@@ -3663,6 +4373,8 @@
       movies: 'Movies',
       books: 'Books',
       games: 'Video Games',
+      readLater: 'Read Later',
+      linksFavourites: 'Links: Favourites',
       links: 'Links'
     };
 
@@ -3682,6 +4394,15 @@
     function applySettings(settings) {
       // Apply panel visibility
       if (settings.panels) {
+        // Migrate legacy linksRecent/linksRandom into single 'links' visibility
+        if ((settings.panels.linksRecent || settings.panels.linksRandom) && !settings.panels.links) {
+          const v = (settings.panels.linksRecent?.visible !== false) || (settings.panels.linksRandom?.visible !== false);
+          settings.panels.links = { visible: v };
+        }
+        // Default-on if linksFavourites missing but old 'links' was present
+        if (settings.panels.links && !settings.panels.linksFavourites) {
+          settings.panels.linksFavourites = { visible: settings.panels.links.visible !== false };
+        }
         Object.entries(settings.panels).forEach(([panelId, config]) => {
           // Handle main panels (data-panel attributes)
           const panel = document.querySelector(`[data-panel="${panelId}"]`);
@@ -3689,6 +4410,20 @@
             panel.style.display = config.visible ? '' : 'none';
           }
         });
+      }
+
+      // Apply panel order via CSS order (works in flex/grid auto-flow containers)
+      if (Array.isArray(settings.panelOrder)) {
+        settings.panelOrder.forEach((panelId, idx) => {
+          const panel = document.querySelector(`[data-panel="${panelId}"]`);
+          if (panel) panel.style.order = String(idx);
+        });
+      }
+
+      // Apply shed heat banner toggle
+      const shedBanner = document.getElementById('shed-heat-banner');
+      if (shedBanner && settings.showShedHeatBanner === false) {
+        shedBanner.style.display = 'none';
       }
 
       // Setup auto-refresh
@@ -3714,6 +4449,7 @@
       }
       loadShedStatus();
       loadHomeStatus();
+      loadHeatTimeline();
       loadPiStatus();
       loadMoney();
       if (currentSettings?.useGenericRenderer?.readLater) {
@@ -3889,21 +4625,82 @@
       });
     }
 
+    // Working copy of panel order while the settings modal is open
+    let _panelOrderWorking = [];
+
+    function getOrderedPanelIds(settings) {
+      const allIds = Object.keys(panelNames);
+      const savedOrder = Array.isArray(settings?.panelOrder) ? settings.panelOrder : [];
+      // Migrate any legacy linksRecent/linksRandom back into a single 'links' entry
+      const migrated = [];
+      savedOrder.forEach(id => {
+        if (id === 'linksRecent' || id === 'linksRandom') {
+          if (!migrated.includes('links')) migrated.push('links');
+        } else {
+          migrated.push(id);
+        }
+      });
+      const ordered = migrated.filter(id => allIds.includes(id));
+      allIds.forEach(id => { if (!ordered.includes(id)) ordered.push(id); });
+      return ordered;
+    }
+
+    function renderPanelOrderList() {
+      const togglesContainer = document.getElementById('panel-toggles');
+      if (!togglesContainer) return;
+      togglesContainer.innerHTML = _panelOrderWorking.map((id, idx) => {
+        const name = panelNames[id] || id;
+        const isVisible = currentSettings?.panels?.[id]?.visible !== false;
+        const upDisabled = idx === 0 ? 'disabled' : '';
+        const downDisabled = idx === _panelOrderWorking.length - 1 ? 'disabled' : '';
+        return `
+          <div class="panel-order-item" data-panel-id="${id}">
+            <div class="panel-order-arrows">
+              <button class="icon-btn small" onclick="movePanel('${id}', -1)" title="Move up" ${upDisabled}>↑</button>
+              <button class="icon-btn small" onclick="movePanel('${id}', 1)" title="Move down" ${downDisabled}>↓</button>
+            </div>
+            <span class="panel-order-name">${name}</span>
+            <label class="settings-toggle-item panel-order-toggle">
+              <input type="checkbox" data-panel-toggle="${id}" ${isVisible ? 'checked' : ''}>
+              <span class="settings-toggle-switch"></span>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function movePanel(id, delta) {
+      const idx = _panelOrderWorking.indexOf(id);
+      if (idx < 0) return;
+      const newIdx = idx + delta;
+      if (newIdx < 0 || newIdx >= _panelOrderWorking.length) return;
+      // Preserve per-panel visibility from current checkbox state before re-render
+      document.querySelectorAll('[data-panel-toggle]').forEach(t => {
+        if (!currentSettings.panels) currentSettings.panels = {};
+        if (!currentSettings.panels[t.dataset.panelToggle]) currentSettings.panels[t.dataset.panelToggle] = {};
+        currentSettings.panels[t.dataset.panelToggle].visible = t.checked;
+      });
+      const [item] = _panelOrderWorking.splice(idx, 1);
+      _panelOrderWorking.splice(newIdx, 0, item);
+      renderPanelOrderList();
+    }
+
     function populateSettingsForm(settings) {
       if (!settings) return;
 
-      // Populate panel toggles
-      const togglesContainer = document.getElementById('panel-toggles');
-      togglesContainer.innerHTML = Object.entries(panelNames).map(([id, name]) => {
-        const isVisible = settings.panels?.[id]?.visible !== false;
-        return `
-          <label class="settings-toggle-item">
-            <span>${name}</span>
-            <input type="checkbox" data-panel-toggle="${id}" ${isVisible ? 'checked' : ''}>
-            <span class="settings-toggle-switch"></span>
-          </label>
-        `;
-      }).join('');
+      // Shed heat banner toggle
+      const shedToggle = document.getElementById('toggle-shed-banner');
+      if (shedToggle) shedToggle.checked = settings.showShedHeatBanner !== false;
+
+      // Links: hide tags in Recent
+      const hideTagsInput = document.getElementById('pref-links-hide-tags');
+      if (hideTagsInput) {
+        hideTagsInput.value = typeof settings.linksHideRecentTags === 'string' ? settings.linksHideRecentTags : 'readwise';
+      }
+
+      // Panel visibility + order list
+      _panelOrderWorking = getOrderedPanelIds(settings);
+      renderPanelOrderList();
 
       // Populate API URLs
       document.getElementById('url-ha').value = settings.homeAssistant?.url || '';
@@ -4111,6 +4908,9 @@
         theme: {
           preference: document.querySelector('input[name="theme"]:checked')?.value || 'default'
         },
+        showShedHeatBanner: document.getElementById('toggle-shed-banner')?.checked !== false,
+        linksHideRecentTags: document.getElementById('pref-links-hide-tags')?.value ?? (currentSettings?.linksHideRecentTags ?? 'readwise'),
+        panelOrder: _panelOrderWorking.slice(),
         // v3 fields - Generic Panel System
         useGenericRenderer: currentSettings?.useGenericRenderer || {
           wisdom: false,
@@ -4823,7 +5623,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         name: '',
         weatherApiKey: '',
         openaiApiKey: '',
-        enabledPanels: ['weather', 'schedule', 'tasks', 'bills', 'wisdom', 'readLater']
+        enabledPanels: ['weather', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'readLater']
       }
     };
 
@@ -4924,10 +5724,15 @@ Add your own custom rules here for smart home devices, routines, or other person
         }
 
         // Update panel visibility in settings
-        const allPanels = ['weather', 'schedule', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'tvShows', 'movies', 'books', 'games', 'links', 'piStatus', 'shed', 'home'];
+        const allPanels = ['weather', 'smartSchedule', 'tasks', 'bills', 'wisdom', 'readLater', 'tvShows', 'movies', 'books', 'games', 'linksFavourites', 'links', 'piStatus', 'shed', 'home'];
+        const enabledSet = new Set(data.enabledPanels);
+        const linksEnabled = enabledSet.has('links');
         allPanels.forEach(panel => {
-          if (currentSettings.panels[panel]) {
-            currentSettings.panels[panel].visible = data.enabledPanels.includes(panel);
+          if (!currentSettings.panels[panel]) currentSettings.panels[panel] = {};
+          if (panel === 'linksFavourites' || panel === 'links') {
+            currentSettings.panels[panel].visible = linksEnabled;
+          } else {
+            currentSettings.panels[panel].visible = enabledSet.has(panel);
           }
         });
 
@@ -5006,6 +5811,7 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadStarredLinks();
       loadShedStatus();
       loadHomeStatus();
+      loadHeatTimeline();
       loadPiStatus();
       loadMoney();
       // Use generic renderer for read later panel if enabled
@@ -5024,6 +5830,7 @@ Add your own custom rules here for smart home devices, routines, or other person
       loadMovies();
       loadBooks();
       loadGames();
+      loadNotes();
 
       // Load any custom panels defined in settings
       loadCustomPanels();
@@ -5174,9 +5981,17 @@ Add your own custom rules here for smart home devices, routines, or other person
           <!-- Panels Tab -->
           <div class="settings-pane active" id="settings-pane-panels">
             <div class="settings-section">
-              <h3>Panel Visibility</h3>
-              <p class="settings-description">Toggle which panels appear on your dashboard.</p>
-              <div class="settings-toggle-list" id="panel-toggles">
+              <h3>Banners</h3>
+              <label class="settings-toggle-item">
+                <span>Shed heat banner (top of dashboard)</span>
+                <input type="checkbox" id="toggle-shed-banner" checked>
+                <span class="settings-toggle-switch"></span>
+              </label>
+            </div>
+            <div class="settings-section" style="margin-top: 1.5rem;">
+              <h3>Panel Visibility &amp; Order</h3>
+              <p class="settings-description">Toggle which panels appear on your dashboard and drag them into the order you like. Use the arrows to reorder.</p>
+              <div class="panel-order-list" id="panel-toggles">
                 <!-- Generated by JS -->
               </div>
             </div>
@@ -5445,6 +6260,14 @@ Add your own custom rules here for smart home devices, routines, or other person
               </div>
             </div>
             <div class="settings-section">
+              <h3>Links</h3>
+              <p class="settings-description">Hide links in the Recent banner that have any of these tags (comma-separated, case-insensitive). Leave blank to show everything.</p>
+              <div class="settings-form-group">
+                <label for="pref-links-hide-tags">Hidden tags in Recent</label>
+                <input type="text" id="pref-links-hide-tags" class="settings-input" placeholder="readwise">
+              </div>
+            </div>
+            <div class="settings-section">
               <h3>Theme</h3>
               <p class="settings-description">Choose your dashboard theme.</p>
               <div class="settings-radio-group">
@@ -5675,8 +6498,8 @@ Add your own custom rules here for smart home devices, routines, or other person
             <span>Weather</span>
           </label>
           <label class="onboarding-panel-option">
-            <input type="checkbox" class="onboarding-panel-check" value="schedule" checked>
-            <span>Schedule</span>
+            <input type="checkbox" class="onboarding-panel-check" value="smartSchedule" checked>
+            <span>Smart Schedule</span>
           </label>
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="tasks" checked>
@@ -5689,6 +6512,10 @@ Add your own custom rules here for smart home devices, routines, or other person
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="wisdom" checked>
             <span>Wisdom</span>
+          </label>
+          <label class="onboarding-panel-option">
+            <input type="checkbox" class="onboarding-panel-check" value="readLater" checked>
+            <span>Read Later</span>
           </label>
           <label class="onboarding-panel-option">
             <input type="checkbox" class="onboarding-panel-check" value="tvShows">
@@ -5764,6 +6591,98 @@ Add your own custom rules here for smart home devices, routines, or other person
         <button id="fav-modal-fav-btn" class="fav-link-action-btn danger" onclick="favModalToggleFavourite()">
           <span class="fav-link-action-icon">♥</span>
           <span>Remove Favourite</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Read Later Action Modal -->
+  <div class="heater-chart-overlay" id="note-editor-overlay" onclick="if(event.target.id==='note-editor-overlay')closeNoteModal()">
+    <div class="note-editor-modal">
+      <div class="note-editor-header">
+        <div class="note-editor-meta">
+          <span class="note-editor-title" id="note-modal-title">Loading…</span>
+          <span class="note-editor-type" id="note-modal-type"></span>
+        </div>
+        <button class="heater-chart-close-btn" onclick="closeNoteModal()">&times;</button>
+      </div>
+      <div class="note-editor-body">
+        <div class="note-editor-flags">
+          <button class="note-flag-toggle" id="note-modal-organized-btn" onclick="noteToggleFlagModal('organized')">Organize</button>
+          <button class="note-flag-toggle" id="note-modal-favorite-btn" onclick="noteToggleFlagModal('favorite')">☆ Favourite</button>
+          <button class="note-flag-toggle" id="note-modal-archived-btn" onclick="noteToggleFlagModal('archived')">🗄 Archive</button>
+          <button class="note-flag-toggle note-todoist-btn" id="note-modal-todoist-btn" onclick="noteToTodoist()" title="Create a Todoist task from this note">＋ Todoist task</button>
+        </div>
+
+        <label class="note-editor-label">Note</label>
+        <textarea id="note-modal-body" class="note-editor-textarea" oninput="noteBodyChanged()" spellcheck="true"></textarea>
+        <div class="note-editor-save-row">
+          <button class="note-editor-save-btn" id="note-modal-save" onclick="saveNoteBody()" disabled>Save</button>
+        </div>
+
+        <div class="note-editor-relations">
+          <div class="note-rel-group">
+            <label class="note-editor-label">Belongs to</label>
+            <div class="note-rel-chips" id="note-modal-belongs_to"></div>
+          </div>
+          <div class="note-rel-group">
+            <label class="note-editor-label">Related to</label>
+            <div class="note-rel-chips" id="note-modal-related_to"></div>
+          </div>
+        </div>
+
+        <label class="note-editor-label">Add a link</label>
+        <input type="text" id="note-modal-relate-input" class="note-editor-relate-input" placeholder="Search notes to link…" oninput="noteRelateSearch()" autocomplete="off" />
+        <div class="note-rel-results" id="note-modal-relate-results"></div>
+
+        <div class="note-editor-suggest-row">
+          <button class="note-flag-toggle" id="note-modal-suggest-btn" onclick="noteSuggestRelations()">✨ Suggest links</button>
+        </div>
+        <div class="note-rel-results" id="note-modal-suggestions"></div>
+
+        <div class="note-editor-danger-row">
+          <button class="note-editor-delete-btn" onclick="openNoteDeleteConfirm()">🗑 Delete note</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="heater-chart-overlay" id="note-delete-overlay" onclick="if(event.target.id==='note-delete-overlay')closeNoteDeleteConfirm()">
+    <div class="note-delete-modal">
+      <div class="note-delete-title">Delete note?</div>
+      <p class="note-delete-text">Permanently delete <strong id="note-delete-name"></strong> from your vault. This can't be undone.</p>
+      <div class="note-delete-actions">
+        <button class="note-delete-cancel" onclick="closeNoteDeleteConfirm()">Cancel</button>
+        <button class="note-delete-confirm" id="note-delete-confirm-btn" onclick="confirmDeleteNote()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="heater-chart-overlay" id="readlater-overlay" onclick="if(event.target.id==='readlater-overlay')closeReadLaterModal()">
+    <div class="fav-link-modal">
+      <div class="fav-link-modal-header">
+        <div class="fav-link-modal-meta">
+          <span class="fav-link-modal-domain" id="readlater-modal-domain"></span>
+          <span class="fav-link-modal-title" id="readlater-modal-title"></span>
+        </div>
+        <button class="heater-chart-close-btn" onclick="closeReadLaterModal()">&times;</button>
+      </div>
+      <div class="fav-link-modal-actions">
+        <a id="readlater-modal-original" href="#" target="_blank" rel="noopener noreferrer" class="fav-link-action-btn primary" onclick="closeReadLaterModal()">
+          <span class="fav-link-action-icon">↗</span>
+          <span>Open Original</span>
+        </a>
+        <a id="readlater-modal-reader" href="#" target="_blank" rel="noopener noreferrer" class="fav-link-action-btn" onclick="closeReadLaterModal()">
+          <span class="fav-link-action-icon">📖</span>
+          <span>Open in Readwise</span>
+        </a>
+        <button id="readlater-modal-shortlist-btn" class="fav-link-action-btn" onclick="readLaterToggleShortlist()">
+          <span class="fav-link-action-icon">☆</span>
+          <span>Add to Shortlist</span>
+        </button>
+        <button id="readlater-modal-archive-btn" class="fav-link-action-btn danger" onclick="readLaterArchive()">
+          <span class="fav-link-action-icon">🗄</span>
+          <span>Archive</span>
         </button>
       </div>
     </div>

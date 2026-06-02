@@ -2,7 +2,7 @@ services:
   dashboard:
     build: .
     ports:
-      - "8443:8443"
+      - "1234:1234"
     environment:
       - TZ=America/Toronto
     extra_hosts:

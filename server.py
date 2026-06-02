@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-PORT = 8443
+PORT = 1234
 CACHE_TTL = 300  # 5 minutes in seconds
 
 # Global cache storage
@@ -36,7 +36,7 @@ def get_default_settings():
         "panels": {
             # ON by default - universal features that work out of the box
             "weather": {"visible": True},
-            "schedule": {"visible": True},
+            "smartSchedule": {"visible": True},
             "tasks": {"visible": True},
             "bills": {"visible": True},
             "readLater": {"visible": True},
@@ -46,7 +46,7 @@ def get_default_settings():
             "shed": {"visible": False},       # Requires Home Assistant
             "home": {"visible": False},       # Requires Home Assistant
             "tvShows": {"visible": False},    # Requires Channels DVR
-            "anybox": {"visible": False}      # Requires Anybox app + shortcut
+            "links": {"visible": False}       # Requires Raindrop.io test token
         },
         "homeAssistant": {
             "url": "",
@@ -108,6 +108,7 @@ Add your own custom rules here for smart home devices, routines, or other person
         "theme": {
             "preference": "default"
         },
+        "showShedHeatBanner": True,
         "useGenericRenderer": {
             "wisdom": False,
             "tasks": False,
@@ -272,6 +273,7 @@ def ha_request(method, endpoint, data=None):
 PI_MONITOR_URL = "http://100.115.42.106:5001"
 CHANNELS_DVR_URL = "http://100.127.232.39:8089"
 MEDIATRACKER_URL = "http://172.17.0.1:8100"
+NOTES_URL = "http://172.17.0.1:4319"  # notes-dashboard companion container
 TMDB_API_URL = "https://api.themoviedb.org/3"
 HEALTHCHECKS_BADGE_URL = "https://healthchecks.io/b/2/76534796-6135-419b-ab51-fa35e8581f10.json"
 BACKUP_HEALTHCHECKS_URL = "https://healthchecks.io/b/2/fc90bb64-b594-4db2-98f3-f48020b1d2f1.json"
@@ -1599,6 +1601,226 @@ def fetch_home_heater_history(days=30):
     }
 
 
+def fetch_heat_timeline():
+    """Fetch the last 6 hours of heating/cooling activity for shed and home,
+    bucketed by hour. Returns 6 segments each with heat_pct and cool_pct (0-1)."""
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return {'success': False, 'error': 'Home Assistant not configured'}
+
+    now = datetime.now()
+    # Start at the beginning of the hour that was 5 hours ago, so the 6th bucket
+    # is the current hour (truncated at `now`).
+    start = (now - timedelta(hours=5)).replace(minute=0, second=0, microsecond=0)
+
+    headers = {
+        'Authorization': f'Bearer {ha_key}',
+        'Content-Type': 'application/json',
+    }
+
+    def build_buckets(history, bucket_actions):
+        """Distribute state-change history across 6 hourly buckets.
+        bucket_actions: set of hvac_action strings to count (e.g. {'heating'} or {'heating','cooling'})
+        Returns list of dicts with label, heat_pct, cool_pct, heat_slots, cool_slots.
+        Each *_slots is a list of 12 ints (0/1) marking 5-minute sub-buckets where
+        heating/cooling covered at least half the slot."""
+        SLOTS_PER_BUCKET = 12
+        SLOT_SECS = 300
+        SLOT_THRESHOLD = 150
+        buckets = []
+        for i in range(6):
+            bucket_start = start + timedelta(hours=i)
+            bucket_end = min(start + timedelta(hours=i + 1), now)
+            if bucket_end <= bucket_start:
+                break
+            buckets.append({
+                'label': bucket_start.strftime('%-I%p').lower().rstrip('m').replace('a', 'a').replace('p', 'p'),
+                'bucket_start': bucket_start,
+                'bucket_end': bucket_end,
+                'bucket_secs': (bucket_end - bucket_start).total_seconds(),
+                'heat_secs': 0.0,
+                'cool_secs': 0.0,
+                'heat_slot_secs': [0.0] * SLOTS_PER_BUCKET,
+                'cool_slot_secs': [0.0] * SLOTS_PER_BUCKET,
+            })
+
+        for i, state_change in enumerate(history):
+            hvac_action = state_change.get('attributes', {}).get('hvac_action')
+            if hvac_action not in bucket_actions:
+                continue
+
+            last_changed = state_change.get('last_changed', '')
+            if not last_changed:
+                continue
+
+            seg_start = datetime.fromisoformat(last_changed.replace('Z', '+00:00'))
+            seg_start = seg_start.astimezone().replace(tzinfo=None)
+
+            if i + 1 < len(history):
+                next_changed = history[i + 1].get('last_changed', '')
+                if next_changed:
+                    seg_end = datetime.fromisoformat(next_changed.replace('Z', '+00:00'))
+                    seg_end = seg_end.astimezone().replace(tzinfo=None)
+                else:
+                    seg_end = now
+            else:
+                seg_end = now
+
+            for bucket in buckets:
+                eff_start = max(seg_start, bucket['bucket_start'])
+                eff_end = min(seg_end, bucket['bucket_end'])
+                if eff_end <= eff_start:
+                    continue
+                secs = (eff_end - eff_start).total_seconds()
+                if hvac_action == 'heating':
+                    bucket['heat_secs'] += secs
+                    slot_target = bucket['heat_slot_secs']
+                elif hvac_action == 'cooling':
+                    bucket['cool_secs'] += secs
+                    slot_target = bucket['cool_slot_secs']
+                else:
+                    continue
+                for s in range(SLOTS_PER_BUCKET):
+                    slot_start = bucket['bucket_start'] + timedelta(seconds=s * SLOT_SECS)
+                    slot_end = slot_start + timedelta(seconds=SLOT_SECS)
+                    se_start = max(eff_start, slot_start)
+                    se_end = min(eff_end, slot_end)
+                    if se_end > se_start:
+                        slot_target[s] += (se_end - se_start).total_seconds()
+
+        return [
+            {
+                'label': b['label'],
+                'heat_pct': round(b['heat_secs'] / b['bucket_secs'], 3) if b['bucket_secs'] > 0 else 0,
+                'cool_pct': round(b['cool_secs'] / b['bucket_secs'], 3) if b['bucket_secs'] > 0 else 0,
+                'heat_slots': [1 if s >= SLOT_THRESHOLD else 0 for s in b['heat_slot_secs']],
+                'cool_slots': [1 if s >= SLOT_THRESHOLD else 0 for s in b['cool_slot_secs']],
+            }
+            for b in buckets
+        ]
+
+    def query_entity(entity_id):
+        try:
+            start_str = start.strftime('%Y-%m-%dT%H:%M:%S')
+            end_str = now.strftime('%Y-%m-%dT%H:%M:%S')
+            url = f"{ha_url}/api/history/period/{start_str}?end_time={end_str}&filter_entity_id={entity_id}"
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=15) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            if not data or len(data) == 0 or len(data[0]) == 0:
+                return []
+            return data[0]
+        except Exception as e:
+            print(f"Error fetching heat timeline for {entity_id}: {e}")
+            return []
+
+    shed_history = query_entity('climate.shed_thermostat')
+    home_history = query_entity('climate.my_ecobee')
+
+    return {
+        'success': True,
+        'shed': build_buckets(shed_history, {'heating'}),
+        'home': build_buckets(home_history, {'heating', 'cooling'}),
+    }
+
+
+def fetch_thermostat_activity(hours=48, limit=2):
+    """Fetch recent on/off state changes for the shed thermostat with trigger context.
+
+    Uses the HA logbook API (which carries automation/service context) rather than
+    the history API (which strips context). Filters to only heat<->off transitions,
+    not the normal idle/heating cycling during a heat session.
+    """
+    config = load_config()
+    ha_url = config.get('homeAssistantUrl', 'http://localhost:8123')
+    ha_key = config.get('homeAssistantApiKey', '')
+
+    if not ha_url or not ha_key:
+        return []
+
+    now = datetime.now()
+    start = now - timedelta(hours=hours)
+    start_str = start.strftime('%Y-%m-%dT%H:%M:%S')
+    end_str = now.strftime('%Y-%m-%dT%H:%M:%S')
+
+    try:
+        url = f"{ha_url}/api/logbook/{start_str}?end_time={end_str}&entity_id=climate.shed_thermostat"
+        headers = {
+            'Authorization': f'Bearer {ha_key}',
+            'Content-Type': 'application/json',
+        }
+        req = urllib.request.Request(url, headers=headers, method='GET')
+        with urllib.request.urlopen(req, timeout=20) as response:
+            data = json.loads(response.read().decode('utf-8'))
+
+        # HA logbook returns all entities even with entity_id filter; keep only thermostat
+        thermostat_entries = [
+            e for e in data
+            if e.get('entity_id') == 'climate.shed_thermostat'
+            and e.get('state') in ('heat', 'off')
+        ]
+
+        results = []
+        for entry in thermostat_entries:
+            state = entry.get('state')
+            when = entry.get('when', '')
+
+            # Build a human-readable trigger label from logbook context fields
+            event_type = entry.get('context_event_type', '')
+            domain = entry.get('context_domain', '')
+            service = entry.get('context_service', '')
+            has_user = bool(entry.get('context_user_id'))
+
+            if event_type == 'automation_triggered':
+                # Prefer the entity_id_name (full display name) over context_name
+                auto_name = (
+                    entry.get('context_entity_id_name')
+                    or entry.get('context_name')
+                    or 'Automation'
+                )
+                trigger_src = entry.get('context_source', '')
+                trigger = f"Auto: {auto_name.strip()}"
+                if trigger_src:
+                    trigger += f" ({trigger_src})"
+            elif domain == 'scene' and service == 'turn_on':
+                trigger = 'Scene (manual)'
+            elif domain == 'climate' and service == 'set_hvac_mode':
+                trigger = 'Manual (direct control)'
+            elif has_user:
+                trigger = 'Manual'
+            else:
+                trigger = 'Unknown'
+
+            if when:
+                dt = datetime.fromisoformat(when.replace('Z', '+00:00'))
+                dt_local = dt.astimezone().replace(tzinfo=None)
+                entry_data = {
+                    'at': dt_local.isoformat(),
+                    'state': state,
+                    'trigger': trigger,
+                }
+                if event_type == 'automation_triggered':
+                    auto_entity_id = entry.get('context_entity_id')
+                    entry_data['automation_entity_id'] = auto_entity_id
+                    # Fetch the automation's config id (attributes.id) for a deep edit link
+                    if auto_entity_id:
+                        try:
+                            auto_state = ha_request('GET', f'states/{auto_entity_id}')
+                            entry_data['automation_config_id'] = auto_state.get('attributes', {}).get('id')
+                        except Exception:
+                            pass
+                results.append(entry_data)
+
+        return results[-limit:]
+
+    except Exception as e:
+        print(f"Error fetching thermostat activity: {e}")
+        return []
+
+
 def fetch_ha_panel_data(panel_id):
     """Fetch Home Assistant states for a panel."""
     settings = load_settings()
@@ -1631,9 +1853,10 @@ def fetch_ha_panel_data(panel_id):
 
     result = {'success': True, 'panel': panel_config, 'states': states}
 
-    # For shed panel, include heater runtime data
+    # For shed panel, include heater runtime data and thermostat activity
     if panel_id == 'shed':
         result['heater_runtime'] = fetch_heater_runtime()
+        result['thermostat_activity'] = fetch_thermostat_activity()
 
     # For home panel, include home heater runtime data
     if panel_id == 'home':
@@ -1770,6 +1993,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/api/home-assistant/panel/'):
             panel_id = self.path.split('/api/home-assistant/panel/')[1]
             self.get_ha_panel_status(panel_id)
+        elif self.path == '/api/home-assistant/outdoor-temp':
+            self.get_outdoor_temp()
         # Backward compatibility for old endpoints
         elif self.path == '/api/home-assistant/shed':
             self.get_ha_panel_status('shed')
@@ -1785,6 +2010,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_settings()
         elif self.path == '/api/wisdom/random':
             self.get_random_wisdom()
+        elif self.path == '/api/heat-timeline':
+            self.get_heat_timeline()
         elif self.path == '/api/heater-history':
             self.get_heater_history()
         elif self.path == '/api/home-heater-history':
@@ -1801,6 +2028,16 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.get_raindrop_latest()
         elif self.path == '/api/reader':
             self.get_reader_articles()
+        elif self.path == '/api/notes/inbox':
+            self.proxy_notes('/api/notes?state=inbox', method='GET')
+        elif self.path == '/api/notes/favorites':
+            self.proxy_notes('/api/favorites', method='GET')
+        elif self.path.startswith('/api/notes/note?'):
+            query = urllib.parse.urlparse(self.path).query
+            self.proxy_notes(f'/api/note?{query}', method='GET')
+        elif self.path == '/api/notes/list' or self.path.startswith('/api/notes/list?'):
+            query = urllib.parse.urlparse(self.path).query
+            self.proxy_notes(f'/api/notes?{query}' if query else '/api/notes', method='GET')
         else:
             super().do_GET()
 
@@ -2214,7 +2451,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
         return parsed['oauth_token'], parsed['oauth_token_secret']
 
     def get_reader_articles(self):
-        """Fetch articles from Readwise Reader API (inbox + later, top 3 each)."""
+        """Fetch articles from Readwise Reader API: shortlist preferred, fill from later."""
         try:
             config = load_config()
             token = config.get('readerApiKey', '')
@@ -2227,25 +2464,65 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 req = urllib.request.Request(url, headers={'Authorization': f'Token {token}'})
                 with urllib.request.urlopen(req, timeout=15) as resp:
                     data = json.loads(resp.read().decode())
-                return [
-                    {
+                items = []
+                for doc in data.get('results', []):
+                    if not (doc.get('url') or doc.get('source_url')):
+                        continue
+                    items.append({
+                        'id': doc.get('id'),
                         'title': doc.get('title') or doc.get('source_url', 'Untitled'),
                         'reader_url': doc.get('url', ''),
                         'source_url': doc.get('source_url') or doc.get('url', ''),
-                    }
-                    for doc in data.get('results', [])
-                    if doc.get('url') or doc.get('source_url')
-                ][:3]
+                        'location': doc.get('location', location),
+                    })
+                return items
 
             with ThreadPoolExecutor(max_workers=2) as executor:
-                inbox_future = executor.submit(fetch_location, 'new')
+                shortlist_future = executor.submit(fetch_location, 'shortlist')
                 later_future = executor.submit(fetch_location, 'later')
-                inbox = inbox_future.result()
+                shortlist = shortlist_future.result()
                 later = later_future.result()
 
-            self.send_json_response(200, {'success': True, 'inbox': inbox, 'later': later})
+            self.send_json_response(200, {'success': True, 'shortlist': shortlist, 'later': later})
         except Exception as e:
             print(f"Error fetching Reader articles: {e}")
+            self.send_json_response(500, {'success': False, 'error': str(e)})
+
+    def update_reader_document(self):
+        """PATCH a Readwise Reader document (e.g. change location, archive, shortlist)."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(content_length).decode()) if content_length > 0 else {}
+            doc_id = body.get('id')
+            fields = body.get('fields') or {}
+            if not doc_id or not isinstance(fields, dict) or not fields:
+                self.send_json_response(400, {'success': False, 'error': 'id and fields required'})
+                return
+            allowed = {'title', 'author', 'location', 'category', 'tags', 'notes', 'seen'}
+            payload = {k: v for k, v in fields.items() if k in allowed}
+            if not payload:
+                self.send_json_response(400, {'success': False, 'error': 'no allowed fields'})
+                return
+            config = load_config()
+            token = config.get('readerApiKey', '')
+            if not token:
+                self.send_json_response(400, {'success': False, 'error': 'readerApiKey not configured'})
+                return
+            url = f'https://readwise.io/api/v3/update/{doc_id}/'
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode(),
+                headers={'Authorization': f'Token {token}', 'Content-Type': 'application/json'},
+                method='PATCH',
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                resp_body = json.loads(resp.read().decode() or '{}')
+            self.send_json_response(200, {'success': True, 'document': resp_body})
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='replace')
+            self.send_json_response(e.code, {'success': False, 'error': err_body})
+        except Exception as e:
+            print(f"Error updating Reader document: {e}")
             self.send_json_response(500, {'success': False, 'error': str(e)})
 
     def unfavorite_raindrop(self, raindrop_id):
@@ -2335,6 +2612,21 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
 
+    def get_outdoor_temp(self):
+        """Fetch the backyard temperature from Home Assistant."""
+        try:
+            state = ha_request('GET', 'states/sensor.hue_outdoor_motion_sensor_1_temperature')
+            temp_c = float(state['state'])
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'temp': temp_c}).encode())
+        except Exception as e:
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
     def get_ha_panel_status(self, panel_id):
         """Get Home Assistant states from cache or fetch live."""
         try:
@@ -2372,6 +2664,20 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'settings': settings}).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def get_heat_timeline(self):
+        """Get 6-hour heating/cooling timeline for shed and home."""
+        try:
+            data = fetch_heat_timeline()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode())
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
@@ -2875,6 +3181,8 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.post_settings()
         elif self.path == '/api/media/watched':
             self.proxy_media_tracker('/api/watched')
+        elif self.path == '/api/reader/update':
+            self.update_reader_document()
         elif self.path == '/api/media/refresh':
             self.proxy_media_tracker('/api/refresh')
         elif self.path == '/api/todoist/tasks/punt':
@@ -2896,6 +3204,18 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8')) if post_data else {}
             self.test_openweather(provided_key=data.get('key'))
+        elif self.path == '/api/notes/state':
+            self.proxy_notes('/api/note/state', method='POST')
+        elif self.path == '/api/notes/capture':
+            self.proxy_notes('/api/capture', method='POST')
+        elif self.path == '/api/notes/update':
+            self.proxy_notes('/api/note/update', method='POST')
+        elif self.path == '/api/notes/relate':
+            self.proxy_notes('/api/note/relate', method='POST')
+        elif self.path == '/api/notes/suggest':
+            self.proxy_notes('/api/note/suggest', method='POST')
+        elif self.path == '/api/notes/delete':
+            self.proxy_notes('/api/note/delete', method='POST')
         else:
             self.send_error(404, 'Not Found')
 
@@ -2982,6 +3302,38 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 data=body if body else None,
                 headers={'Content-Type': 'application/json'},
                 method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=60) as response:
+                result = response.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(result)
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8', errors='replace')
+            self.send_response(e.code)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(error_body.encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode())
+
+    def proxy_notes(self, path, method='GET'):
+        """Proxy a request to the notes-dashboard companion container."""
+        try:
+            body = None
+            if method == 'POST':
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length) if content_length > 0 else b''
+
+            req = urllib.request.Request(
+                f"{NOTES_URL}{path}",
+                data=body if body else None,
+                headers={'Content-Type': 'application/json'},
+                method=method
             )
             with urllib.request.urlopen(req, timeout=60) as response:
                 result = response.read()

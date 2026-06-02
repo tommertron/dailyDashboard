@@ -38,7 +38,9 @@ const panels = [
   'home',
   'piStatus',
   'tvShows',
+  'linksFavourites',
   'links',
+  'notes',
 ];
 
 for (const panel of panels) {
@@ -64,6 +66,113 @@ test('wisdom container shows a quote', async ({ page }) => {
   await page.waitForTimeout(3_000);
   const container = page.locator('#wisdom-container');
   await expect(container).not.toBeEmpty();
+});
+
+test('notes panel renders inbox and favourites', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+  // Both containers render (either note items or an empty-state message)
+  await expect(page.locator('#notes-inbox-container')).not.toBeEmpty();
+  await expect(page.locator('#notes-favorites-container')).not.toBeEmpty();
+  await expect(page.locator('#notes-capture-input')).toBeVisible();
+});
+
+test('a favourited inbox note is not shown twice (inbox wins)', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+
+  const pathsIn = async (containerId) =>
+    page.locator(`#${containerId} .notes-item-open`).evaluateAll(
+      els => els.map(e => e.getAttribute('data-path')));
+
+  const inbox = await pathsIn('notes-inbox-container');
+  const favourites = await pathsIn('notes-favorites-container');
+  const overlap = favourites.filter(p => inbox.includes(p));
+  expect(overlap, 'no note should appear in both inbox and favourites').toHaveLength(0);
+});
+
+test('clicking a note opens the editor modal with body and relations', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+
+  // Notes come from the companion notes-dashboard; skip if none rendered
+  const noteItem = page.locator('.notes-item-open').first();
+  if (await noteItem.count() === 0) {
+    test.skip();
+    return;
+  }
+
+  await noteItem.click();
+  await expect(page.locator('#note-editor-overlay')).toHaveClass(/visible/, { timeout: 5_000 });
+
+  // Editor surfaces: body textarea, save button, relation sections, link search
+  await expect(page.locator('#note-modal-body')).toBeVisible();
+  await expect(page.locator('#note-modal-save')).toBeVisible();
+  await expect(page.locator('#note-modal-organized-btn')).toBeVisible();
+  await expect(page.locator('#note-modal-archived-btn')).toBeVisible();
+  await expect(page.locator('#note-modal-belongs_to')).toBeAttached();
+  await expect(page.locator('#note-modal-related_to')).toBeAttached();
+  await expect(page.locator('#note-modal-relate-input')).toBeVisible();
+  await expect(page.locator('#note-modal-suggest-btn')).toBeVisible();
+  await expect(page.locator('.note-editor-delete-btn')).toBeVisible();
+
+  // Editing the body enables Save
+  await expect(page.locator('#note-modal-save')).toBeDisabled();
+  await page.locator('#note-modal-body').fill('# edited in test');
+  await expect(page.locator('#note-modal-save')).toBeEnabled();
+
+  // Closes on Escape
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#note-editor-overlay')).not.toHaveClass(/visible/);
+});
+
+test('delete asks for confirmation and can be cancelled', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+
+  const noteItem = page.locator('.notes-item-open').first();
+  if (await noteItem.count() === 0) {
+    test.skip();
+    return;
+  }
+  await noteItem.click();
+  await expect(page.locator('#note-editor-overlay')).toHaveClass(/visible/, { timeout: 5_000 });
+
+  // Delete opens a confirmation modal — it must not delete on the first click
+  await page.locator('.note-editor-delete-btn').click();
+  await expect(page.locator('#note-delete-overlay')).toHaveClass(/visible/);
+  await expect(page.locator('#note-delete-name')).not.toBeEmpty();
+
+  // Cancel dismisses the confirmation, note editor stays open
+  await page.locator('.note-delete-cancel').click();
+  await expect(page.locator('#note-delete-overlay')).not.toHaveClass(/visible/);
+  await expect(page.locator('#note-editor-overlay')).toHaveClass(/visible/);
+});
+
+test('note modal has a Create Todoist task button', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+
+  const noteItem = page.locator('.notes-item-open').first();
+  if (await noteItem.count() === 0) {
+    test.skip();
+    return;
+  }
+  await noteItem.click();
+  await expect(page.locator('#note-editor-overlay')).toHaveClass(/visible/, { timeout: 5_000 });
+  await expect(page.locator('#note-modal-todoist-btn')).toBeVisible();
+});
+
+test('inbox notes have an organize button; favourites do not', async ({ page }) => {
+  await waitForDashboard(page);
+  await page.waitForTimeout(3_000);
+
+  const inboxItems = page.locator('#notes-inbox-container .notes-item');
+  if (await inboxItems.count() > 0) {
+    await expect(inboxItems.first().locator('.notes-organize-btn')).toBeVisible();
+  }
+  // Favourites section should never render an organize button
+  await expect(page.locator('#notes-favorites-container .notes-organize-btn')).toHaveCount(0);
 });
 
 test('todos container renders', async ({ page }) => {
@@ -166,8 +275,22 @@ test('shed thermostat modal opens when thermostat control is clicked', async ({ 
 
 // ── Raindrop link modal (shared helper) ──────────────────────────────────────
 
+// Links now live in collapsible banners. Expanding the banner makes the full
+// .raindrop-link-btn items visible; clicking them then opens the modal.
+async function expandLinksBanner(page, section) {
+  // Recent/Random now live in the combined links banner; favourites still has its own.
+  const bannerId = (section === 'latest' || section === 'random') ? 'links-combined-banner' : `links-${section}-banner`;
+  const banner = page.locator(`#${bannerId}`);
+  if (await banner.count() === 0) return;
+  if ((await banner.getAttribute('data-expanded')) !== 'true') {
+    await banner.locator('.links-banner-header').click();
+  }
+}
+
 async function openModalFromPanel(page, containerSelector, itemSelector) {
   await page.waitForTimeout(3_000);
+  const section = containerSelector.match(/links-(\w+)-container/)?.[1];
+  if (section) await expandLinksBanner(page, section);
   const item = page.locator(containerSelector).locator(itemSelector).first();
   if (await item.count() === 0) return false;
   await item.click();
@@ -219,6 +342,7 @@ test('favourite modal "Edit in Raindrop" has raindrop.io href', async ({ page })
 test('favourite modal "Remove Favourite" button removes item optimistically', async ({ page }) => {
   await waitForDashboard(page);
   await page.waitForTimeout(3_000);
+  await expandLinksBanner(page, 'favourites');
   const container = page.locator('#links-favourites-container');
   const items = container.locator('.raindrop-link-btn');
   if (await items.count() === 0) return;
@@ -264,7 +388,8 @@ test('tapping a random link opens the action modal', async ({ page }) => {
 test('random link modal shows correct favourite toggle label', async ({ page }) => {
   await waitForDashboard(page);
   await page.waitForTimeout(3_000);
-  const btn = page.locator('#links-container .raindrop-link-btn').first();
+  await expandLinksBanner(page, 'random');
+  const btn = page.locator('#links-random-container .raindrop-link-btn').first();
   if (await btn.count() === 0) return;
 
   const isFav = (await btn.getAttribute('data-is-fav')) === 'true';

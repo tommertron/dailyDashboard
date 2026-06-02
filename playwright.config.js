@@ -7,7 +7,7 @@ module.exports = defineConfig({
   expect: { timeout: 10_000 },
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:8443',
+    baseURL: 'http://localhost:1234',
     screenshot: 'only-on-failure',
     video: 'off',
   },

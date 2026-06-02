@@ -1,16 +1,16 @@
 {
   "version": 3,
   "panels": {
-    "weather": {
+    "linksFavourites": {
       "visible": true
     },
     "smartSchedule": {
       "visible": true
     },
-    "schedule": {
-      "visible": false
-    },
     "tasks": {
+      "visible": true
+    },
+    "weather": {
       "visible": true
     },
     "shed": {
@@ -25,7 +25,7 @@
     "bills": {
       "visible": false
     },
-    "wisdom": {
+    "links": {
       "visible": true
     },
     "tvShows": {
@@ -40,7 +40,10 @@
     "games": {
       "visible": false
     },
-    "links": {
+    "readLater": {
+      "visible": true
+    },
+    "wisdom": {
       "visible": true
     }
   },
@@ -211,6 +214,25 @@
   "theme": {
     "preference": "default"
   },
+  "showShedHeatBanner": true,
+  "linksHideRecentTags": "readwise",
+  "panelOrder": [
+    "linksFavourites",
+    "smartSchedule",
+    "tasks",
+    "weather",
+    "shed",
+    "home",
+    "piStatus",
+    "bills",
+    "links",
+    "tvShows",
+    "movies",
+    "books",
+    "games",
+    "readLater",
+    "wisdom"
+  ],
   "useGenericRenderer": {
     "wisdom": true,
     "tasks": false,

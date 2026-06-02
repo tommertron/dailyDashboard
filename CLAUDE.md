@@ -2,9 +2,13 @@
 
 ## Project Overview
 
-Personal data aggregation dashboard running on a Raspberry Pi in Docker. Displays weather, calendar, tasks, smart home controls, media info, financial data, and AI-generated daily summaries. Single-page vanilla HTML/CSS/JS frontend with a pure Python stdlib HTTP server backend (no frameworks, no npm/pip dependencies).
+Personal data aggregation dashboard running on a Raspberry Pi in Docker. Displays weather, calendar, tasks, smart home controls, media info, financial data, and AI-generated daily summaries. Single-page vanilla HTML/CSS/JS frontend with a pure Python stdlib HTTP server backend (the dashboard container itself has no pip dependencies).
 
-**Tech Stack:** Python 3.12 HTTP server, vanilla HTML/CSS/JS, Docker, Home Assistant, OpenWeatherMap, OpenAI/Anthropic/Gemini, TMDB, Channels DVR
+**Tech Stack:** Python 3.12 HTTP server, vanilla HTML/CSS/JS, Docker, Home Assistant, OpenWeatherMap, OpenAI/Anthropic/Gemini, TMDB, Raindrop.io, Readwise Reader, Todoist, Channels DVR
+
+**Port:** The server listens on **1234** (HTTPS when Tailscale certs are present in `certs/`, otherwise plain HTTP — see bottom of `server.py`). The container publishes `1234:1234`. Playwright tests target `http://localhost:1234`.
+
+**Companion service:** TV/Movies/Books/Games data comes from a **separate `mediatracker` FastAPI service** (its own repo at `/home/tommertron/code/mediatracker`, its own container on port 8100). The dashboard proxies to it — see the "Companion Service: Media Tracker" section below.
 
 ## LCARS Theme (Deprecated)
 
@@ -15,10 +19,10 @@ Personal data aggregation dashboard running on a Raspberry Pi in Docker. Display
 ## File Structure
 
 ### Backend (Python)
-- **`server.py`** (~2,300 lines) - Main HTTP server on port 8000. Handles all API proxying, Home Assistant integration, caching, SSH shortcut execution, and static file serving. Uses `http.server.ThreadingHTTPServer` with no external dependencies.
-- **`generate_summary.py`** (~744 lines) - AI summary generator. Gathers all dashboard data, applies persona/rules from settings, calls OpenAI/Anthropic/Gemini, saves to `daily-summary.json`.
+- **`server.py`** (~3,560 lines) - Main HTTP server on port 1234. Handles all API proxying, Home Assistant integration, caching, SSH shortcut execution, static file serving, and proxying to the mediatracker service. Uses `http.server.ThreadingHTTPServer` (stdlib only, no pip deps). Service URLs are hardcoded constants near the top (`PI_MONITOR_URL`, `CHANNELS_DVR_URL`, `MEDIATRACKER_URL`, etc.).
+- **`generate_summary.py`** (~800 lines) - AI summary generator. Gathers all dashboard data, applies persona/rules from settings, calls OpenAI/Anthropic/Gemini, saves to `daily-summary.json`. Pulls bills from the Remaining API (`http://100.125.128.51:8111/api/summary`).
 - **`update_wisdom.py`** (~86 lines) - Selects random wisdom quotes from `wisdom/wisdom.md`, saves to `wisdom.json`.
-- **`config.json`** - API keys (not version controlled). Contains: name, openWeatherApiKey, openaiApiKey, anthropicApiKey, geminiApiKey, homeAssistantApiKey, homeAssistantUrl, tmdbApiKey.
+- **`config.json`** - API keys (not version controlled). Contains: `name`, `openWeatherApiKey`, `openaiApiKey`, `homeAssistantApiKey`, `homeAssistantUrl`, `tmdbApiKey`, `todoistApiKey`, `raindropApiKey`, `readerApiKey` (Readwise Reader). Note: `readeckApiKey`/`readeckUrl` are vestigial/unused; `anthropicApiKey`/`geminiApiKey` may be present if those AI providers are selected.
 
 ### Frontend
 - **`index.html`** (~4,400 lines) - Entire dashboard UI including all JS logic (~150+ functions). No build step, no bundler.
@@ -27,18 +31,14 @@ Personal data aggregation dashboard running on a Raspberry Pi in Docker. Display
 ### Data Files (JSON/Text, volume-mounted, updated by external shortcuts or automations)
 - `calendar.json` - Calendar events in NDJSON format inside a JSON wrapper
 - `location.json` - Current lat/long
-- `daily-links.json` - Links from Anybox
 - `daily-summary.json` - AI-generated briefing
 - `money.txt` - Bills/financial data (plain text, one per line)
-- `starredLinks.json` - Starred Anybox links
-- `sequelEpisodes.json` - TV episodes from Sequel app
-- `new_releases.json` - New media releases
-- `anyboxStats.json` - Link app statistics
-- `readlater.json` - GoodLinks saved articles
 - `wisdom.json` - Current daily wisdom quote
 - `settings.json` - User preferences (v3 schema)
-- `heater_history.json` - Shed heater runtime history (30 days)
-- `home_heater_history.json` - Home heater runtime history
+- `heater_history.json` / `home_heater_history.json` - Shed/home heater runtime history (30 days)
+- `heater_rates.json` / `home_heater_rates.json` - Heating cost rate config (read-only mounts)
+
+**Mostly superseded by live API calls** (the dashboard now fetches links/tasks/media directly rather than from these files, but mounts may remain): `daily-links.json`, `starredLinks.json` (Anybox → now Raindrop), `sequelEpisodes.json` / `new_releases.json` (Sequel → now mediatracker service), `anyboxStats.json` (now Raindrop stats), `readlater.json` (GoodLinks → now Readwise Reader API). When in doubt, trust the endpoint, not the file.
 
 ---
 
@@ -87,7 +87,7 @@ After any change, **always verify** before declaring it complete:
    ```bash
    docker exec dailydashboard-dashboard-1 python3 -c "
    import urllib.request, json
-   with urllib.request.urlopen('http://localhost:8000/api/ENDPOINT') as r:
+   with urllib.request.urlopen('http://localhost:1234/api/ENDPOINT') as r:
        print(r.status, json.loads(r.read()))"
    ```
 
@@ -104,15 +104,27 @@ After any change, **always verify** before declaring it complete:
 | `/api/forecast?lat=X&lon=Y` | 5-day forecast | OpenWeatherMap |
 | `/api/config` | API keys (masked) | config.json |
 | `/api/settings` | User preferences | settings.json |
-| `/api/tv/shows` | TV shows & DVR recordings | Channels DVR + Sequel + TMDB |
+| `/api/tv/shows` | TV shows & DVR recordings | Channels DVR + mediatracker + TMDB |
 | `/api/pi/status` | Pi system health | Pi Monitor + Healthchecks |
 | `/api/home-assistant/panel/{panelId}` | Smart home panel data | Home Assistant |
 | `/api/home-assistant/shed` | Shed status (legacy) | Home Assistant |
 | `/api/home-assistant/home` | Home status (legacy) | Home Assistant |
 | `/api/money` | Bills data | money.txt |
 | `/api/wisdom/random` | Daily wisdom quote | wisdom.md |
+| `/api/heat-timeline` | Combined heating timeline | HA history API |
 | `/api/heater-history` | Shed heating chart data (30 days) | HA history API |
 | `/api/home-heater-history` | Home heating chart data | HA history API |
+| `/api/todoist/tasks` | Tasks | Todoist API |
+| `/api/raindrop/links` | Saved links | Raindrop.io API |
+| `/api/raindrop/stats` | Link counts/stats | Raindrop.io API |
+| `/api/raindrop/favorites` | Favourited links | Raindrop.io API |
+| `/api/raindrop/latest` | Most recent links | Raindrop.io API |
+| `/api/reader` | Read-later articles (inbox/later) | Readwise Reader API |
+| `/api/notes/inbox` | Unorganized notes | notes-dashboard service |
+| `/api/notes/favorites` | Favourited notes | notes-dashboard service |
+| `/api/notes/note?path=` | Full note incl. body markdown | notes-dashboard service |
+| `/api/notes/list?q=` | Search note summaries (relate picker) | notes-dashboard service |
+| `/api/home-assistant/outdoor-temp` | Outdoor temperature | Home Assistant |
 
 ### POST Endpoints
 | Endpoint | Purpose |
@@ -130,6 +142,20 @@ After any change, **always verify** before declaring it complete:
 | `/api/home-assistant/climate/set` | Set thermostat temp/mode |
 | `/api/home-assistant/lock/back_door` | Toggle door lock |
 | `/api/automation/wfh-check` | Run WFH automation (calendar check) |
+| `/api/todoist/tasks/add` | Create a task |
+| `/api/todoist/tasks/punt` | Reschedule task(s) |
+| `/api/todoist/tasks/{id}/close` | Complete a task |
+| `/api/raindrop/favorite/{id}` | Favourite a link |
+| `/api/raindrop/unfavorite/{id}` | Unfavourite a link |
+| `/api/reader/update` | Update a Reader document (e.g. mark moved) |
+| `/api/notes/capture` | Quick-capture a note to the inbox (proxied to notes-dashboard) |
+| `/api/notes/state` | Set favorite/organized/archived flag (proxied to notes-dashboard) |
+| `/api/notes/update` | Replace a note's body markdown (light edit, proxied to notes-dashboard) |
+| `/api/notes/relate` | Add a belongs_to/related_to wikilink (proxied to notes-dashboard) |
+| `/api/notes/suggest` | AI-suggested belongs_to/related_to links (proxied to notes-dashboard; needs an Anthropic API key in that service) |
+| `/api/notes/delete` | Permanently delete a note file (proxied to notes-dashboard) |
+| `/api/media/watched` | Mark media watched (proxied to mediatracker) |
+| `/api/media/refresh` | Refresh media data (proxied to mediatracker) |
 | `/api/test/{service}` | Test API key connectivity |
 
 ### Caching
@@ -203,8 +229,10 @@ Three-Column Grid: Calendar | Shed+Home+Pi | TV+Movies+Books+Games+Links
 | Shed | Home Assistant | `loadShedStatus()` / `renderShedStatus()` |
 | Home | Home Assistant | `loadHomeStatus()` |
 | Pi Status | Pi Monitor + Healthchecks | `loadPiStatus()` |
-| TV Shows | Channels DVR + Sequel + TMDB | `loadTvShows()` |
-| Links | daily-links.json + readlater.json | `loadLinks()` |
+| TV/Movies/Books/Games | mediatracker service + Channels DVR + TMDB | `loadTvShows()` etc. |
+| Links | Raindrop.io API (`/api/raindrop/*`) | `loadLinks()` |
+| Read Later | Readwise Reader API (`/api/reader`) | inbox + later sections, top 3 each |
+| Notes | notes-dashboard service (`/api/notes/*`) | `loadNotes()` + note editor modal (`openNoteModal()`): quick-capture; inbox items have a ✓ organize quick-action (organizing removes them from the inbox); click to open/edit body, toggle organize/unorganize, favourite, archive/unarchive, add belongs_to/related_to via search picker or AI suggest, delete (with a confirmation modal), and **create a Todoist task** from the note (`noteToTodoist()` — first body line minus `#` headers becomes the task title, the rest the description; lands in the Todoist inbox via `/api/todoist/tasks/add`). A favourited inbox note shows in the inbox only (deduped in `loadNotes`). |
 
 ---
 
@@ -231,14 +259,46 @@ Extensive prompt rules covering: priority alerts (unlocked doors, power outages)
 - **TMDB** - TV episode details and posters
 - **Home Assistant** - Smart home control (local network)
 - **Healthchecks.io** - Backup/service monitoring
+- **Raindrop.io** - Bookmarks/links panel (replaced Anybox)
+- **Readwise Reader** (`readwise.io/api/v3`) - Read-later articles (replaced Instapaper/GoodLinks)
+- **Todoist** - Tasks panel (replaced the Things-via-SSH shortcut)
 
-### Local Network Services
+### Local Network Services (Tailscale IPs)
+- **mediatracker** (`http://172.17.0.1:8100`, the `MEDIATRACKER_URL` constant) - Companion service for TV/Movies/Books/Games. See section below.
 - **Channels DVR** (http://100.127.232.39:8089) - DVR recordings, disk status
-- **Pi Monitor** (http://100.125.128.51:5001) - UPS, system info
-- **Remaining** (http://100.125.128.51:8111) - Bill tracking
+- **Pi Monitor** (http://100.115.42.106:5001, the `PI_MONITOR_URL` constant) - UPS, system info
+- **Remaining** (http://100.125.128.51:8111) - Bill tracking (used by `generate_summary.py`)
 
 ### Apple Shortcuts (via SSH to Mac Mini at 192.168.4.242)
-Things Today, dailyMoney, daily calendar, Anybox Random 2, GoodLinks Recent
+Legacy refresh mechanism, largely superseded by direct API calls. Still wired for: dailyMoney (bills), daily calendar. Things/Anybox/GoodLinks shortcuts are deprecated in favour of Todoist/Raindrop/Reader APIs.
+
+---
+
+## Companion Service: Media Tracker
+
+The TV/Movies/Books/Games panels are powered by a **separate FastAPI service** in its own repo and container — NOT by `server.py`. This is a second working directory: `/home/tommertron/code/mediatracker`.
+
+- **Stack:** Python 3.13, FastAPI + uvicorn, `requests`, `beautifulsoup4` (has pip deps, unlike the dashboard). Runs on **port 8100**, container name `mediatracker`.
+- **Data sources:** **Trakt** (watchlist/history/up-next), **Channels DVR** (unwatched recordings), **TMDB** (posters), **Fox Theatre Toronto** (scraped screenings matched to watchlist), and optionally Sonarr/Radarr.
+- **Key files:** `app.py` (~2,500 lines, all routes + logic), `index.html` (its own couch-friendly web UI), `config.json` (Trakt/TMDB keys), `poster_cache.json`, `watch_queue.json`, `static_media.json`.
+- **How the dashboard talks to it:** `server.py` proxies `/api/media/watched` and `/api/media/refresh` to the service via `proxy_media_tracker()` → `MEDIATRACKER_URL`. The dashboard's `/api/tv/shows` endpoint and the mediatracker both contribute to the media panels.
+- **Cross-mount:** the mediatracker container bind-mounts the dashboard repo at `/dailydashboard`, so it can write data files the dashboard reads.
+
+**When changing media features, check whether the logic lives in `mediatracker/app.py` rather than `server.py`.** The two are deployed independently — rebuilding the dashboard container does NOT rebuild mediatracker (`cd /home/tommertron/code/mediatracker && docker compose up -d --build`).
+
+---
+
+## Companion Service: Notes Dashboard
+
+The Notes panel is powered by a **separate Node/Express service** in its own repo and container — NOT by `server.py`. Working directory: `/home/tommertron/code/notes-dashboard`.
+
+- **Stack:** Node 20, Express, `gray-matter` (has npm deps). Runs on **port 4319**, container name `notes-dashboard`, bound to `0.0.0.0`. `MEDIATRACKER_URL`-style constant in `server.py` is `NOTES_URL = "http://172.17.0.1:4319"`.
+- **Vault:** reads/writes a [Tolaria/inText](https://github.com/refactoringhq/tolaria) markdown vault at `/home/tommertron/notes` (mounted into the container at `/notes`). State and relationships live in YAML frontmatter: `_organized` / `_archived` / `_favorite` (booleans; "off" = key absent), and `belongs_to` / `related_to` (quoted `[[wikilinks]]`, scalar or YAML list). Frontmatter keys starting with `_` are Tolaria-managed — leave them alone. See `~/notes/AGENTS.md`.
+- **Key files:** `server.js` (routes), `lib/vault.js` (read/parse/mutate notes — `getNote`, `setFlag` (favouriting also writes `_favorite_index`), `addRelationship`, `appendToBody`, `updateBody`, `capture`, `deleteNote`), `lib/ai.js` (Claude relationship suggestions), `lib/chat.js`, `public/` (its own UI). Its native API is `/api/note*`; the dashboard proxies these under `/api/notes/*` via `proxy_notes()`.
+- **How the dashboard talks to it:** the dashboard's Notes panel (`loadNotes()` + the note editor modal in `index.html`) calls `/api/notes/{inbox,favorites,note,list,update,relate,state,capture,suggest}`, all proxied to `NOTES_URL`.
+- **AI suggest** (`/api/notes/suggest`) needs an **Anthropic API key** in the notes-dashboard container (`ANTHROPIC_API_KEY` env or `ANTHROPIC_KEY_FILE`). Without it the endpoint returns 503 and the UI shows the error; the manual search picker still works.
+
+**When changing notes features, the read/write logic usually lives in `notes-dashboard/lib/vault.js`, not `server.py`.** The two are deployed independently — rebuilding the dashboard container does NOT rebuild notes-dashboard (`cd /home/tommertron/code/notes-dashboard && docker compose up -d --build`).
 
 ---
 
@@ -289,7 +349,7 @@ npx playwright test --headed
 npx playwright show-report
 ```
 
-Tests target `http://localhost:8443`. The container must be running.
+Tests target `http://localhost:1234`. The container must be running.
 
 ### Test Structure
 
